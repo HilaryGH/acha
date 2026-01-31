@@ -44,9 +44,9 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
           localStorage.setItem('token', response.data.token);
         }
         
-        // Close modal and redirect to dashboard
+        // Close modal and redirect to home
         onClose();
-        navigate('/dashboard');
+        navigate('/home');
         // Reload page to update navbar
         window.location.reload();
       }
