@@ -13,3 +13,4 @@ router.get('/', subscriptionController.getAllSubscriptions);
 
 module.exports = router;
 
+
