@@ -30,24 +30,40 @@ app.use(express.urlencoded({ extended: true }));
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', true);
 
-// MongoDB connection
+// MongoDB connection - Only from .env file
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
   console.error('❌ MongoDB connection error: MONGODB_URI is not defined in environment variables.');
-  console.error('📝 Please create a .env file in the server directory with:');
-  console.error('   MONGODB_URI=mongodb://localhost:27017/acha-delivery');
-  console.error('   or');
+  console.error('📝 Please create a .env file in the server directory with your MongoDB connection string:');
   console.error('   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database-name');
+  console.error('   (Get your connection string from MongoDB Atlas: https://www.mongodb.com/cloud/atlas)');
   process.exit(1);
 }
 
-mongoose.connect(MONGODB_URI)
+// Validate that it's not a localhost connection
+if (MONGODB_URI.includes('localhost') || MONGODB_URI.includes('127.0.0.1') || MONGODB_URI.includes('::1')) {
+  console.error('❌ MongoDB connection error: Local MongoDB connections are not supported.');
+  console.error('📝 Please use a MongoDB Atlas connection string in your .env file:');
+  console.error('   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database-name');
+  console.error('   (Get your connection string from MongoDB Atlas: https://www.mongodb.com/cloud/atlas)');
+  process.exit(1);
+}
+
+// MongoDB connection options
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+};
+
+mongoose.connect(MONGODB_URI, mongooseOptions)
   .then(() => {
     console.log('✅ Connected to MongoDB');
+    console.log(`📍 Database: ${mongoose.connection.name}`);
   })
   .catch((error) => {
-    console.error('❌ MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error.message);
+    console.error('📝 Please check your MONGODB_URI in the .env file');
     process.exit(1);
   });
 
