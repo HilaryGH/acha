@@ -31,7 +31,16 @@ app.use(express.urlencoded({ extended: true }));
 app.set('trust proxy', true);
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI ;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('❌ MongoDB connection error: MONGODB_URI is not defined in environment variables.');
+  console.error('📝 Please create a .env file in the server directory with:');
+  console.error('   MONGODB_URI=mongodb://localhost:27017/acha-delivery');
+  console.error('   or');
+  console.error('   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database-name');
+  process.exit(1);
+}
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
