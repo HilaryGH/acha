@@ -5,8 +5,10 @@ import IndividualForm from './forms/IndividualForm';
 import DeliveryPartnerForm from './forms/DeliveryPartnerForm';
 import AchaSistersDeliveryPartnerForm from './forms/AchaSistersDeliveryPartnerForm';
 import GiftDeliveryPartnerForm from './forms/GiftDeliveryPartnerForm';
+import AchaMoversPackersForm from './forms/AchaMoversPackersForm';
+import CorporateForm from './forms/CorporateForm';
 
-type RegistrationType = 'individual' | 'delivery-partner' | 'acha-sisters-delivery-partner' | 'gift-delivery-partner' | null;
+type RegistrationType = 'individual' | 'delivery-partner' | 'acha-sisters-delivery-partner' | 'gift-delivery-partner' | 'acha-movers-packers' | 'corporate' | null;
 type ViewMode = 'signin' | 'register';
 
 interface SignInModalProps {
@@ -103,6 +105,8 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
             {registrationType === 'delivery-partner' && <DeliveryPartnerForm />}
             {registrationType === 'acha-sisters-delivery-partner' && <AchaSistersDeliveryPartnerForm />}
             {registrationType === 'gift-delivery-partner' && <GiftDeliveryPartnerForm isModal={true} onSuccess={handleClose} />}
+            {registrationType === 'acha-movers-packers' && <AchaMoversPackersForm />}
+            {registrationType === 'corporate' && <CorporateForm />}
           </div>
         </div>
       </div>
@@ -112,15 +116,17 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
   // Registration type selection view
   if (viewMode === 'register') {
     const registrationTypes = [
-      { id: 'individual' as const, title: 'Individual', description: 'Register as an individual user', icon: '👤' },
-      { id: 'delivery-partner' as const, title: 'Delivery Partner', description: 'Join our delivery network and start earning', icon: '🚚' },
-      { id: 'acha-sisters-delivery-partner' as const, title: 'Acha Sisters Delivery Partner', description: 'Join our delivery network and start earning', icon: '👩‍🚚' },
-      { id: 'gift-delivery-partner' as const, title: 'Acha Surprise Gift Delivery Partner', description: 'Register as a gift delivery partner and offer your gift services', icon: '🎁' },
+      { id: 'individual' as const, title: 'Individual', description: 'Register as an individual user' },
+      { id: 'delivery-partner' as const, title: 'Delivery Partner', description: 'Join our delivery network and start earning.' },
+      { id: 'acha-sisters-delivery-partner' as const, title: 'Acha Sisters Delivery Partner', description: 'Join our delivery network and start earning.' },
+      { id: 'gift-delivery-partner' as const, title: 'Acha Surprise Gift Delivery Partner', description: 'Register as a gift delivery partner and offer your gift services' },
+      { id: 'acha-movers-packers' as const, title: 'Acha Movers & Packers', description: 'Register as a movers and packers service provider' },
+      { id: 'corporate' as const, title: 'Corporate', description: 'Register as a corporate entity' },
     ];
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
           <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Register</h2>
             <button
@@ -134,32 +140,27 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
           </div>
           <div className="p-6">
             <p className="text-gray-600 mb-6 text-center">Choose your role to get started</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              {registrationTypes.map((type) => (
-                <div
-                  key={type.id}
-                  onClick={() => setRegistrationType(type.id)}
-                  className="bg-gray-50 rounded-lg p-2 cursor-pointer transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 border border-gray-200 hover:border-blue-500"
-                >
-                  <h3 className="text-xs font-semibold text-gray-900 mb-0.5 text-center">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Select Role <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={registrationType || ''}
+                onChange={(e) => setRegistrationType(e.target.value as RegistrationType)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white text-sm"
+              >
+                <option value="">-- Select a role --</option>
+                {registrationTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
                     {type.title}
-                  </h3>
-                  <p className="text-gray-600 text-center text-[10px] mb-1.5 leading-tight">
-                    {type.description}
-                  </p>
-                  <button
-                    className="w-full py-0.5 px-2 rounded text-white font-medium transition-all duration-300 hover:shadow text-[10px]"
-                    style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
-                  >
-                    Register as {type.title}
-                  </button>
-                </div>
-              ))}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="mt-6 text-center">
               <button
                 onClick={() => setViewMode('signin')}
-                className="text-blue-600 hover:text-blue-800 font-medium"
+                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
               >
                 Already have an account? Sign In
               </button>

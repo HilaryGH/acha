@@ -68,6 +68,61 @@ body {
     animation: float 3s ease-in-out infinite;
 }
 
+/* Fade in and out animation for mobile */
+@keyframes fade-in-out {
+    0%, 100% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-out-delay-1 {
+    0%, 100% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-out-delay-2 {
+    0%, 100% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-out {
+    animation: fade-in-out 3s ease-in-out infinite;
+}
+
+/* Mobile only fade in-out */
+@media (max-width: 767px) {
+    .mobile-fade-in-out {
+        animation: fade-in-out 3s ease-in-out infinite;
+    }
+    
+    .mobile-fade-in-out-delay-1 {
+        animation: fade-in-out-delay-1 3s ease-in-out infinite;
+        animation-delay: 0.5s;
+    }
+    
+    .mobile-fade-in-out-delay-2 {
+        animation: fade-in-out-delay-2 3s ease-in-out infinite;
+        animation-delay: 1s;
+    }
+}
+
 /* Title Animations */
 @keyframes letter-reveal {
     0% {

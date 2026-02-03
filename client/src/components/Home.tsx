@@ -6,7 +6,7 @@ function Home() {
   return (
     <div className="w-full bg-white">
       {/* Hero Section - First Page Only */}
-      <section className="relative h-[25vh] min-h-[120px] md:h-[35vh] sm:min-h-[180px] md:min-h-[250px] flex items-center justify-center overflow-hidden bg-gray-100 py-1 md:py-2 mb-4 md:mb-6">
+      <section className="relative h-[25vh] min-h-[120px] md:h-[35vh] sm:min-h-[180px] md:min-h-[280px] flex items-center justify-center overflow-hidden bg-gray-100 py-1 md:py-2 mb-4 md:mb-6">
         <div className="w-[95%] max-w-7xl h-full mx-auto relative">
           <div className="h-full flex md:flex-row flex-col bg-gradient-to-br from-green-600 via-green-500 to-green-700 rounded-2xl md:rounded-3xl shadow-lg overflow-hidden relative">
             {/* Background Image for Mobile */}
@@ -20,14 +20,14 @@ function Home() {
                     </div>
 
                     {/* Left Side - Content */}
-            <div className="w-full md:w-1/2 flex flex-col justify-center px-3 md:px-4 lg:px-6 xl:px-8 text-white relative z-10 py-1 md:py-0">
-              <h2 className="text-sm sm:text-base md:text-xl lg:text-2xl font-bold mb-1 md:mb-2 text-white leading-tight">
+            <div className="w-full md:w-1/2 flex flex-col justify-center px-3 md:px-4 lg:px-6 xl:px-8 text-white relative z-10 py-1 md:py-0 text-center md:text-left">
+              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2 text-white leading-tight mobile-fade-in-out md:animate-fade-in-up">
                 Fast & Reliable Delivery
                         </h2>
-              <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold mb-1 md:mb-2 text-green-100 leading-tight">
+              <h3 className="text-base sm:text-lg md:text-lg lg:text-xl font-semibold mb-1 md:mb-2 text-green-100 leading-tight mobile-fade-in-out-delay-1 md:animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
                 Connect with travelers worldwide
                         </h3>
-              <p className="text-[10px] sm:text-xs md:text-sm lg:text-base mb-2 md:mb-3 text-white/90 leading-snug">
+              <p className="text-sm sm:text-base md:text-base lg:text-lg mb-2 md:mb-3 text-white/90 leading-snug mobile-fade-in-out-delay-2 md:animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
                 Send and receive items through our trusted network of travelers
                         </p>
                     </div>
@@ -47,23 +47,23 @@ function Home() {
       </section>
 
       {/* Second Section - Combined: Acha Delivery (Left), Image (Center), Global Network (Right) */}
-      <section className="relative py-2 md:py-3 px-3 sm:px-4 lg:px-6 xl:px-8 bg-white mb-2 md:mb-3">
+      <section className="relative py-0.5 md:py-1 px-3 sm:px-4 lg:px-6 xl:px-8 bg-gray-100 mb-2 md:mb-3">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-start gap-4 md:gap-6">
+          <div className="flex flex-col lg:flex-row items-start gap-2 md:gap-3">
             {/* Left Side - Acha Delivery Content */}
-            <div className="w-full lg:w-1/3 flex flex-col justify-start">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 md:mb-2 text-green-600 leading-tight">
+            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 Acha Delivery
                         </h2>
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-1 md:mb-2 text-green-600 leading-tight">
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 አቻ ደሊቨሪ
                         </h3>
-              <p className="text-sm sm:text-base md:text-lg mb-2 md:mb-3 text-green-700 leading-snug">
+              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
                 Your trusted delivery partner
                         </p>
                         <Link
                           to="/register"
-                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-1 md:px-1.5 py-0.5 md:py-1 rounded-full font-bold text-[9px] md:text-[10px] transition-colors duration-300 shadow-sm w-fit"
+                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
                         >
                 Get Started
                         </Link>
@@ -71,7 +71,7 @@ function Home() {
 
             {/* Center - Image */}
             <div className="w-full lg:w-1/3 flex items-start justify-center self-start">
-              <div className="relative w-full max-w-[280px] md:max-w-[350px]">
+              <div className="relative w-full max-w-[200px] md:max-w-[250px]">
                 <img
                   src="/Delivery.svg"
                   alt="Delivery"
@@ -81,19 +81,19 @@ function Home() {
                   </div>
 
             {/* Right Side - Global Network Content */}
-            <div className="w-full lg:w-1/3 flex flex-col justify-start">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 md:mb-2 text-green-600 leading-tight">
+            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 Global Network
                         </h2>
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-1 md:mb-2 text-green-600 leading-tight">
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 Reach anywhere, anytime
                           </h3>
-              <p className="text-sm sm:text-base md:text-lg mb-2 md:mb-3 text-green-700 leading-snug">
+              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
                 Connect with delivery partners across the globe
               </p>
                         <Link
                           to="/register"
-                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-1 md:px-1.5 py-0.5 md:py-1 rounded-full font-bold text-[9px] md:text-[10px] transition-colors duration-300 shadow-sm w-fit"
+                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
                         >
                 Join Now
                         </Link>

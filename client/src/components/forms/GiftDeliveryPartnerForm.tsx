@@ -182,7 +182,10 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   <option value="Flower Seller">Flower Seller</option>
                   <option value="Event & Wedding Organisers">Event & Wedding Organisers</option>
                   <option value="Gift Articles Seller">Gift Articles Seller</option>
-                  <option value="Cafeteria & Others">Cafeteria & Others</option>
+                  <option value="Bakery">Bakery</option>
+                  <option value="Supermarkets">Supermarkets</option>
+                  <option value="Catering">Catering</option>
+                  <option value="Others">Others</option>
                 </select>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../services/api';
 
@@ -114,7 +115,7 @@ function Footer() {
                 <a href="#" className="text-sm hover:text-[#9CCC65] transition-colors">{t('footer.safetySecurity')}</a>
               </li>
               <li>
-                <a href="#" className="text-sm hover:text-[#9CCC65] transition-colors">{t('footer.termsOfService')}</a>
+                <Link to="/terms-of-service" className="text-sm hover:text-[#9CCC65] transition-colors">{t('footer.termsOfService')}</Link>
               </li>
             </ul>
           </div>
