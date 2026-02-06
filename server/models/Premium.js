@@ -136,19 +136,22 @@ const premiumSchema = new mongoose.Schema({
 premiumSchema.pre('save', async function() {
   this.updatedAt = Date.now();
   
-  // Pricing structure
-  const pricing = {
-    'cycle-riders': { monthly: 200, annual: 1500 },
-    'e-bike-riders': { monthly: 300, annual: 2500 },
-    'motorcycle-riders': { monthly: 400, annual: 3000 },
-    'corporate-clients': { monthly: 2000, annual: 10000 }
-  };
-  
-  // Calculate price
-  if (this.category === 'corporate-clients') {
-    this.price = pricing['corporate-clients'][this.subscriptionType];
-  } else if (this.deliveryPartnerType) {
-    this.price = pricing[this.deliveryPartnerType]?.[this.subscriptionType] || 0;
+  // Only calculate price if not already set (allows frontend to send price)
+  if (!this.price) {
+    // Pricing structure - Updated for wellness community plans
+    const pricing = {
+      'cycle-riders': { monthly: 100, annual: 1000 }, // Updated for wellness community
+      'e-bike-riders': { monthly: 300, annual: 2500 },
+      'motorcycle-riders': { monthly: 400, annual: 3000 },
+      'corporate-clients': { monthly: 300, annual: 2500 } // Updated for wellness community
+    };
+    
+    // Calculate price
+    if (this.category === 'corporate-clients') {
+      this.price = pricing['corporate-clients'][this.subscriptionType];
+    } else if (this.deliveryPartnerType) {
+      this.price = pricing[this.deliveryPartnerType]?.[this.subscriptionType] || 0;
+    }
   }
   
   // Generate unique ID if it doesn't exist

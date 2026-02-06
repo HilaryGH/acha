@@ -92,7 +92,7 @@ function Navbar() {
   return (
     <div className="sticky top-0 z-50">
       {/* Main Navbar */}
-      <nav className="w-full bg-white shadow-sm border-b border-gray-100">
+      <nav className="w-full bg-blue-50 shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           {/* Desktop Navbar */}
           <div className="hidden md:block">
@@ -203,7 +203,7 @@ function Navbar() {
                       </svg>
                       {userName ? userName.split(' ')[0] : 'Dashboard'}
                     </Link>
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="absolute right-0 mt-2 w-48 bg-blue-50 rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                       <Link
                         to="/dashboard"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -267,7 +267,7 @@ function Navbar() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </Link>
-                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="absolute right-0 mt-2 w-40 bg-blue-50 rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                       <Link
                         to="/dashboard"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -370,7 +370,7 @@ function Navbar() {
         )}
         
         {/* Mobile Menu - Slide from Left */}
-        <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
+        <div className={`fixed top-0 left-0 h-full w-64 bg-blue-50 shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
           <div className="flex flex-col h-full">

@@ -6,10 +6,10 @@ function Home() {
   return (
     <div className="w-full bg-white">
       {/* Hero Section - First Page Only */}
-      <section className="relative h-[25vh] min-h-[120px] md:h-[35vh] sm:min-h-[180px] md:min-h-[280px] flex items-center justify-center overflow-hidden bg-gray-100 py-1 md:py-2 mb-4 md:mb-6">
+      <section className="relative h-[25vh] min-h-[120px] md:h-[35vh] sm:min-h-[180px] md:min-h-[280px] flex items-center justify-center overflow-hidden bg-gray-100 py-1 md:py-2">
         <div className="w-[95%] max-w-7xl h-full mx-auto relative">
           <div className="h-full flex md:flex-row flex-col bg-gradient-to-br from-green-600 via-green-500 to-green-700 rounded-2xl md:rounded-3xl shadow-lg overflow-hidden relative">
-            {/* Background Image for Mobile */}
+            {/* Mobile: Image Background */}
             <div className="absolute inset-0 md:hidden z-0">
               <img
                 src="/acha hero.jpg"
@@ -19,7 +19,7 @@ function Home() {
               <div className="absolute inset-0 bg-black/40"></div>
                     </div>
 
-                    {/* Left Side - Content */}
+            {/* Mobile: Content Centered on Image, Desktop: Left Side Content */}
             <div className="w-full md:w-1/2 flex flex-col justify-center px-3 md:px-4 lg:px-6 xl:px-8 text-white relative z-10 py-1 md:py-0 text-center md:text-left">
               <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2 text-white leading-tight mobile-fade-in-out md:animate-fade-in-up">
                 Fast & Reliable Delivery
@@ -32,7 +32,7 @@ function Home() {
                         </p>
                     </div>
 
-            {/* Right Side - Image (Desktop Only) */}
+            {/* Desktop: Image (Right Side) */}
             <div className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden">
               <div className="relative w-full h-full flex items-center justify-center">
                 <img
@@ -50,16 +50,18 @@ function Home() {
       <section className="relative py-0.5 md:py-1 px-3 sm:px-4 lg:px-6 xl:px-8 bg-gray-100 mb-2 md:mb-3">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row items-start gap-2 md:gap-3">
-            {/* Left Side - Acha Delivery Content */}
-            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                Acha Delivery
+            {/* Mobile Layout: Acha Delivery Content (Left) + Image (Right) */}
+            <div className="w-full lg:w-1/3 flex flex-row lg:flex-col gap-2 md:gap-3">
+              {/* Left Side - Acha Delivery Content */}
+              <div className="w-1/2 lg:w-full flex flex-col justify-start items-start lg:items-center text-left lg:text-center">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
+                  Acha Delivery
                         </h2>
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                አቻ ደሊቨሪ
+                <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
+                  አቻ ደሊቨሪ
                         </h3>
-              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
-                Your trusted delivery partner
+                <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
+                  Your trusted delivery partner
                         </p>
                         <Link
                           to="/register"
@@ -69,9 +71,21 @@ function Home() {
                         </Link>
                       </div>
 
-            {/* Center - Image */}
-            <div className="w-full lg:w-1/3 flex items-start justify-center self-start">
-              <div className="relative w-full max-w-[200px] md:max-w-[250px]">
+              {/* Image - Right on mobile, hidden on desktop (will show separately) */}
+              <div className="w-1/2 lg:hidden flex items-start justify-center self-start">
+                <div className="relative w-full max-w-[150px] sm:max-w-[180px] md:max-w-[200px]">
+                  <img
+                    src="/Delivery.svg"
+                    alt="Delivery"
+                    className="w-full h-full object-contain object-top"
+                  />
+                    </div>
+                  </div>
+            </div>
+
+            {/* Center - Image (Desktop Only) */}
+            <div className="hidden lg:flex w-1/3 items-start justify-center self-start">
+              <div className="relative w-full max-w-[250px]">
                 <img
                   src="/Delivery.svg"
                   alt="Delivery"
@@ -105,8 +119,8 @@ function Home() {
       {/* Catalogue Section - Compact */}
       <section className="relative py-6 md:py-8 px-4 sm:px-6 lg:px-8 xl:px-12 bg-white">
         <div className="max-w-7xl mx-auto">
-          {/* Service Cards Grid - Compact */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Service Cards Grid - Compact - Mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-4">
             {/* Delivery Partners */}
             <div 
               className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
@@ -238,22 +252,155 @@ function Home() {
                   </p>
               </div>
             </div>
+          </div>
+
+          {/* Service Cards Scrolling - Desktop */}
+          <div className="hidden lg:block overflow-hidden">
+            <div className="flex animate-scroll-right">
+              {/* First set of cards */}
+              <div className="flex gap-4 flex-shrink-0">
+                {/* Delivery Partners */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Delivery partners.png" 
+                    alt="Delivery Partners"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+
+                {/* Acha Sisters Delivery Partner */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Sisters Delivery Partner.png" 
+                    alt="Acha Sisters Delivery Partner"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+                
+                {/* Acha Surprise Gift */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Surprise Gift.png" 
+                    alt="Acha Surprise Gift"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+
+                {/* Acha Movers & Packers */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Movers & Packers.png" 
+                    alt="Acha Movers & Packers"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
                 </div>
               </div>
+
+              {/* Duplicate set for seamless loop */}
+              <div className="flex gap-4 flex-shrink-0">
+                {/* Delivery Partners */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Delivery partners.png" 
+                    alt="Delivery Partners"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+
+                {/* Acha Sisters Delivery Partner */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Sisters Delivery Partner.png" 
+                    alt="Acha Sisters Delivery Partner"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+                
+                {/* Acha Surprise Gift */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Surprise Gift.png" 
+                    alt="Acha Surprise Gift"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+
+                {/* Acha Movers & Packers */}
+                <div 
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  style={{ borderRadius: '0 2rem 0 2rem' }}
+                >
+                  <img 
+                    src="/Acha Movers & Packers.png" 
+                    alt="Acha Movers & Packers"
+                    className="w-full h-full object-cover"
+                    style={{ borderRadius: '0 2rem 0 2rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Trips and Orders Section */}
       <TripsAndOrdersSection />
 
       {/* Partner With Us, Women Initiatives & Premium Section */}
-      <section className="py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-gray-50 via-white to-green-50">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-gray-50 via-white to-green-50 overflow-hidden">
+        {/* Green Wave Design at Top */}
+        <div className="absolute top-0 left-0 w-full h-24 md:h-32 z-0">
+          <svg 
+            className="w-full h-full" 
+            viewBox="0 0 1440 120" 
+            preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path 
+              d="M0,80 Q720,20 1440,80 L1440,0 L0,0 Z" 
+              fill="url(#greenGradient)"
+            />
+            <defs>
+              <linearGradient id="greenGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#16a34a', stopOpacity: 1 }} />
+                <stop offset="50%" style={{ stopColor: '#22c55e', stopOpacity: 0.9 }} />
+                <stop offset="100%" style={{ stopColor: '#4ade80', stopOpacity: 0.7 }} />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Partner With Us */}
-            <div className="bg-white p-8 rounded-3xl shadow-md text-center border border-gray-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 shadow-md">
-                🤝
-              </div>
+            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Partner With Us
               </h2>
@@ -272,10 +419,7 @@ function Home() {
             </div>
 
             {/* Women Initiatives */}
-            <div className="bg-white p-8 rounded-3xl shadow-md text-center border border-gray-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 shadow-md">
-                👩
-              </div>
+            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Women Initiatives
               </h2>
@@ -294,10 +438,7 @@ function Home() {
             </div>
 
             {/* Premium Community */}
-            <div className="bg-white p-8 rounded-3xl shadow-md text-center border border-gray-100">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 shadow-md">
-                ⭐
-              </div>
+            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Acha Premium Community
               </h2>
@@ -319,12 +460,9 @@ function Home() {
       </section>
 
       {/* Beautiful Compact Info Section - Before Footer */}
-      <section className="relative py-8 md:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-white via-green-50/30 to-gray-50 overflow-hidden">
-        {/* Decorative Background Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-green-200/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-green-300/10 rounded-full blur-3xl"></div>
-        </div>
+      <section className="relative py-8 md:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 overflow-hidden">
+        {/* Blue Background with Rounded Corners */}
+        <div className="absolute inset-0 bg-blue-600 rounded-tr-3xl rounded-bl-3xl"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Compact Grid Layout */}

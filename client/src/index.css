@@ -333,3 +333,17 @@ html {
 .carousel-slide {
     transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Scrolling animation from right to left */
+@keyframes scroll-right {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-scroll-right {
+    animation: scroll-right 30s linear infinite;
+}
