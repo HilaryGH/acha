@@ -176,7 +176,7 @@ function TermsOfService() {
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Surprise Gift Delivery Partners</h4>
+                      <h4 className="font-semibold text-gray-800 mb-2">Wanaw Gifting Delivery Partners</h4>
                       <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
                         <li>Maintain confidentiality and anonymity of gifts unless safety checks are necessary.</li>
                         <li>Timed deliveries are mandatory, and lateness can lead to payment denial.</li>

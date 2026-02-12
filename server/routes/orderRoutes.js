@@ -10,7 +10,8 @@ const {
   updateOrderStatus,
   confirmDelivery,
   getAvailableTravelers,
-  getAvailablePartners
+  getAvailablePartners,
+  createDeliveryRequest
 } = require('../controllers/orderController');
 
 console.log('✅ Order routes module loaded');
@@ -19,6 +20,9 @@ console.log('✅ Order routes module loaded');
 router.route('/')
   .get(getAllOrders)
   .post(createOrder);
+
+router.route('/request')
+  .post(createDeliveryRequest);
 
 router.route('/match/traveler')
   .post(matchWithTraveler);

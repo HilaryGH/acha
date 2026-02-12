@@ -3,6 +3,7 @@ const Buyer = require('../models/Buyer');
 const Traveller = require('../models/Traveller');
 const Partner = require('../models/Partner');
 const { calculateDistance, isLocalDelivery } = require('../utils/googleMaps');
+const { findNearbyPartners } = require('../utils/locationUtils');
 
 // Helper function to normalize location strings for matching
 const normalizeLocation = (location) => {
@@ -492,6 +493,117 @@ exports.getAvailablePartners = async (req, res) => {
       data: partners
     });
   } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// Create delivery request with location-based matching (ride-sharing style)
+exports.createDeliveryRequest = async (req, res) => {
+  try {
+    const {
+      buyerId,
+      pickupLocation,
+      deliveryLocation,
+      itemDescription,
+      itemValue,
+      preferredDeliveryTime,
+      specialInstructions
+    } = req.body;
+
+    // Validate required fields
+    if (!buyerId || !pickupLocation || !deliveryLocation) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Buyer ID, pickup location, and delivery location are required'
+      });
+    }
+
+    // Validate coordinates
+    if (!pickupLocation.latitude || !pickupLocation.longitude ||
+        !deliveryLocation.latitude || !deliveryLocation.longitude) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Pickup and delivery locations must include latitude and longitude'
+      });
+    }
+
+    // Verify buyer exists
+    const buyer = await Buyer.findById(buyerId);
+    if (!buyer) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Buyer not found'
+      });
+    }
+
+    // Create order with location data
+    const order = await Order.create({
+      buyerId,
+      deliveryMethod: 'partner',
+      orderInfo: {
+        productName: itemDescription || 'Delivery Item',
+        productDescription: specialInstructions || '',
+        deliveryDestination: deliveryLocation.address || deliveryLocation.city || ''
+      },
+      pickupLocation: {
+        address: pickupLocation.address || '',
+        latitude: parseFloat(pickupLocation.latitude),
+        longitude: parseFloat(pickupLocation.longitude),
+        city: pickupLocation.city || ''
+      },
+      deliveryLocation: {
+        address: deliveryLocation.address || '',
+        latitude: parseFloat(deliveryLocation.latitude),
+        longitude: parseFloat(deliveryLocation.longitude),
+        city: deliveryLocation.city || ''
+      },
+      pricing: {
+        itemValue: itemValue || 0,
+        currency: 'ETB'
+      }
+    });
+
+    // Find nearby available delivery partners
+    const filter = {
+      status: 'approved',
+      registrationType: 'Invest/Partner',
+      partner: 'Delivery Partner',
+      'availability.isOnline': true,
+      'availability.isAvailable': true
+    };
+
+    const partners = await Partner.find(filter);
+    const nearbyPartners = findNearbyPartners(
+      partners,
+      pickupLocation.latitude,
+      pickupLocation.longitude,
+      15 // 15km radius
+    );
+
+    // Limit to top 5 closest partners
+    const topPartners = nearbyPartners.slice(0, 5);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Delivery request created successfully',
+      data: {
+        order: order.toObject(),
+        availablePartners: topPartners,
+        matchCount: topPartners.length
+      }
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'error',
+        message: messages.join(', ')
+      });
+    }
+
     res.status(500).json({
       status: 'error',
       message: error.message

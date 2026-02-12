@@ -116,6 +116,20 @@ export const api = {
         body: JSON.stringify(passwordData),
       });
     },
+    searchByLocation: async (params: {
+      location?: string;
+      city?: string;
+      role?: string;
+      status?: string;
+    }) => {
+      const queryParams = new URLSearchParams();
+      if (params.location) queryParams.append('location', params.location);
+      if (params.city) queryParams.append('city', params.city);
+      if (params.role) queryParams.append('role', params.role);
+      if (params.status) queryParams.append('status', params.status);
+      
+      return request(`/users/search/location?${queryParams.toString()}`);
+    },
   },
 
   // Upload endpoints
@@ -431,6 +445,45 @@ export const api = {
     },
     getAvailablePartners: async (orderId: string) => {
       return request(`/orders/${orderId}/partners`);
+    },
+    createDeliveryRequest: async (requestData: {
+      buyerId: string;
+      pickupLocation: { latitude: number; longitude: number; address?: string; city?: string };
+      deliveryLocation: { latitude: number; longitude: number; address?: string; city?: string };
+      itemDescription?: string;
+      itemValue?: number;
+      preferredDeliveryTime?: string;
+      specialInstructions?: string;
+    }) => {
+      return request('/orders/request', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
+      });
+    },
+  },
+
+  // Partner endpoints for location-based search
+  partners: {
+    searchNearby: async (params: { latitude: number; longitude: number; radius?: number; city?: string }) => {
+      const queryParams = new URLSearchParams({
+        latitude: params.latitude.toString(),
+        longitude: params.longitude.toString(),
+        ...(params.radius && { radius: params.radius.toString() }),
+        ...(params.city && { city: params.city }),
+      });
+      return request(`/partners/search/nearby?${queryParams}`);
+    },
+    updateAvailability: async (partnerId: string, data: { isOnline?: boolean; isAvailable?: boolean; latitude?: number; longitude?: number }) => {
+      return request(`/partners/${partnerId}/availability`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+    updateLocation: async (partnerId: string, data: { latitude: number; longitude: number; address?: string }) => {
+      return request(`/partners/${partnerId}/location`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
     },
   },
 

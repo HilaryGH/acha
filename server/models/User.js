@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
   // Role Information
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'marketing_team', 'customer_support', 'individual', 'delivery_partner', 'acha_sisters_delivery_partner'],
+    enum: ['super_admin', 'admin', 'marketing_team', 'customer_support', 'individual', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'],
     required: [true, 'Role is required'],
     default: 'individual'
   },
@@ -44,6 +44,25 @@ const userSchema = new mongoose.Schema({
   
   // Additional Information
   department: {
+    type: String,
+    trim: true
+  },
+  userId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
+  // Location Information
+  city: {
+    type: String,
+    trim: true
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  primaryLocation: {
     type: String,
     trim: true
   },

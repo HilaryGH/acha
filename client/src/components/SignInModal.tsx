@@ -119,7 +119,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
       { id: 'individual' as const, title: 'Individual', description: 'Register as an individual user' },
       { id: 'delivery-partner' as const, title: 'Delivery Partner', description: 'Join our delivery network and start earning.' },
       { id: 'acha-sisters-delivery-partner' as const, title: 'Acha Sisters Delivery Partner', description: 'Join our delivery network and start earning.' },
-      { id: 'gift-delivery-partner' as const, title: 'Acha Surprise Gift Delivery Partner', description: 'Register as a gift delivery partner and offer your gift services' },
+      { id: 'gift-delivery-partner' as const, title: 'Wanaw Gifting Delivery Partner', description: 'Register as a gift delivery partner and offer your gift services' },
       { id: 'acha-movers-packers' as const, title: 'Acha Movers & Packers', description: 'Register as a movers and packers service provider' },
       { id: 'corporate' as const, title: 'Corporate', description: 'Register as a corporate entity' },
     ];

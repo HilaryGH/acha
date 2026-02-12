@@ -69,6 +69,43 @@ const orderSchema = new mongoose.Schema({
       trim: true
     }
   },
+  // Pickup and Delivery Locations (for location-based matching)
+  pickupLocation: {
+    address: {
+      type: String,
+      trim: true
+    },
+    latitude: {
+      type: Number,
+      default: null
+    },
+    longitude: {
+      type: Number,
+      default: null
+    },
+    city: {
+      type: String,
+      trim: true
+    }
+  },
+  deliveryLocation: {
+    address: {
+      type: String,
+      trim: true
+    },
+    latitude: {
+      type: Number,
+      default: null
+    },
+    longitude: {
+      type: Number,
+      default: null
+    },
+    city: {
+      type: String,
+      trim: true
+    }
+  },
   // Assignment
   assignedTravelerId: {
     type: mongoose.Schema.Types.ObjectId,

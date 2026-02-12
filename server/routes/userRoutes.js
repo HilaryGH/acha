@@ -10,7 +10,8 @@ const {
   getUserById,
   updateUser,
   changePassword,
-  deleteUser
+  deleteUser,
+  searchUsersByLocation
 } = require('../controllers/userController');
 
 const { authenticate } = require('../middleware/auth');
@@ -40,6 +41,7 @@ router.put('/reset-super-admin', async (req, res) => {
 router.post('/login', login);
 router.post('/register', register);
 router.post('/register/restricted', authenticate, register);
+router.get('/search/location', searchUsersByLocation); // Public endpoint to search users by location
 
 /* ===== PROTECTED ROUTES ===== */
 router.use(authenticate);

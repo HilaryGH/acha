@@ -18,6 +18,7 @@ import WomenInitiatives from './pages/WomenInitiatives'
 import Premium from './pages/Premium'
 import DashboardRouter from './pages/DashboardRouter'
 import SearchTravelers from './pages/SearchTravelers'
+import SearchDeliveryPartners from './pages/SearchDeliveryPartners'
 import TermsOfService from './pages/TermsOfService'
 
 function AppContent() {
@@ -44,6 +45,7 @@ function AppContent() {
         <Route path="/premium" element={<Premium />} />
         <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/search" element={<SearchTravelers />} />
+        <Route path="/search-delivery-partners" element={<SearchDeliveryPartners />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
       </Routes>
       {!isLandingPage && <Footer />}

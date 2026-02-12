@@ -142,6 +142,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
       
       <div class="section" style="margin-top: 50px;">
         <p>Thank you for using Acha Delivery Services!</p>
+        <p style="margin-top: 10px; font-size: 12px;">TIN: XXX</p>
       </div>
     `;
   };
@@ -301,6 +302,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
       {/* Footer */}
       <div className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-600">
         <p>Thank you for using Acha Delivery Services!</p>
+        <p className="mt-2 text-sm">TIN: XXX</p>
         <p className="mt-2 text-sm">For inquiries, please contact our support team.</p>
       </div>
     </div>

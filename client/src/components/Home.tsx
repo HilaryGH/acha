@@ -5,50 +5,157 @@ import CommunicationWidget from './CommunicationWidget'
 function Home() {
   return (
     <div className="w-full bg-white">
-      {/* Hero Section - First Page Only */}
-      <section className="relative h-[25vh] min-h-[120px] md:h-[35vh] sm:min-h-[180px] md:min-h-[280px] flex items-center justify-center overflow-hidden bg-gray-100 py-1 md:py-2">
-        <div className="w-[95%] max-w-7xl h-full mx-auto relative">
-          <div className="h-full flex md:flex-row flex-col bg-gradient-to-br from-green-600 via-green-500 to-green-700 rounded-2xl md:rounded-3xl shadow-lg overflow-hidden relative">
-            {/* Mobile: Image Background */}
-            <div className="absolute inset-0 md:hidden z-0">
+      {/* Hero Section - Professional & Modern */}
+      <section className="relative min-h-[60vh] md:min-h-[75vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-green-50 via-white to-green-50">
+        {/* Background Pattern Overlay */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2316a34a' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '60px 60px'
+          }}></div>
+        </div>
+
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 md:py-16">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Column - Content */}
+            <div className="text-center lg:text-left space-y-6 md:space-y-8">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold animate-fade-in-up">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>Trusted Delivery Network</span>
+              </div>
+
+              {/* Main Heading */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 leading-tight animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                Fast & Reliable
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 via-green-500 to-green-700 mt-2">
+                  Delivery Services
+                </span>
+              </h1>
+
+              {/* Subheading */}
+              <p className="text-lg sm:text-xl md:text-2xl text-gray-700 font-medium leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                Connect with travelers worldwide and send items through our trusted network
+              </p>
+
+              {/* Description */}
+              <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto lg:mx-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                Experience seamless peer-to-peer delivery. Post your travel plans, find travelers going your way, and make shipping easier, faster, and more personal.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold text-lg rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <span>Get Started</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+                <Link
+                  to="/search"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-green-700 font-bold text-lg rounded-xl border-2 border-green-600 hover:bg-green-50 transition-all duration-300 shadow-md hover:shadow-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span>Search Trips</span>
+                </Link>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+                <div className="text-center lg:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-green-600">1000+</div>
+                  <div className="text-sm text-gray-600">Active Travelers</div>
+                </div>
+                <div className="text-center lg:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-green-600">50+</div>
+                  <div className="text-sm text-gray-600">Cities</div>
+                </div>
+                <div className="text-center lg:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-green-600">98%</div>
+                  <div className="text-sm text-gray-600">Success Rate</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Image */}
+            <div className="relative lg:block flex justify-center items-center">
+              <div className="relative w-full max-w-lg mx-auto">
+                {/* Decorative Elements */}
+                <div className="absolute -top-4 -right-4 w-24 h-24 bg-green-200 rounded-full opacity-20 blur-2xl animate-float"></div>
+                <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-green-300 rounded-full opacity-20 blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+                
+                {/* Main Image Container */}
+                <div className="relative rounded-3xl overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-600/20 to-green-700/20 z-10"></div>
               <img
                 src="/acha hero.jpg"
-                alt="Fast & Reliable Delivery"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/40"></div>
-                    </div>
+                    alt="Acha Delivery - Fast & Reliable Delivery Services"
+                    className="w-full h-[400px] md:h-[500px] lg:h-[600px] object-cover"
+                  />
+                  {/* Overlay Gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-green-900/30 via-transparent to-transparent"></div>
+                </div>
 
-            {/* Mobile: Content Centered on Image, Desktop: Left Side Content */}
-            <div className="w-full md:w-1/2 flex flex-col justify-center px-3 md:px-4 lg:px-6 xl:px-8 text-white relative z-10 py-1 md:py-0 text-center md:text-left">
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2 text-white leading-tight mobile-fade-in-out md:animate-fade-in-up">
-                Fast & Reliable Delivery
-                        </h2>
-              <h3 className="text-base sm:text-lg md:text-lg lg:text-xl font-semibold mb-1 md:mb-2 text-green-100 leading-tight mobile-fade-in-out-delay-1 md:animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                Connect with travelers worldwide
-                        </h3>
-              <p className="text-sm sm:text-base md:text-base lg:text-lg mb-2 md:mb-3 text-white/90 leading-snug mobile-fade-in-out-delay-2 md:animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-                Send and receive items through our trusted network of travelers
-                        </p>
+                {/* Floating Card */}
+                <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl p-4 border border-green-100 animate-float hidden md:block" style={{ animationDelay: '0.5s' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-
-            {/* Desktop: Image (Right Side) */}
-            <div className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden">
-              <div className="relative w-full h-full flex items-center justify-center">
-                <img
-                  src="/acha hero.jpg"
-                  alt="Fast & Reliable Delivery"
-                  className="w-full h-full object-cover object-center rounded-xl md:rounded-2xl"
-                          />
+                    <div>
+                      <div className="font-bold text-gray-900">Verified Partners</div>
+                      <div className="text-sm text-gray-600">Trusted & Safe</div>
+                    </div>
                         </div>
                       </div>
+
+                {/* Another Floating Card */}
+                <div className="absolute -top-6 -right-6 bg-white rounded-2xl shadow-xl p-4 border border-green-100 animate-float hidden lg:block" style={{ animationDelay: '1.5s' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
                     </div>
+                    <div>
+                      <div className="font-bold text-gray-900">Fast Delivery</div>
+                      <div className="text-sm text-gray-600">24/7 Service</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Wave */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0]">
+          <svg
+            className="relative block w-full h-16 md:h-24"
+            viewBox="0 0 1440 120"
+            preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0,0 C288,80 1152,40 1440,80 L1440,120 L0,120 Z"
+              fill="white"
+            />
+          </svg>
                   </div>
       </section>
 
       {/* Second Section - Combined: Acha Delivery (Left), Image (Center), Global Network (Right) */}
-      <section className="relative py-0.5 md:py-1 px-3 sm:px-4 lg:px-6 xl:px-8 bg-gray-100 mb-2 md:mb-3">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative py-0.5 md:py-1 bg-gray-100 mb-2 md:mb-3">
+        <div className="w-[95%] max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-3 md:py-4 rounded-2xl md:rounded-2xl bg-white shadow-lg overflow-hidden">
           <div className="flex flex-col lg:flex-row items-start gap-2 md:gap-3">
             {/* Mobile Layout: Acha Delivery Content (Left) + Image (Right) */}
             <div className="w-full lg:w-1/3 flex flex-row lg:flex-col gap-2 md:gap-3">
@@ -187,7 +294,7 @@ function Home() {
               </div>
             </div>
             
-            {/* Acha Surprise Gift */}
+            {/* Wanaw Gifting */}
             <div 
               className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
               style={{ borderRadius: '0 2rem 0 2rem' }}
@@ -196,7 +303,7 @@ function Home() {
               <div className="w-1/2 md:w-full md:absolute md:inset-0">
                 <img 
                   src="/Acha Surprise Gift.png" 
-                  alt="Acha Surprise Gift"
+                  alt="Wanaw Gifting"
                   className="w-full h-full object-cover"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
                 />
@@ -212,7 +319,7 @@ function Home() {
               {/* Content - Left side on mobile, bottom on desktop */}
               <div className="w-1/2 md:w-full md:absolute md:bottom-0 flex flex-col justify-center md:justify-end px-3 py-3 md:px-4 md:py-5 z-10 bg-white md:bg-transparent md:bg-gradient-to-b md:from-transparent md:via-black/10 md:to-black/30 relative" style={{ borderRadius: '0 0 0 2rem' }}>
                 <h3 className="text-xs md:text-base font-bold text-green-600 md:text-white md:drop-shadow-lg mb-1 md:mb-1.5 relative z-10">
-                  Acha Surprise Gift
+                  Wanaw Gifting
                 </h3>
                 <p className="text-[10px] md:text-xs text-gray-700 md:text-white md:drop-shadow-md leading-tight md:leading-relaxed relative z-10">
                   Gift Products, Gift Packages, Gift Bundles - Beautifully curated gifts for every occasion
@@ -285,14 +392,14 @@ function Home() {
                   />
                 </div>
                 
-                {/* Acha Surprise Gift */}
+                {/* Wanaw Gifting */}
                 <div 
                   className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
                 >
                   <img 
                     src="/Acha Surprise Gift.png" 
-                    alt="Acha Surprise Gift"
+                    alt="Wanaw Gifting"
                     className="w-full h-full object-cover"
                     style={{ borderRadius: '0 2rem 0 2rem' }}
                   />
@@ -340,14 +447,14 @@ function Home() {
                   />
                 </div>
                 
-                {/* Acha Surprise Gift */}
+                {/* Wanaw Gifting */}
                 <div 
                   className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
                 >
                   <img 
                     src="/Acha Surprise Gift.png" 
-                    alt="Acha Surprise Gift"
+                    alt="Wanaw Gifting"
                     className="w-full h-full object-cover"
                     style={{ borderRadius: '0 2rem 0 2rem' }}
                   />
@@ -377,15 +484,15 @@ function Home() {
       {/* Partner With Us, Women Initiatives & Premium Section */}
       <section className="relative py-12 sm:py-16 md:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 bg-gradient-to-br from-gray-50 via-white to-green-50 overflow-hidden">
         {/* Green Wave Design at Top */}
-        <div className="absolute top-0 left-0 w-full h-24 md:h-32 z-0">
+        <div className="absolute top-0 left-0 w-full h-24 md:h-32 z-0 overflow-hidden leading-[0]">
           <svg 
-            className="w-full h-full" 
-            viewBox="0 0 1440 120" 
+            className="relative block w-full h-full" 
+            viewBox="0 0 1440 80" 
             preserveAspectRatio="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path 
-              d="M0,80 Q720,20 1440,80 L1440,0 L0,0 Z" 
+              d="M1440,0 C1152,80 288,0 0,80 L0,0 L1440,0 Z" 
               fill="url(#greenGradient)"
             />
             <defs>
@@ -461,8 +568,16 @@ function Home() {
 
       {/* Beautiful Compact Info Section - Before Footer */}
       <section className="relative py-8 md:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 overflow-hidden">
-        {/* Blue Background with Rounded Corners */}
-        <div className="absolute inset-0 bg-blue-600 rounded-tr-3xl rounded-bl-3xl"></div>
+        {/* Blue Wave Background */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden leading-[0] z-0">
+          <svg
+            className="relative block w-full h-full"
+            viewBox="0 0 1440 200"
+            preserveAspectRatio="none"
+          >
+            <path d="M0,0 C288,100 1152,100 1440,200 L1440,0 L0,0 Z" fill="#60a5fa" />
+          </svg>
+        </div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Compact Grid Layout */}

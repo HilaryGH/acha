@@ -101,6 +101,46 @@ const partnerSchema = new mongoose.Schema({
     required: function() { return this.registrationType === 'Gift Delivery Partner'; },
     trim: true
   },
+  // GPS Coordinates for location-based matching
+  location: {
+    latitude: {
+      type: Number,
+      default: null
+    },
+    longitude: {
+      type: Number,
+      default: null
+    },
+    address: {
+      type: String,
+      trim: true
+    }
+  },
+  // Availability status for ride-sharing like matching
+  availability: {
+    isOnline: {
+      type: Boolean,
+      default: false
+    },
+    isAvailable: {
+      type: Boolean,
+      default: false
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now
+    },
+    currentLocation: {
+      latitude: {
+        type: Number,
+        default: null
+      },
+      longitude: {
+        type: Number,
+        default: null
+      }
+    }
+  },
   // Attached Documents
   idDocument: {
     type: String, // URL or file path for ID/Passport/Driving Licence

@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { generateToken } = require('../middleware/auth');
+const generateUserId = require('../utils/generateUserId');
+const { sendRegistrationEmail } = require('../utils/emailService');
 
 /**
  * Register a new user
@@ -58,6 +60,16 @@ const register = async (req, res) => {
       });
     }
     
+    // Generate unique user ID based on role
+    let userId;
+    try {
+      userId = await generateUserId(requestedRole);
+    } catch (userIdError) {
+      console.error('Error generating user ID:', userIdError);
+      // Don't fail registration if ID generation fails, but log it
+      // We'll continue without userId
+    }
+    
     // Create new user
     const userData = {
       name: name.trim(),
@@ -66,6 +78,11 @@ const register = async (req, res) => {
       role: requestedRole,
       status: 'active'
     };
+    
+    // Add userId if generated successfully
+    if (userId) {
+      userData.userId = userId;
+    }
     
     // Only include optional fields if they are provided
     if (phone && phone.trim()) {
@@ -105,12 +122,26 @@ const register = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
     
+    // Send registration email (don't fail registration if email fails)
+    // Only send email if userId was successfully generated
+    if (user.userId) {
+      try {
+        await sendRegistrationEmail(user.email, user.name, user.userId, user.role);
+      } catch (emailError) {
+        console.error('Error sending registration email:', emailError);
+        // Continue even if email fails
+      }
+    } else {
+      console.warn('User ID not generated, skipping registration email for:', user.email);
+    }
+    
     res.status(201).json({
       status: 'success',
       message: 'User registered successfully',
       data: {
         user: {
           id: user._id,
+          userId: user.userId,
           name: user.name,
           email: user.email,
           phone: user.phone,
@@ -268,17 +299,37 @@ const getMe = async (req, res) => {
  */
 const getAllUsers = async (req, res) => {
   try {
-    const { role, status, search } = req.query;
+    const { role, status, search, location, city } = req.query;
     
     // Build query
     const query = {};
     if (role) query.role = role;
     if (status) query.status = status;
-    if (search) {
+    
+    // Handle location-based search
+    if (location || city) {
+      const locationQuery = location || city;
+      query.$or = [
+        { city: { $regex: locationQuery, $options: 'i' } },
+        { location: { $regex: locationQuery, $options: 'i' } },
+        { primaryLocation: { $regex: locationQuery, $options: 'i' } }
+      ];
+    }
+    
+    // Handle general search (name, email)
+    if (search && !location && !city) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+    } else if (search && (location || city)) {
+      // If both search and location are provided, combine them
+      const existingOr = query.$or || [];
+      existingOr.push(
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      );
+      query.$or = existingOr;
     }
     
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
@@ -294,6 +345,62 @@ const getAllUsers = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error.message || 'Failed to get users'
+    });
+  }
+};
+
+/**
+ * Search users by location (public endpoint for finding available users)
+ */
+const searchUsersByLocation = async (req, res) => {
+  try {
+    const { location, city, role, status } = req.query;
+    
+    // Validate that at least one location parameter is provided
+    if (!location && !city) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a location or city parameter'
+      });
+    }
+    
+    // Build query
+    const query = {};
+    
+    // Location search - search in city, location, or primaryLocation
+    const locationQuery = location || city;
+    query.$or = [
+      { city: { $regex: locationQuery, $options: 'i' } },
+      { location: { $regex: locationQuery, $options: 'i' } },
+      { primaryLocation: { $regex: locationQuery, $options: 'i' } }
+    ];
+    
+    // Filter by role if provided
+    if (role) {
+      query.role = role;
+    }
+    
+    // Filter by status - default to 'active' if not specified
+    query.status = status || 'active';
+    
+    // Find users matching the location
+    const users = await User.find(query)
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      status: 'success',
+      count: users.length,
+      message: `Found ${users.length} user(s) in ${locationQuery}`,
+      data: {
+        users,
+        searchLocation: locationQuery
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to search users by location'
     });
   }
 };
@@ -509,6 +616,7 @@ module.exports = {
   getUserById,
   updateUser,
   changePassword,
-  deleteUser
+  deleteUser,
+  searchUsersByLocation
 };
 
