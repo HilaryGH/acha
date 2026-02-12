@@ -91,6 +91,16 @@ function DeliveryPartnerForm() {
         registrationData.phone = formData.phone.trim();
       }
       
+      // Include location data for searchability
+      if (formData.city && formData.city.trim()) {
+        registrationData.city = formData.city.trim();
+      }
+      if (formData.primaryLocation && formData.primaryLocation.trim()) {
+        registrationData.primaryLocation = formData.primaryLocation.trim();
+        // Also set location field to primaryLocation for broader search
+        registrationData.location = formData.primaryLocation.trim();
+      }
+      
       const userResponse = await api.users.register(registrationData) as { status?: string; message?: string; data?: { user?: { id: string } } };
       
       if (userResponse.status === 'success') {

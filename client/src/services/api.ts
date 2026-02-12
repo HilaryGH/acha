@@ -1,5 +1,6 @@
 // API Base URL - uses environment variable for production, or Vite proxy for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.PROD ? 'https://acha-eeme.onrender.com/api' : '/api');
 
 // Helper function to get auth token from localStorage
 const getAuthToken = (): string | null => {
@@ -22,7 +23,8 @@ const request = async <T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const response = await fetch(url, {
     ...options,
     headers,
   });
@@ -31,6 +33,13 @@ const request = async <T>(
     const error = await response.json().catch(() => ({
       message: `HTTP error! status: ${response.status}`,
     }));
+    
+    // Provide more helpful error message for 404 errors
+    if (response.status === 404) {
+      const errorMessage = error.message || `Route not found (404)`;
+      throw new Error(`${errorMessage}. Requested URL: ${url}. Make sure VITE_API_BASE_URL is set correctly in production.`);
+    }
+    
     throw new Error(error.message || 'Request failed');
   }
 
@@ -86,6 +95,9 @@ export const api = {
       role?: string;
       department?: string;
       code?: string;
+      city?: string;
+      location?: string;
+      primaryLocation?: string;
     }) => {
       return request('/users/register', {
         method: 'POST',
@@ -284,8 +296,9 @@ export const api = {
 
   // Partner endpoints
   partners: {
-    getAll: async () => {
-      return request('/partners');
+    getAll: async (params?: { status?: string; type?: string; partner?: string; city?: string; primaryLocation?: string; search?: string; registrationType?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return request(`/partners${queryParams}`);
     },
     getById: async (id: string) => {
       return request(`/partners/${id}`);

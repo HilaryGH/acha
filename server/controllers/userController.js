@@ -12,7 +12,7 @@ const { sendRegistrationEmail } = require('../utils/emailService');
 const register = async (req, res) => {
   try {
     console.log('Register endpoint called with body:', { ...req.body, password: '***' });
-    const { name, email, password, phone, role, department } = req.body;
+    const { name, email, password, phone, role, department, city, location, primaryLocation } = req.body;
     const creatorRole = req.user?.role;
     const creatorId = req.user?.id;
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
@@ -90,6 +90,16 @@ const register = async (req, res) => {
     }
     if (department && department.trim()) {
       userData.department = department.trim();
+    }
+    // Include location fields for delivery roles
+    if (city && city.trim()) {
+      userData.city = city.trim();
+    }
+    if (location && location.trim()) {
+      userData.location = location.trim();
+    }
+    if (primaryLocation && primaryLocation.trim()) {
+      userData.primaryLocation = primaryLocation.trim();
     }
     
     const user = new User(userData);

@@ -1,15 +1,52 @@
 const Partner = require('../models/Partner');
+const User = require('../models/User');
 const { findNearbyPartners } = require('../utils/locationUtils');
 
 // Get all partners
 exports.getAllPartners = async (req, res) => {
   try {
-    const { status, type, partner } = req.query;
+    const { status, type, partner, registrationType, city, primaryLocation, search } = req.query;
     const filter = {};
     
     if (status) filter.status = status;
     if (type) filter.type = type;
     if (partner) filter.partner = partner;
+    if (registrationType) filter.registrationType = registrationType;
+    
+    // Handle location search parameters
+    if (city || primaryLocation || search) {
+      const locationFilter = [];
+      if (city) {
+        locationFilter.push(
+          { city: { $regex: city, $options: 'i' } },
+          { primaryLocation: { $regex: city, $options: 'i' } },
+          { 'location.address': { $regex: city, $options: 'i' } }
+        );
+      }
+      if (primaryLocation) {
+        locationFilter.push(
+          { city: { $regex: primaryLocation, $options: 'i' } },
+          { primaryLocation: { $regex: primaryLocation, $options: 'i' } },
+          { 'location.address': { $regex: primaryLocation, $options: 'i' } }
+        );
+      }
+      if (search) {
+        // General search - search city, primaryLocation, and location.address fields
+        // Handle null/undefined/empty fields - MongoDB regex will only match non-null fields
+        // Use $or to match any of these fields that contain the search term
+        const searchRegex = { $regex: search.trim(), $options: 'i' };
+        locationFilter.push(
+          { city: searchRegex },
+          { primaryLocation: searchRegex },
+          { 'location.address': searchRegex },
+          // Also search in companyName as it might contain location info
+          { companyName: searchRegex }
+        );
+      }
+      if (locationFilter.length > 0) {
+        filter.$or = locationFilter;
+      }
+    }
     
     const partners = await Partner.find(filter).sort({ createdAt: -1 });
     res.status(200).json({
@@ -53,6 +90,55 @@ exports.getPartnerById = async (req, res) => {
 exports.createPartner = async (req, res) => {
   try {
     const partner = await Partner.create(req.body);
+    
+    // Also create/update User record for location-based searching
+    // This ensures delivery partners are searchable via the user search endpoint
+    if (partner.email) {
+      try {
+        const userData = {
+          name: partner.name || partner.companyName || 'Partner',
+          email: partner.email.toLowerCase(),
+          role: partner.registrationType === 'Gift Delivery Partner' 
+            ? 'gift_delivery_partner' 
+            : 'delivery_partner',
+          status: 'active'
+        };
+        
+        // Include location data if available
+        if (partner.city) {
+          userData.city = partner.city;
+        }
+        if (partner.primaryLocation) {
+          userData.primaryLocation = partner.primaryLocation;
+          userData.location = partner.primaryLocation;
+        }
+        if (partner.phone) {
+          userData.phone = partner.phone;
+        }
+        
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: partner.email.toLowerCase() });
+        
+        if (existingUser) {
+          // Update existing user with location data
+          if (partner.city) existingUser.city = partner.city;
+          if (partner.primaryLocation) {
+            existingUser.primaryLocation = partner.primaryLocation;
+            existingUser.location = partner.primaryLocation;
+          }
+          await existingUser.save();
+        } else {
+          // Create new user (without password - they can set it later if needed)
+          // Use a temporary password that should be changed on first login
+          const tempPassword = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          userData.password = tempPassword;
+          await User.create(userData);
+        }
+      } catch (userError) {
+        // Don't fail partner creation if user creation fails
+        console.error('Error creating/updating user for partner:', userError);
+      }
+    }
     
     res.status(201).json({
       status: 'success',
