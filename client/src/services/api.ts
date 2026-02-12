@@ -307,6 +307,27 @@ export const api = {
         method: 'DELETE',
       });
     },
+    searchNearby: async (params: { latitude: number; longitude: number; radius?: number; city?: string }) => {
+      const queryParams = new URLSearchParams({
+        latitude: params.latitude.toString(),
+        longitude: params.longitude.toString(),
+        ...(params.radius && { radius: params.radius.toString() }),
+        ...(params.city && { city: params.city }),
+      });
+      return request(`/partners/search/nearby?${queryParams}`);
+    },
+    updateAvailability: async (partnerId: string, data: { isOnline?: boolean; isAvailable?: boolean; latitude?: number; longitude?: number }) => {
+      return request(`/partners/${partnerId}/availability`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+    updateLocation: async (partnerId: string, data: { latitude: number; longitude: number; address?: string }) => {
+      return request(`/partners/${partnerId}/location`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
   // Premium endpoints
@@ -462,30 +483,6 @@ export const api = {
     },
   },
 
-  // Partner endpoints for location-based search
-  partners: {
-    searchNearby: async (params: { latitude: number; longitude: number; radius?: number; city?: string }) => {
-      const queryParams = new URLSearchParams({
-        latitude: params.latitude.toString(),
-        longitude: params.longitude.toString(),
-        ...(params.radius && { radius: params.radius.toString() }),
-        ...(params.city && { city: params.city }),
-      });
-      return request(`/partners/search/nearby?${queryParams}`);
-    },
-    updateAvailability: async (partnerId: string, data: { isOnline?: boolean; isAvailable?: boolean; latitude?: number; longitude?: number }) => {
-      return request(`/partners/${partnerId}/availability`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-    },
-    updateLocation: async (partnerId: string, data: { latitude: number; longitude: number; address?: string }) => {
-      return request(`/partners/${partnerId}/location`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      });
-    },
-  },
 
   // Transaction endpoints
   transactions: {

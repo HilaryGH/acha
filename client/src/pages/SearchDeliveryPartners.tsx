@@ -62,12 +62,6 @@ function SearchDeliveryPartners() {
     }
   }, []);
 
-  const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
-    // Simple geocoding - in production, use Google Maps Geocoding API
-    // For now, return null and let user enter coordinates manually
-    return null;
-  };
-
   const handleSearch = async () => {
     if (!pickupLocation) {
       setError('Please set pickup location');
