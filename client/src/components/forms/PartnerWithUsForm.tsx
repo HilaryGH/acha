@@ -32,7 +32,11 @@ function PartnerWithUsForm() {
     setMessage(null);
 
     try {
-      const response = await api.partners.create(formData) as { status?: string; message?: string };
+      const submitData = {
+        ...formData,
+        registrationType: 'Invest/Partner'
+      };
+      const response = await api.partners.create(submitData) as { status?: string; message?: string };
       
       if (response.status === 'success') {
         setMessage({ type: 'success', text: 'Partner application submitted successfully!' });

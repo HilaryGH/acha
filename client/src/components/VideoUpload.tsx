@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '../services/api';
 
 interface VideoUploadProps {
@@ -94,6 +94,21 @@ function VideoUpload({ label, value, onChange, maxDuration = 0.5 }: VideoUploadP
     const file = e.target.files?.[0];
     handleFileSelect(file || null);
   };
+
+  // Update preview when value changes (for Cloudinary URLs)
+  useEffect(() => {
+    if (value && (value.startsWith('http://') || value.startsWith('https://'))) {
+      // It's a Cloudinary URL, use it as preview
+      if (value.match(/\.(mp4|mov|avi|webm|mkv)$/i) || value.includes('video/upload')) {
+        setPreview(value);
+      } else {
+        setPreview(null);
+      }
+    } else if (value && !preview) {
+      // Local file path, clear preview
+      setPreview(null);
+    }
+  }, [value]);
 
   const handleRemove = () => {
     onChange('');

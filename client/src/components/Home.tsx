@@ -6,7 +6,7 @@ function Home() {
   return (
     <div className="w-full bg-white">
       {/* Hero Section - Professional & Modern */}
-      <section className="relative min-h-[60vh] md:min-h-[75vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-green-50 via-white to-green-50">
+      <section className="relative min-h-[60vh] md:min-h-[75vh] flex items-start justify-center overflow-hidden bg-gradient-to-br from-green-50 via-white to-green-50 pt-4 md:pt-6">
         {/* Background Pattern Overlay */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
@@ -15,70 +15,50 @@ function Home() {
           }}></div>
         </div>
 
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 md:py-16">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10 pt-4 md:pt-6 pb-8 md:pb-12">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             {/* Left Column - Content */}
-            <div className="text-center lg:text-left space-y-6 md:space-y-8">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold animate-fade-in-up">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>Trusted Delivery Network</span>
-              </div>
-
+            <div className="text-center lg:text-left space-y-4 md:space-y-6 w-full">
               {/* Main Heading */}
               <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 leading-tight animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                Fast & Reliable
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 via-green-500 to-green-700 mt-2">
-                  Delivery Services
-                </span>
+                Acha Delivery
               </h1>
 
-              {/* Subheading */}
-              <p className="text-lg sm:text-xl md:text-2xl text-gray-700 font-medium leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                Connect with travelers worldwide and send items through our trusted network
+              {/* Amharic Subtitle */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 via-green-500 to-green-700 leading-tight animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                አቻ ደሊቨሪ
+              </h2>
+
+              {/* Tagline */}
+              <p className="text-lg sm:text-xl md:text-2xl text-gray-700 font-medium leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                Your trusted delivery partner
               </p>
 
-              {/* Description */}
-              <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto lg:mx-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                Experience seamless peer-to-peer delivery. Post your travel plans, find travelers going your way, and make shipping easier, faster, and more personal.
-              </p>
-
-              {/* CTA Buttons */}
+              {/* CTA Button */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold text-lg rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold text-lg rounded-tr-2xl rounded-bl-2xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                 >
                   <span>Get Started</span>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </Link>
-                <Link
-                  to="/search"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-green-700 font-bold text-lg rounded-xl border-2 border-green-600 hover:bg-green-50 transition-all duration-300 shadow-md hover:shadow-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span>Search Trips</span>
-                </Link>
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
                 <div className="text-center lg:text-left">
                   <div className="text-2xl sm:text-3xl font-bold text-green-600">1000+</div>
-                  <div className="text-sm text-gray-600">Active Travelers</div>
+                  <div className="text-sm text-gray-600">Active Users</div>
                 </div>
                 <div className="text-center lg:text-left">
                   <div className="text-2xl sm:text-3xl font-bold text-green-600">50+</div>
                   <div className="text-sm text-gray-600">Cities</div>
                 </div>
                 <div className="text-center lg:text-left">
-                  <div className="text-2xl sm:text-3xl font-bold text-green-600">98%</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-green-600">97%</div>
                   <div className="text-sm text-gray-600">Success Rate</div>
                 </div>
               </div>
@@ -155,72 +135,58 @@ function Home() {
 
       {/* Second Section - Combined: Acha Delivery (Left), Image (Center), Global Network (Right) */}
       <section className="relative py-0.5 md:py-1 bg-gray-100 mb-2 md:mb-3">
-        <div className="w-[95%] max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-3 md:py-4 rounded-2xl md:rounded-2xl bg-white shadow-lg overflow-hidden">
-          <div className="flex flex-col lg:flex-row items-start gap-2 md:gap-3">
-            {/* Mobile Layout: Acha Delivery Content (Left) + Image (Right) */}
-            <div className="w-full lg:w-1/3 flex flex-row lg:flex-col gap-2 md:gap-3">
-              {/* Left Side - Acha Delivery Content */}
-              <div className="w-1/2 lg:w-full flex flex-col justify-start items-start lg:items-center text-left lg:text-center">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                  Acha Delivery
-                        </h2>
-                <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                  አቻ ደሊቨሪ
-                        </h3>
-                <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
-                  Your trusted delivery partner
-                        </p>
-                        <Link
-                          to="/register"
+        <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 xl:px-12 py-3 md:py-4 rounded-2xl md:rounded-2xl bg-white shadow-lg overflow-hidden">
+          <div className="flex flex-col lg:flex-row items-start gap-4 md:gap-3">
+            {/* Acha Delivery Content - First on mobile, Left on desktop */}
+            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
+                Acha Delivery
+              </h2>
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
+                አቻ ደሊቨሪ
+              </h3>
+              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
+                Your trusted delivery partner
+              </p>
+              <Link
+                to="/register"
                 className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
-                        >
+              >
                 Get Started
-                        </Link>
-                      </div>
-
-              {/* Image - Right on mobile, hidden on desktop (will show separately) */}
-              <div className="w-1/2 lg:hidden flex items-start justify-center self-start">
-                <div className="relative w-full max-w-[150px] sm:max-w-[180px] md:max-w-[200px]">
-                  <img
-                    src="/Delivery.svg"
-                    alt="Delivery"
-                    className="w-full h-full object-contain object-top"
-                  />
-                    </div>
-                  </div>
+              </Link>
             </div>
 
-            {/* Center - Image (Desktop Only) */}
-            <div className="hidden lg:flex w-1/3 items-start justify-center self-start">
-              <div className="relative w-full max-w-[250px]">
+            {/* Image - Second on mobile (below content), Center on desktop */}
+            <div className="w-full lg:w-1/3 flex items-center justify-center">
+              <div className="relative w-full max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[250px]">
                 <img
                   src="/Delivery.svg"
                   alt="Delivery"
                   className="w-full h-full object-contain object-top"
                 />
-                    </div>
-                  </div>
+              </div>
+            </div>
 
-            {/* Right Side - Global Network Content */}
+            {/* Global Network Content - Third on mobile, Right on desktop */}
             <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
               <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 Global Network
-                        </h2>
+              </h2>
               <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
                 Reach anywhere, anytime
-                          </h3>
+              </h3>
               <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
                 Connect with delivery partners across the globe
               </p>
-                        <Link
-                          to="/register"
+              <Link
+                to="/register"
                 className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
-                        >
+              >
                 Join Now
-                        </Link>
-                      </div>
-                  </div>
-                </div>
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Catalogue Section - Compact */}

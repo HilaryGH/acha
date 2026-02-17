@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const upload = require('../middleware/upload');
-const path = require('path');
 
 // Single file upload route with error handling
 router.post('/single', (req, res, next) => {
@@ -12,7 +11,7 @@ router.post('/single', (req, res, next) => {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({
             status: 'error',
-            message: 'File too large. Maximum size is 10MB'
+            message: 'File too large. Maximum size is 100MB'
           });
         }
         return res.status(400).json({
@@ -35,14 +34,22 @@ router.post('/single', (req, res, next) => {
       });
     }
 
+    // Cloudinary returns file info in req.file
+    // req.file.path contains the Cloudinary URL
     res.json({
       status: 'success',
       message: 'File uploaded successfully',
       file: {
-        filename: req.file.filename,
+        filename: req.file.filename || req.file.originalname,
         originalname: req.file.originalname,
-        path: `/uploads/documents/${req.file.filename}`,
-        size: req.file.size
+        path: req.file.path, // Cloudinary URL
+        secure_url: req.file.secure_url || req.file.path, // Secure HTTPS URL
+        public_id: req.file.public_id,
+        resource_type: req.file.resource_type,
+        format: req.file.format,
+        bytes: req.file.bytes || req.file.size,
+        width: req.file.width,
+        height: req.file.height
       }
     });
   });
@@ -56,7 +63,7 @@ router.post('/multiple', (req, res, next) => {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({
             status: 'error',
-            message: 'File too large. Maximum size is 10MB'
+            message: 'File too large. Maximum size is 100MB'
           });
         }
         if (err.code === 'LIMIT_FILE_COUNT') {
@@ -85,11 +92,18 @@ router.post('/multiple', (req, res, next) => {
       });
     }
 
+    // Map Cloudinary file info
     const files = req.files.map(file => ({
-      filename: file.filename,
+      filename: file.filename || file.originalname,
       originalname: file.originalname,
-      path: `/uploads/documents/${file.filename}`,
-      size: file.size
+      path: file.path, // Cloudinary URL
+      secure_url: file.secure_url || file.path, // Secure HTTPS URL
+      public_id: file.public_id,
+      resource_type: file.resource_type,
+      format: file.format,
+      bytes: file.bytes || file.size,
+      width: file.width,
+      height: file.height
     }));
 
     res.json({

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import DeliveryRequestsList from './DeliveryRequestsList';
 
 interface Partner {
   _id: string;
@@ -21,6 +22,7 @@ interface Partner {
 
 function SearchDeliveryPartners() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'requests' | 'partners'>('requests');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -152,10 +154,45 @@ function SearchDeliveryPartners() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            Find Delivery Partners
-          </h1>
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-md mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('requests')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'requests'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                📦 Delivery Requests
+              </button>
+              <button
+                onClick={() => setActiveTab('partners')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'partners'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                🔍 Search Partners
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Delivery Requests Tab */}
+        {activeTab === 'requests' && (
+          <DeliveryRequestsList />
+        )}
+
+        {/* Search Partners Tab */}
+        {activeTab === 'partners' && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">
+              Find Delivery Partners
+            </h1>
 
           {/* Location Input Section */}
           <div className="space-y-4 mb-6">
@@ -409,7 +446,8 @@ function SearchDeliveryPartners() {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

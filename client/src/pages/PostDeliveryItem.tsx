@@ -80,6 +80,7 @@ function PostDeliveryItem() {
         location: formData.location || undefined,
         bankAccount: formData.bankAccount,
         idDocument: formData.idDocument || undefined,
+        status: 'active', // Set status to 'active' so it appears in find delivery immediately
         deliveryItemInfo: {
           productName: formData.productName || undefined,
           productDescription: formData.productDescription || undefined,

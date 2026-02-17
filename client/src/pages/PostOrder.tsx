@@ -21,7 +21,7 @@ function PostOrder() {
     bankAccount: '',
     idDocument: '',
     // Delivery Method
-    deliveryMethod: 'traveler' as 'traveler' | 'partner',
+    deliveryMethod: 'traveler' as 'traveler' | 'delivery_partner' | 'acha_sisters_delivery_partner' | 'movers_packers' | 'gift_delivery_partner',
     // Order Information
     productName: '',
     productDescription: '',
@@ -133,21 +133,32 @@ function PostOrder() {
 
       const orderResponse = await api.orders.create(orderData) as { status?: string; data?: any; message?: string };
       
+      console.log('Order creation response:', orderResponse);
+      
       if (orderResponse.status === 'success') {
         const responseData = orderResponse.data;
+        
+        console.log('Response data:', responseData);
+        console.log('Available matches:', responseData?.availableMatches);
+        console.log('Match type:', responseData?.matchType);
         
         // Store order and buyer info
         setCreatedOrder(responseData);
         setCreatedBuyerId(buyerId);
         
         // Check if there are available matches
-        if (responseData.availableMatches && responseData.availableMatches.length > 0) {
-          setAvailableMatches(responseData.availableMatches);
-          setMatchType(responseData.matchType);
+        const matches = responseData?.availableMatches || [];
+        const matchTypeValue = responseData?.matchType || null;
+        
+        console.log(`Found ${matches.length} matches, matchType: ${matchTypeValue}`);
+        
+        if (matches.length > 0 && matchTypeValue) {
+          setAvailableMatches(matches);
+          setMatchType(matchTypeValue);
           setShowMatchSelection(true);
           setMessage({ 
             type: 'success', 
-            text: `Found ${responseData.availableMatches.length} ${responseData.matchType === 'traveler' ? 'traveler' : 'partner'}${responseData.availableMatches.length > 1 ? 's' : ''} matching your route. Please select one.`
+            text: `Found ${matches.length} ${matchTypeValue === 'traveler' ? 'traveler' : 'partner'}${matches.length > 1 ? 's' : ''} matching your route. Please select one.`
           });
         } else {
           // No matches found, proceed to payment
@@ -254,9 +265,6 @@ function PostOrder() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Post Your Order</h1>
-          <p className="text-lg text-gray-600">
-            Share your order details and connect with travelers to deliver your items
-          </p>
         </div>
 
         {/* Match Selection - Show if matches are available */}
@@ -323,53 +331,23 @@ function PostOrder() {
                 <span className="text-2xl">🚚</span>
                 Choose Delivery Method
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.deliveryMethod === 'traveler' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-300 hover:border-gray-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="deliveryMethod"
-                    value="traveler"
-                    checked={formData.deliveryMethod === 'traveler'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg text-gray-900 mb-1">Traveler</div>
-                    <div className="text-sm text-gray-600">Match with a traveler to deliver your order</div>
-                  </div>
-                  {formData.deliveryMethod === 'traveler' && (
-                    <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery Method <span className="text-red-500">*</span>
                 </label>
-                <label className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                  formData.deliveryMethod === 'partner' 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-300 hover:border-gray-400'
-                }`}>
-                  <input
-                    type="radio"
-                    name="deliveryMethod"
-                    value="partner"
-                    checked={formData.deliveryMethod === 'partner'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-lg text-gray-900 mb-1">Partner</div>
-                    <div className="text-sm text-gray-600">Assign to a delivery partner</div>
-                  </div>
-                  {formData.deliveryMethod === 'partner' && (
-                    <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </label>
+                <select
+                  name="deliveryMethod"
+                  required
+                  value={formData.deliveryMethod}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                >
+                  <option value="traveler">Traveler</option>
+                  <option value="delivery_partner">Delivery Partner</option>
+                  <option value="acha_sisters_delivery_partner">Acha Sisters Delivery Partner</option>
+                  <option value="gift_delivery_partner">Acha Gift Delivery Partner</option>
+                  <option value="movers_packers">Packers and Movers</option>
+                </select>
               </div>
             </div>
 

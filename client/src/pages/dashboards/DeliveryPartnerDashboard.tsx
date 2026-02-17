@@ -39,7 +39,7 @@ interface DeliveryPartnerDashboardProps {
 
 function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'earnings' | 'profile' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     activeDeliveries: 0,
@@ -69,17 +69,49 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
 
   const loadOrders = async () => {
     try {
-      // Fetch all orders and filter by assigned partner
-      const response = await api.orders.getAll() as { data?: { orders?: Order[] } };
-      const allOrders = response.data?.orders || [];
-      // Filter orders assigned to this partner
-      const myOrders = allOrders.filter((o: any) => 
-        o.assignedPartnerId === user.id || 
-        (o.assignedPartnerId && o.assignedPartnerId.toString() === user.id)
-      );
-      setOrders(myOrders);
+      // Fetch orders assigned to this partner/user
+      const response = await api.orders.getForPartner() as { status?: string; data?: Order[]; count?: number };
+      if (response.status === 'success') {
+        // Handle both array and object response structures
+        const ordersData = Array.isArray(response.data) ? response.data : [];
+        setOrders(ordersData);
+      } else {
+        // Fallback: fetch all orders and filter
+        const fallbackResponse = await api.orders.getAll() as { data?: Order[] | { orders?: Order[] } };
+        let allOrders: Order[] = [];
+        if (Array.isArray(fallbackResponse.data)) {
+          allOrders = fallbackResponse.data;
+        } else if (fallbackResponse.data && typeof fallbackResponse.data === 'object' && 'orders' in fallbackResponse.data) {
+          allOrders = Array.isArray(fallbackResponse.data.orders) ? fallbackResponse.data.orders : [];
+        }
+        const myOrders = allOrders.filter((o: any) => 
+          o.assignedPartnerId === user.id || 
+          (o.assignedPartnerId && o.assignedPartnerId.toString() === user.id) ||
+          (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
+        );
+        setOrders(myOrders);
+      }
     } catch (error) {
       console.error('Error loading orders:', error);
+      // Fallback on error
+      try {
+        const fallbackResponse = await api.orders.getAll() as { data?: Order[] | { orders?: Order[] } };
+        let allOrders: Order[] = [];
+        if (Array.isArray(fallbackResponse.data)) {
+          allOrders = fallbackResponse.data;
+        } else if (fallbackResponse.data && typeof fallbackResponse.data === 'object' && 'orders' in fallbackResponse.data) {
+          allOrders = Array.isArray(fallbackResponse.data.orders) ? fallbackResponse.data.orders : [];
+        }
+        const myOrders = allOrders.filter((o: any) => 
+          o.assignedPartnerId === user.id || 
+          (o.assignedPartnerId && o.assignedPartnerId.toString() === user.id) ||
+          (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
+        );
+        setOrders(myOrders);
+      } catch (fallbackError) {
+        console.error('Fallback error loading orders:', fallbackError);
+        setOrders([]);
+      }
     }
   };
 
@@ -162,6 +194,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'orders', label: 'My Orders', icon: '📦' },
+                { id: 'requests', label: 'Available Requests', icon: '🔔' },
                 { id: 'earnings', label: 'Earnings', icon: '💰' },
                 { id: 'profile', label: 'Profile', icon: '👤' },
                 { id: 'settings', label: 'Settings', icon: '⚙️' },
@@ -342,6 +375,41 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'requests' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Available Delivery Requests</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate('/partner/requests')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    View All Requests
+                  </button>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-900 mb-4">
+                  💡 Browse available delivery requests and submit offers to get new orders.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate('/partner/requests')}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Requests Page →
+                  </button>
+                  <button
+                    onClick={() => navigate('/partner-with-us')}
+                    className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                  >
+                    Complete Partner Registration
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -1,28 +1,6 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(uploadsDir, 'documents');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename: timestamp-random-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
+const { storage } = require('../utils/cloudinary');
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -40,11 +18,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer
+// Configure multer with Cloudinary storage
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit (for videos)
+    fileSize: 100 * 1024 * 1024 // 100MB limit (Cloudinary supports larger files)
   },
   fileFilter: fileFilter
 });

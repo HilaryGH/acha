@@ -151,14 +151,14 @@ function Footer() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('footer.subscription.placeholder')}
-                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-tr-2xl rounded-bl-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
                 disabled={isSubmitting}
                 required
               />
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full px-4 py-2 text-sm bg-[#1E88E5] hover:bg-[#1976D2] text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 text-sm bg-[#1E88E5] hover:bg-[#1976D2] text-white font-medium rounded-tr-2xl rounded-bl-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? t('footer.subscription.subscribing') : t('footer.subscription.subscribe')}
               </button>

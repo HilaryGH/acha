@@ -65,6 +65,21 @@ function FileUpload({ label, value, onChange, accept = 'image/*,.pdf' }: FileUpl
     handleFileSelect(file || null);
   };
 
+  // Update preview when value changes (for Cloudinary URLs)
+  useEffect(() => {
+    if (value && (value.startsWith('http://') || value.startsWith('https://'))) {
+      // It's a Cloudinary URL, use it as preview
+      if (value.match(/\.(jpg|jpeg|png|gif|webp)$/i) || value.includes('image/upload')) {
+        setPreview(value);
+      } else {
+        setPreview(null);
+      }
+    } else if (value && !preview) {
+      // Local file path, clear preview
+      setPreview(null);
+    }
+  }, [value]);
+
   const handleRemove = () => {
     onChange('');
     setPreview(null);
@@ -136,7 +151,7 @@ function FileUpload({ label, value, onChange, accept = 'image/*,.pdf' }: FileUpl
         </div>
         
         <p className="text-xs text-gray-500">
-          Max file size: 10MB | Accepted: Images (JPG, PNG, GIF) and PDF
+          Max file size: 100MB | Accepted: Images (JPG, PNG, GIF), PDF, and Videos (MP4, MOV, AVI, WEBM, MKV)
         </p>
       </div>
     </div>

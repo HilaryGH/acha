@@ -62,7 +62,7 @@ const buyerSchema = new mongoose.Schema({
   // Delivery Method
   deliveryMethod: {
     type: String,
-    enum: ['traveler', 'partner'],
+    enum: ['traveler', 'partner', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'],
     default: 'traveler'
   },
   // Order Information

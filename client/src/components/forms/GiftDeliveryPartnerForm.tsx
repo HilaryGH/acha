@@ -144,7 +144,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
           </div>
         )}
         {!isModal && (
-          <h2 className="text-2xl font-bold mb-5 text-gray-900">Register As "Wanaw Gifting Delivery Partner"</h2>
+          <h2 className="text-2xl font-bold mb-5 text-gray-900">Register As "Acha Gifting Delivery Partner"</h2>
         )}
         
         {message && (

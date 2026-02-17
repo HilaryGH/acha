@@ -89,6 +89,16 @@ exports.getPartnerById = async (req, res) => {
 // Create new partner
 exports.createPartner = async (req, res) => {
   try {
+    // Check MongoDB connection before proceeding
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        status: 'error',
+        message: 'Database connection unavailable. Please check your MongoDB connection string in the .env file.',
+        details: 'The server cannot connect to MongoDB. Verify your MONGODB_URI in server/.env file.'
+      });
+    }
+
     const partner = await Partner.create(req.body);
     
     // Also create/update User record for location-based searching
@@ -146,6 +156,22 @@ exports.createPartner = async (req, res) => {
       data: partner
     });
   } catch (error) {
+    // Handle MongoDB connection errors specifically
+    if (error.message && (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo'))) {
+      return res.status(503).json({
+        status: 'error',
+        message: 'Database connection failed. Cannot resolve MongoDB hostname.',
+        details: 'Please check your MongoDB Atlas cluster status and connection string.',
+        troubleshooting: [
+          '1. Verify your MongoDB Atlas cluster is running (not paused)',
+          '2. Check your MONGODB_URI in server/.env file',
+          '3. Ensure your IP is whitelisted in MongoDB Atlas Network Access',
+          '4. Visit https://cloud.mongodb.com to check cluster status',
+          '5. Try restarting your MongoDB Atlas cluster if it was paused'
+        ]
+      });
+    }
+
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
@@ -154,9 +180,10 @@ exports.createPartner = async (req, res) => {
       });
     }
     
+    console.error('Partner creation error:', error);
     res.status(500).json({
       status: 'error',
-      message: error.message
+      message: error.message || 'Failed to create partner'
     });
   }
 };

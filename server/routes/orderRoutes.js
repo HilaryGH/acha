@@ -1,17 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/auth');
 const {
   createOrder,
   getAllOrders,
   getOrderById,
   getOrdersByBuyer,
+  getOrdersForPartner,
   matchWithTraveler,
   assignToPartner,
   updateOrderStatus,
   confirmDelivery,
   getAvailableTravelers,
   getAvailablePartners,
-  createDeliveryRequest
+  createDeliveryRequest,
+  getAvailableRequests,
+  submitPartnerOffer,
+  getPartnerOffers,
+  partnerAcceptRequest
 } = require('../controllers/orderController');
 
 console.log('✅ Order routes module loaded');
@@ -24,6 +30,15 @@ router.route('/')
 router.route('/request')
   .post(createDeliveryRequest);
 
+router.route('/requests/available')
+  .get(getAvailableRequests);
+
+router.route('/offer')
+  .post(submitPartnerOffer);
+
+router.route('/accept')
+  .post(partnerAcceptRequest);
+
 router.route('/match/traveler')
   .post(matchWithTraveler);
 
@@ -32,6 +47,12 @@ router.route('/assign/partner')
 
 router.route('/buyer/:buyerId')
   .get(getOrdersByBuyer);
+
+router.route('/partner/:partnerId')
+  .get(authenticate, getOrdersForPartner);
+
+router.route('/partner')
+  .get(authenticate, getOrdersForPartner); // Get orders for authenticated user
 
 router.route('/:orderId/status')
   .put(updateOrderStatus);
@@ -44,6 +65,9 @@ router.route('/:orderId/travelers')
 
 router.route('/:orderId/partners')
   .get(getAvailablePartners);
+
+router.route('/:orderId/offers')
+  .get(getPartnerOffers);
 
 router.route('/:id')
   .get(getOrderById);

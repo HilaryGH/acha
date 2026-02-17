@@ -131,7 +131,7 @@ function Navbar() {
                   Post Order
                 </Link>
                 <Link 
-                  to="/search-delivery-partners" 
+                  to="/delivery-requests/list" 
                   className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-green-500 after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
                 >
                   Find Delivery
@@ -406,7 +406,7 @@ function Navbar() {
               </Link>
 
               <Link 
-                to="/search-delivery-partners" 
+                to="/delivery-requests/list" 
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >

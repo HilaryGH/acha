@@ -17,7 +17,7 @@ const orderSchema = new mongoose.Schema({
   // Delivery Method
   deliveryMethod: {
     type: String,
-    enum: ['traveler', 'partner'],
+    enum: ['traveler', 'partner', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'],
     required: [true, 'Delivery method is required']
   },
   // Order Information (from buyer)
@@ -117,13 +117,43 @@ const orderSchema = new mongoose.Schema({
     ref: 'Partner',
     default: null
   },
+  // Partner Offers/Bids (for partner delivery method)
+  partnerOffers: [{
+    partnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Partner',
+      required: true
+    },
+    offerPrice: {
+      type: Number,
+      default: null
+    },
+    estimatedDeliveryTime: {
+      type: String,
+      trim: true
+    },
+    message: {
+      type: String,
+      trim: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected', 'withdrawn'],
+      default: 'pending'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   // Order Status
   status: {
     type: String,
     enum: [
-      'pending',           // Order placed, waiting for assignment
+      'pending',           // Order placed, waiting for partner offers
+      'offers_received',  // Partners have submitted offers, waiting for client selection
       'matched',           // Matched with traveler (for traveler method)
-      'assigned',          // Assigned to partner (for partner method)
+      'assigned',          // Assigned to partner (for partner method) - confirmed
       'picked_up',         // Item picked up by traveler/partner
       'in_transit',        // Item in transit
       'delivered',         // Item delivered

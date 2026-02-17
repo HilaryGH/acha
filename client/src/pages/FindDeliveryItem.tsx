@@ -8,7 +8,7 @@ function FindDeliveryItem() {
   const [filters, setFilters] = useState({
     departureCity: '',
     destinationCity: '',
-    status: 'active'
+    status: '' // Show all statuses by default, including 'pending'
   });
 
   useEffect(() => {
@@ -18,17 +18,30 @@ function FindDeliveryItem() {
   const fetchSenders = async () => {
     try {
       setLoading(true);
-      const response = await api.senders.getAll() as { status?: string; data?: any[]; message?: string };
+      const response = await api.senders.getAll() as { status?: string; data?: any[]; message?: string; count?: number };
+      console.log('Senders API response:', response);
+      
       if (response.status === 'success') {
+        // Handle both response structures: data as array or data.count/data.data
+        const allSenders = Array.isArray(response.data) ? response.data : [];
+        console.log('Total senders fetched:', allSenders.length);
+        
         // Filter senders that have delivery item information
-        const sendersWithItems = response.data?.filter((sender: any) => 
-          sender.deliveryItemInfo && sender.deliveryItemInfo.productName
-        ) || [];
+        const sendersWithItems = allSenders.filter((sender: any) => {
+          const hasItemInfo = sender.deliveryItemInfo && sender.deliveryItemInfo.productName;
+          if (!hasItemInfo) {
+            console.log('Sender filtered out (no deliveryItemInfo):', sender._id, sender.name);
+          }
+          return hasItemInfo;
+        });
+        
+        console.log('Senders with delivery items:', sendersWithItems.length);
         setSenders(sendersWithItems);
       } else {
         setError(response.message || 'Failed to fetch delivery items');
       }
     } catch (err: any) {
+      console.error('Error fetching senders:', err);
       setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
@@ -36,16 +49,19 @@ function FindDeliveryItem() {
   };
 
   const filteredSenders = senders.filter((sender: any) => {
+    // Filter by departure city
     if (filters.departureCity && sender.deliveryItemInfo?.departureCity) {
       if (!sender.deliveryItemInfo.departureCity.toLowerCase().includes(filters.departureCity.toLowerCase())) {
         return false;
       }
     }
+    // Filter by destination city
     if (filters.destinationCity && sender.deliveryItemInfo?.destinationCity) {
       if (!sender.deliveryItemInfo.destinationCity.toLowerCase().includes(filters.destinationCity.toLowerCase())) {
         return false;
       }
     }
+    // Filter by status (if status filter is set)
     if (filters.status && sender.status !== filters.status) {
       return false;
     }

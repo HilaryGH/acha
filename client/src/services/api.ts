@@ -72,7 +72,8 @@ const uploadFile = async (file: File): Promise<string> => {
 
   const data = await response.json();
   if (data.status === 'success' && data.file) {
-    return data.file.path;
+    // Return Cloudinary URL (secure_url or path)
+    return data.file.secure_url || data.file.path;
   }
   throw new Error(data.message || 'Upload failed');
 };
@@ -176,7 +177,8 @@ export const api = {
 
       const data = await response.json();
       if (data.status === 'success' && data.files) {
-        return data.files.map((file: any) => file.path);
+        // Return Cloudinary URLs (secure_url or path)
+        return data.files.map((file: any) => file.secure_url || file.path);
       }
       throw new Error(data.message || 'Upload failed');
     },
@@ -345,8 +347,9 @@ export const api = {
 
   // Premium endpoints
   premium: {
-    getAll: async () => {
-      return request('/premium');
+    getAll: async (params?: { category?: string; status?: string; subscriptionType?: string; search?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return request(`/premium${queryParams}`);
     },
     getById: async (id: string) => {
       return request(`/premium/${id}`);
@@ -367,8 +370,9 @@ export const api = {
 
   // Women Initiatives endpoints
   womenInitiatives: {
-    getAll: async () => {
-      return request('/women-initiatives');
+    getAll: async (params?: { status?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return request(`/women-initiatives${queryParams}`);
     },
     getById: async (id: string) => {
       return request(`/women-initiatives/${id}`);
@@ -442,7 +446,7 @@ export const api = {
     getById: async (id: string) => {
       return request(`/orders/${id}`);
     },
-    create: async (orderData: { buyerId: string; deliveryMethod: 'traveler' | 'partner'; orderInfo: any }) => {
+    create: async (orderData: { buyerId: string; deliveryMethod: 'traveler' | 'partner' | 'delivery_partner' | 'acha_sisters_delivery_partner' | 'movers_packers' | 'gift_delivery_partner'; orderInfo: any }) => {
       return request('/orders', {
         method: 'POST',
         body: JSON.stringify(orderData),
@@ -450,6 +454,10 @@ export const api = {
     },
     getByBuyer: async (buyerId: string) => {
       return request(`/orders/buyer/${buyerId}`);
+    },
+    getForPartner: async (partnerId?: string) => {
+      const url = partnerId ? `/orders/partner/${partnerId}` : '/orders/partner';
+      return request(url);
     },
     matchWithTraveler: async (orderId: string, travelerId: string) => {
       return request('/orders/match/traveler', {
@@ -492,6 +500,42 @@ export const api = {
       return request('/orders/request', {
         method: 'POST',
         body: JSON.stringify(requestData),
+      });
+    },
+    getAvailableRequests: async (params?: { partnerId?: string; latitude?: number; longitude?: number; radius?: number }) => {
+      const queryParams = params ? '?' + new URLSearchParams({
+        ...(params.partnerId && { partnerId: params.partnerId }),
+        ...(params.latitude !== undefined && { latitude: params.latitude.toString() }),
+        ...(params.longitude !== undefined && { longitude: params.longitude.toString() }),
+        ...(params.radius !== undefined && { radius: params.radius.toString() }),
+      }).toString() : '';
+      return request(`/orders/requests/available${queryParams}`);
+    },
+    submitPartnerOffer: async (offerData: {
+      orderId: string;
+      partnerId: string;
+      offerPrice?: number;
+      estimatedDeliveryTime?: string;
+      message?: string;
+    }) => {
+      return request('/orders/offer', {
+        method: 'POST',
+        body: JSON.stringify(offerData),
+      });
+    },
+    getPartnerOffers: async (orderId: string) => {
+      return request(`/orders/${orderId}/offers`);
+    },
+    selectPartner: async (data: { orderId: string; partnerId: string; offerId?: string }) => {
+      return request('/orders/assign/partner', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    partnerAcceptRequest: async (data: { orderId: string; partnerId: string }) => {
+      return request('/orders/accept', {
+        method: 'POST',
+        body: JSON.stringify(data),
       });
     },
   },
@@ -539,6 +583,29 @@ export const api = {
     getStats: async (startDate?: string, endDate?: string) => {
       const queryParams = startDate || endDate ? '?' + new URLSearchParams({ startDate: startDate || '', endDate: endDate || '' } as any).toString() : '';
       return request(`/transactions/stats${queryParams}`);
+    },
+  },
+
+  // Document verification endpoints
+  documents: {
+    getAll: async (params?: { status?: string; type?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return request(`/documents${queryParams}`);
+    },
+    getByUser: async (userId: string) => {
+      return request(`/documents/user/${userId}`);
+    },
+    verify: async (data: {
+      entityType: string;
+      entityId: string;
+      action: 'approve' | 'reject' | 'verify';
+      documentType?: string;
+      reason?: string;
+    }) => {
+      return request('/documents/verify', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
     },
   },
 };

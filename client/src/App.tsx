@@ -20,6 +20,12 @@ import DashboardRouter from './pages/DashboardRouter'
 import SearchTravelers from './pages/SearchTravelers'
 import SearchDeliveryPartners from './pages/SearchDeliveryPartners'
 import TermsOfService from './pages/TermsOfService'
+import CreateDeliveryRequest from './pages/CreateDeliveryRequest'
+import DeliveryRequestsMap from './pages/DeliveryRequestsMap'
+import DeliveryRequestsList from './pages/DeliveryRequestsList'
+import PartnerViewRequests from './pages/PartnerViewRequests'
+import ClientViewOffers from './pages/ClientViewOffers'
+import ViewDeliveryRequest from './pages/ViewDeliveryRequest'
 
 function AppContent() {
   const location = useLocation();
@@ -47,6 +53,12 @@ function AppContent() {
         <Route path="/search" element={<SearchTravelers />} />
         <Route path="/search-delivery-partners" element={<SearchDeliveryPartners />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/create-delivery-request" element={<CreateDeliveryRequest />} />
+        <Route path="/delivery-requests/map" element={<DeliveryRequestsMap />} />
+        <Route path="/delivery-requests/list" element={<DeliveryRequestsList />} />
+        <Route path="/delivery-requests/:orderId" element={<ViewDeliveryRequest />} />
+        <Route path="/delivery-requests/:orderId/offers" element={<ClientViewOffers />} />
+        <Route path="/partner/requests" element={<PartnerViewRequests />} />
       </Routes>
       {!isLandingPage && <Footer />}
     </div>

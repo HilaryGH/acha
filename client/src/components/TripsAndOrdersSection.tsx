@@ -376,7 +376,7 @@ function TripsAndOrdersSection() {
                     {trips.map((trip) => (
                       <div
                         key={trip._id}
-                        className="p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
+                        className="p-4 rounded-tr-2xl rounded-bl-2xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -506,7 +506,7 @@ function TripsAndOrdersSection() {
                     return (
                       <div
                         key={order._id}
-                        className="p-4 rounded-xl border border-gray-200 hover:border-green-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
+                        className="p-4 rounded-tr-2xl rounded-bl-2xl border border-gray-200 hover:border-green-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 flex-wrap">

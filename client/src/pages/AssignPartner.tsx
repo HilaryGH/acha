@@ -26,7 +26,8 @@ function AssignPartner() {
       const response = await api.orders.getById(orderId) as { status?: string; data?: any; message?: string };
       if (response.status === 'success') {
         setOrder(response.data);
-        if (response.data.deliveryMethod !== 'partner') {
+        const partnerDeliveryMethods = ['partner', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
+        if (!partnerDeliveryMethods.includes(response.data.deliveryMethod)) {
           setError('This order is not set for partner delivery');
         }
       } else {
