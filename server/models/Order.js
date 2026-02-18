@@ -24,8 +24,8 @@ const orderSchema = new mongoose.Schema({
   orderInfo: {
     productName: {
       type: String,
-      required: true,
       trim: true
+      // Validation handled in controller - not required for movers_packers and gift_delivery_partner
     },
     productDescription: {
       type: String,

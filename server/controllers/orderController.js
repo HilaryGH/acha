@@ -59,6 +59,16 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Validate productName is required for non-movers_packers and non-gift_delivery_partner
+    if (deliveryMethod !== 'movers_packers' && deliveryMethod !== 'gift_delivery_partner') {
+      if (!orderInfo.productName || !orderInfo.productName.trim()) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Product name is required for this delivery method'
+        });
+      }
+    }
+
     // Create the order
     const order = await Order.create({
       buyerId,
@@ -776,11 +786,41 @@ exports.createDeliveryRequest = async (req, res) => {
 exports.getAvailableRequests = async (req, res) => {
   try {
     const { partnerId, latitude, longitude, radius = 15 } = req.query;
+    const User = require('../models/User');
 
-    // Find pending orders with partner delivery method that have location data
+    // Determine which delivery methods to show based on user role or partnerId
+    let allowedDeliveryMethods = ['partner', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
+    
+    // If user is authenticated, filter by their role
+    if (req.user && req.user.role) {
+      const userRole = req.user.role;
+      // Map user roles to delivery methods they can see
+      if (userRole === 'acha_sisters_delivery_partner') {
+        allowedDeliveryMethods = ['acha_sisters_delivery_partner'];
+      } else if (userRole === 'delivery_partner') {
+        allowedDeliveryMethods = ['delivery_partner'];
+      } else if (userRole === 'movers_packers') {
+        allowedDeliveryMethods = ['movers_packers'];
+      } else if (userRole === 'gift_delivery_partner') {
+        allowedDeliveryMethods = ['gift_delivery_partner'];
+      }
+      // If partnerId is provided but no user role, try to get user role from partnerId
+    } else if (partnerId) {
+      try {
+        // Try to find user by partnerId
+        const user = await User.findById(partnerId);
+        if (user && user.role && isPartnerDeliveryMethod(user.role)) {
+          allowedDeliveryMethods = [user.role];
+        }
+      } catch (err) {
+        // If partnerId doesn't match a User, it might be a Partner model ID, show all
+        console.log('PartnerId not found in User model, showing all partner methods');
+      }
+    }
+    
     const filter = {
-      deliveryMethod: 'partner',
-      status: { $in: ['pending', 'offers_received'] },
+      deliveryMethod: { $in: allowedDeliveryMethods },
+      status: { $in: ['pending', 'offers_received', 'assigned'] },
       pickupLocation: { $exists: true, $ne: null },
       'pickupLocation.latitude': { $exists: true, $ne: null },
       'pickupLocation.longitude': { $exists: true, $ne: null }
@@ -982,13 +1022,26 @@ exports.partnerAcceptRequest = async (req, res) => {
       });
     }
 
-    // Verify partner exists
-    const partner = await Partner.findById(partnerId);
-    if (!partner) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Partner not found'
-      });
+    // Verify partner exists - check User model for role-based partners, Partner model for others
+    const User = require('../models/User');
+    let partner = null;
+    if (order.deliveryMethod === 'delivery_partner' || order.deliveryMethod === 'acha_sisters_delivery_partner' || 
+        order.deliveryMethod === 'movers_packers' || order.deliveryMethod === 'gift_delivery_partner') {
+      partner = await User.findById(partnerId);
+      if (!partner || partner.role !== order.deliveryMethod) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Partner not found or role mismatch'
+        });
+      }
+    } else {
+      partner = await Partner.findById(partnerId);
+      if (!partner) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Partner not found'
+        });
+      }
     }
 
     // Check if partner has an existing offer - if so, mark it as accepted
@@ -1062,9 +1115,28 @@ exports.partnerAcceptRequest = async (req, res) => {
     // Assign order to partner
     order.assignedPartnerId = partnerId;
     order.status = 'assigned';
-    await order.addTrackingUpdate('assigned', `Order accepted and assigned to partner: ${partner.name || partner.companyName}`, '');
+    const partnerName = partner.name || partner.companyName || 'Partner';
+    const partnerEmail = partner.email;
+    await order.addTrackingUpdate('assigned', `Order accepted and assigned to partner: ${partnerName}`, '');
 
     await order.save();
+
+    // Send email notification to partner
+    try {
+      const { sendOrderAssignmentEmail } = require('../utils/emailService');
+      await sendOrderAssignmentEmail(partnerEmail, partnerName, {
+        orderId: order.uniqueId,
+        uniqueId: order.uniqueId,
+        productName: order.orderInfo?.productName,
+        productDescription: order.orderInfo?.productDescription,
+        deliveryDestination: order.orderInfo?.deliveryDestination,
+        preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate,
+        status: order.status
+      });
+    } catch (emailError) {
+      console.error('Failed to send assignment email:', emailError);
+      // Don't fail the assignment if email fails
+    }
 
     res.status(200).json({
       status: 'success',
@@ -1087,6 +1159,7 @@ exports.getOrdersForPartner = async (req, res) => {
   try {
     const { partnerId } = req.params;
     const userId = req.user?.id; // Get authenticated user ID
+    const User = require('../models/User');
 
     // Use partnerId from params or authenticated user's ID
     const targetPartnerId = partnerId || userId;
@@ -1098,16 +1171,46 @@ exports.getOrdersForPartner = async (req, res) => {
       });
     }
 
+    // Get user to determine their role for filtering available requests
+    let userRole = req.user?.role;
+    if (!userRole && targetPartnerId) {
+      try {
+        const user = await User.findById(targetPartnerId);
+        if (user) {
+          userRole = user.role;
+        }
+      } catch (err) {
+        // If not found in User model, might be Partner model - that's okay
+      }
+    }
+
     // Find orders assigned to this partner/user
-    const orders = await Order.find({ assignedPartnerId: targetPartnerId })
+    const assignedOrders = await Order.find({ assignedPartnerId: targetPartnerId })
       .populate('buyerId', 'name email phone currentCity location')
       .populate('assignedTravelerId', 'name email phone currentLocation destinationCity')
       .sort({ createdAt: -1 });
 
+    // Also get available requests matching this partner's role (if role-based partner)
+    let availableRequests = [];
+    if (userRole && isPartnerDeliveryMethod(userRole)) {
+      const filter = {
+        deliveryMethod: userRole,
+        status: { $in: ['pending', 'offers_received'] },
+        assignedPartnerId: { $ne: targetPartnerId }, // Not already assigned
+        pickupLocation: { $exists: true, $ne: null }
+      };
+      
+      availableRequests = await Order.find(filter)
+        .populate('buyerId', 'name email phone currentCity')
+        .sort({ createdAt: -1 })
+        .limit(20);
+    }
+
     res.status(200).json({
       status: 'success',
-      count: orders.length,
-      data: orders
+      count: assignedOrders.length,
+      data: assignedOrders,
+      availableRequests: availableRequests.length > 0 ? availableRequests : undefined
     });
   } catch (error) {
     res.status(500).json({

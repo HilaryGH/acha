@@ -11,7 +11,9 @@ const {
   updateUser,
   changePassword,
   deleteUser,
-  searchUsersByLocation
+  searchUsersByLocation,
+  googleAuth,
+  googleCallback
 } = require('../controllers/userController');
 
 const { authenticate } = require('../middleware/auth');
@@ -42,6 +44,10 @@ router.post('/login', login);
 router.post('/register', register);
 router.post('/register/restricted', authenticate, register);
 router.get('/search/location', searchUsersByLocation); // Public endpoint to search users by location
+
+// Google OAuth routes
+router.get('/auth/google', googleAuth);
+router.get('/auth/google/callback', googleCallback);
 
 /* ===== PROTECTED ROUTES ===== */
 router.use(authenticate);

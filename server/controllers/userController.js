@@ -3,6 +3,8 @@ const AuditLog = require('../models/AuditLog');
 const { generateToken } = require('../middleware/auth');
 const generateUserId = require('../utils/generateUserId');
 const { sendRegistrationEmail } = require('../utils/emailService');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 /**
  * Register a new user
@@ -390,8 +392,12 @@ const searchUsersByLocation = async (req, res) => {
       query.role = role;
     }
     
-    // Filter by status - default to 'active' if not specified
-    query.status = status || 'active';
+    // Filter by status - only add status filter if explicitly provided and not 'all'
+    // If status is 'all' or not provided, don't filter by status (show all registered users)
+    if (status && status !== 'all' && status !== '') {
+      query.status = status;
+    }
+    // If status is not provided or is 'all'/'', don't add status filter (show all)
     
     // Find users matching the location
     const users = await User.find(query)
@@ -618,6 +624,117 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * Initialize Google OAuth Strategy
+ */
+const initializeGoogleStrategy = () => {
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+  const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/users/auth/google/callback';
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    console.warn('⚠️  Google OAuth credentials not found. Google login will be disabled.');
+    return;
+  }
+
+  passport.use(new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: GOOGLE_CALLBACK_URL
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Find user by googleId or email
+      let user = await User.findOne({ 
+        $or: [
+          { googleId: profile.id },
+          { email: profile.emails[0].value.toLowerCase() }
+        ]
+      });
+
+      if (user) {
+        // Update googleId if not set
+        if (!user.googleId) {
+          user.googleId = profile.id;
+          await user.save();
+        }
+        return done(null, user);
+      }
+
+      // Create new user
+      let userId;
+      try {
+        userId = await generateUserId('individual');
+      } catch (userIdError) {
+        console.error('Error generating user ID:', userIdError);
+      }
+
+      user = new User({
+        name: profile.displayName || profile.name?.givenName + ' ' + profile.name?.familyName || 'User',
+        email: profile.emails[0].value.toLowerCase(),
+        googleId: profile.id,
+        role: 'individual',
+        status: 'active',
+        userId: userId
+      });
+
+      await user.save();
+      return done(null, user);
+    } catch (error) {
+      return done(error, null);
+    }
+  }));
+};
+
+// Initialize Google Strategy
+initializeGoogleStrategy();
+
+/**
+ * Google OAuth authentication - redirects to Google
+ */
+const googleAuth = passport.authenticate('google', {
+  scope: ['profile', 'email']
+});
+
+/**
+ * Google OAuth callback - handles the response from Google
+ */
+const googleCallback = async (req, res) => {
+  passport.authenticate('google', { session: false }, async (err, user) => {
+    if (err) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(err.message)}`);
+    }
+
+    if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent('Authentication failed')}`);
+    }
+
+    // Check if user is active
+    if (user.status !== 'active') {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent('Your account is not active. Please contact administrator.')}`);
+    }
+
+    // Update last login
+    user.lastLogin = Date.now();
+    await user.save();
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      department: user.department,
+      status: user.status,
+      lastLogin: user.lastLogin
+    }))}`);
+  })(req, res);
+};
+
 module.exports = {
   register,
   login,
@@ -627,6 +744,8 @@ module.exports = {
   updateUser,
   changePassword,
   deleteUser,
-  searchUsersByLocation
+  searchUsersByLocation,
+  googleAuth,
+  googleCallback
 };
 

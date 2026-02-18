@@ -29,6 +29,7 @@ interface Partner {
   primaryLocation?: string;
   status: string;
   partner?: string;
+  registrationType?: string;
 }
 
 function SearchTravelers() {

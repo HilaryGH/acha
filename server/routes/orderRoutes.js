@@ -30,8 +30,27 @@ router.route('/')
 router.route('/request')
   .post(createDeliveryRequest);
 
+// Optional authentication - will filter by role if authenticated
 router.route('/requests/available')
-  .get(getAvailableRequests);
+  .get(async (req, res, next) => {
+    // Try to authenticate, but don't fail if not authenticated
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const User = require('../models/User');
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select('-password');
+        if (user && user.status === 'active') {
+          req.user = user;
+        }
+      } catch (err) {
+        // If authentication fails, continue without user
+      }
+    }
+    next();
+  }, getAvailableRequests);
 
 router.route('/offer')
   .post(submitPartnerOffer);
