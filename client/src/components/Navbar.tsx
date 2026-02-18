@@ -114,25 +114,25 @@ function Navbar() {
               <div className={`flex items-center gap-3 lg:gap-4 xl:gap-5 absolute left-[45%] lg:left-[47%] xl:left-[48%] transform -translate-x-1/2`}>
                 <Link 
                   to="/" 
-                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-green-500 after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
+                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#14b8a6] after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
                 >
                   Home
                 </Link>
                 <Link 
                   to="/post-trip" 
-                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-green-500 after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
+                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#14b8a6] after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
                 >
                   Post Trip
                 </Link>
                 <Link 
                   to="/post-order" 
-                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-green-500 after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
+                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#14b8a6] after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
                 >
                   Post Order
                 </Link>
                 <Link 
                   to="/delivery-requests/list" 
-                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-green-500 after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
+                  className="text-gray-700 font-medium text-xs lg:text-sm xl:text-base relative py-2 transition-colors duration-300 hover:text-gray-900 after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[#14b8a6] after:transition-all after:duration-300 hover:after:w-full whitespace-nowrap"
                 >
                   Find Delivery
                 </Link>
@@ -154,7 +154,14 @@ function Navbar() {
                   <div className="relative group">
                     <Link
                       to="/dashboard"
-                      className="bg-green-600 hover:bg-green-700 text-white px-6 md:px-8 py-2.5 md:py-3 rounded-tr-xl rounded-bl-xl font-semibold text-sm transition-all duration-300 shadow-md hover:shadow-lg active:translate-y-0 whitespace-nowrap flex items-center gap-2"
+                      className="text-white px-6 md:px-8 py-2.5 md:py-3 rounded-tr-xl rounded-bl-xl font-semibold text-sm transition-all duration-300 shadow-md hover:shadow-lg active:translate-y-0 whitespace-nowrap flex items-center gap-2"
+                      style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                      }}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -178,7 +185,14 @@ function Navbar() {
                   </div>
                 ) : (
                   <button 
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 md:px-8 py-2.5 md:py-3 rounded-tr-xl rounded-bl-xl font-semibold text-sm transition-all duration-300 shadow-md hover:shadow-lg active:translate-y-0 whitespace-nowrap flex items-center gap-2"
+                    className="text-white px-6 md:px-8 py-2.5 md:py-3 rounded-tr-xl rounded-bl-xl font-semibold text-sm transition-all duration-300 shadow-md hover:shadow-lg active:translate-y-0 whitespace-nowrap flex items-center gap-2"
+                    style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                    }}
                     onClick={() => setIsSignInModalOpen(true)}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,7 +308,14 @@ function Navbar() {
                 <button
                   type="button"
                   onClick={handleLocationFinder}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2.5 rounded-tr-xl rounded-bl-xl transition-colors duration-300 flex-shrink-0"
+                  className="text-white px-3 py-2.5 rounded-tr-xl rounded-bl-xl transition-all duration-300 flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                  }}
                   aria-label="Find location"
                   title="Find my location"
                 >
@@ -371,7 +392,7 @@ function Navbar() {
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
@@ -384,7 +405,7 @@ function Navbar() {
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
@@ -397,7 +418,7 @@ function Navbar() {
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
@@ -410,7 +431,7 @@ function Navbar() {
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -423,7 +444,7 @@ function Navbar() {
                 className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -438,7 +459,7 @@ function Navbar() {
                     className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
@@ -468,7 +489,7 @@ function Navbar() {
                   }}
                   className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
@@ -621,7 +642,14 @@ function Navbar() {
             </div>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-tr-xl rounded-bl-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-md hover:shadow-lg whitespace-nowrap"
+              className="px-6 py-2.5 text-white font-semibold rounded-tr-xl rounded-bl-xl transition-all duration-300 shadow-md hover:shadow-lg whitespace-nowrap"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+              }}
             >
               Search
             </button>

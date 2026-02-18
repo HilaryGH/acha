@@ -131,7 +131,7 @@ function AchaPayForm() {
               max="2600"
               step="0.01"
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
               placeholder="Enter amount (USD 25 - USD 2600)"
             />
             <p className="text-xs text-gray-500 mt-1">Limit: USD 25 to USD 2600</p>
@@ -174,7 +174,7 @@ function AchaPayForm() {
               min="0"
               step="0.01"
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
               placeholder="Enter conversion rate (1 USD = X Birr)"
             />
             <p className="text-xs text-gray-500 mt-1">1 USD = X Birr</p>
@@ -204,7 +204,7 @@ function AchaPayForm() {
               value={formData.bankAccountHolderName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
               placeholder="Enter bank account holder name"
             />
           </div>
@@ -220,7 +220,7 @@ function AchaPayForm() {
               value={formData.bankAccountNumber}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
               placeholder="Enter bank account number"
             />
           </div>
@@ -236,7 +236,7 @@ function AchaPayForm() {
               value={formData.bankName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
               placeholder="Enter bank name"
             />
           </div>

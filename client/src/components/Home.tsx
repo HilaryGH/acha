@@ -38,7 +38,14 @@ function Home() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold text-lg rounded-tr-2xl rounded-bl-2xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 text-white font-bold text-lg rounded-tr-2xl rounded-bl-2xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                  }}
                 >
                   <span>Get Started</span>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +157,14 @@ function Home() {
               </p>
               <Link
                 to="/register"
-                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
+                className="inline-block text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-all duration-300 shadow-sm hover:shadow-md w-fit"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                 Get Started
               </Link>
@@ -180,7 +194,14 @@ function Home() {
               </p>
               <Link
                 to="/register"
-                className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-colors duration-300 shadow-sm w-fit"
+                className="inline-block text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-all duration-300 shadow-sm hover:shadow-md w-fit"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                 Join Now
               </Link>
@@ -285,7 +306,7 @@ function Home() {
               {/* Content - Left side on mobile, bottom on desktop */}
               <div className="w-1/2 md:w-full md:absolute md:bottom-0 flex flex-col justify-center md:justify-end px-3 py-3 md:px-4 md:py-5 z-10 bg-white md:bg-transparent md:bg-gradient-to-b md:from-transparent md:via-black/10 md:to-black/30 relative" style={{ borderRadius: '0 0 0 2rem' }}>
                 <h3 className="text-xs md:text-base font-bold text-green-600 md:text-white md:drop-shadow-lg mb-1 md:mb-1.5 relative z-10">
-                  Wanaw Gifting
+                  Acha Gifting
                 </h3>
                 <p className="text-[10px] md:text-xs text-gray-700 md:text-white md:drop-shadow-md leading-tight md:leading-relaxed relative z-10">
                   Gift Products, Gift Packages, Gift Bundles - Beautifully curated gifts for every occasion
@@ -482,7 +503,14 @@ function Home() {
               </p>
               <Link 
                 to="/partner-with-us"
-                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold text-base transition-colors duration-300 shadow-md"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                   Join In
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -501,7 +529,14 @@ function Home() {
               </p>
               <Link 
                 to="/women-initiatives"
-                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold text-base transition-colors duration-300 shadow-md"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                   Join In
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -520,7 +555,14 @@ function Home() {
               </p>
               <Link 
                 to="/premium"
-                className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-bold text-base transition-colors duration-300 shadow-md"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                   Join In
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

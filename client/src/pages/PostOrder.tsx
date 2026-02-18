@@ -34,7 +34,19 @@ function PostOrder() {
     // Attachments
     photos: [] as string[],
     video: '',
-    link: ''
+    link: '',
+    // Gift Delivery Partner specific fields
+    recipientName: '',
+    recipientPhone: '',
+    recipientAddress: '',
+    giftType: '',
+    giftMessage: '',
+    // Movers & Packers specific fields
+    pickupAddress: '',
+    numberOfItems: '',
+    deliveryMechanism: '',
+    specialHandling: '',
+    estimatedValue: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -104,7 +116,6 @@ function PostOrder() {
 
       // Step 2: Create order
       const orderInfo: any = {
-        productName: formData.productName,
         productDescription: formData.productDescription || undefined,
         brand: formData.brand || undefined,
         quantityType: formData.quantityType || undefined,
@@ -117,6 +128,29 @@ function PostOrder() {
         video: formData.video || undefined,
         link: formData.link || undefined
       };
+
+      // Only include productName if not movers_packers or gift_delivery_partner
+      if (formData.deliveryMethod !== 'movers_packers' && formData.deliveryMethod !== 'gift_delivery_partner') {
+        orderInfo.productName = formData.productName;
+      }
+
+      // Add gift-specific fields if delivery method is gift_delivery_partner
+      if (formData.deliveryMethod === 'gift_delivery_partner') {
+        orderInfo.recipientName = formData.recipientName || undefined;
+        orderInfo.recipientPhone = formData.recipientPhone || undefined;
+        orderInfo.recipientAddress = formData.recipientAddress || undefined;
+        orderInfo.giftType = formData.giftType || undefined;
+        orderInfo.giftMessage = formData.giftMessage || undefined;
+      }
+
+      // Add movers & packers specific fields if delivery method is movers_packers
+      if (formData.deliveryMethod === 'movers_packers') {
+        orderInfo.pickupAddress = formData.pickupAddress || undefined;
+        orderInfo.numberOfItems = formData.numberOfItems || undefined;
+        orderInfo.deliveryMechanism = formData.deliveryMechanism || undefined;
+        orderInfo.specialHandling = formData.specialHandling || undefined;
+        orderInfo.estimatedValue = formData.estimatedValue || undefined;
+      }
 
       // Remove undefined values from orderInfo
       Object.keys(orderInfo).forEach(key => {
@@ -340,7 +374,7 @@ function PostOrder() {
                   required
                   value={formData.deliveryMethod}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white placeholder:text-gray-400"
                 >
                   <option value="traveler">Traveler</option>
                   <option value="delivery_partner">Delivery Partner</option>
@@ -368,7 +402,7 @@ function PostOrder() {
                     required
                     value={formData.name}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="John Doe"
                   />
                 </div>
@@ -382,7 +416,7 @@ function PostOrder() {
                     required
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="+1234567890"
                   />
                 </div>
@@ -396,7 +430,7 @@ function PostOrder() {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="john@example.com"
                   />
                 </div>
@@ -409,7 +443,7 @@ function PostOrder() {
                     name="whatsapp"
                     value={formData.whatsapp}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="+1234567890"
                   />
                 </div>
@@ -422,7 +456,7 @@ function PostOrder() {
                     name="telegram"
                     value={formData.telegram}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="@username"
                   />
                 </div>
@@ -436,7 +470,7 @@ function PostOrder() {
                     required
                     value={formData.currentCity}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="New York"
                   />
                 </div>
@@ -449,7 +483,7 @@ function PostOrder() {
                     name="location"
                     value={formData.location}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="Street address"
                   />
                 </div>
@@ -463,7 +497,7 @@ function PostOrder() {
                     required
                     value={formData.bankAccount}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="Account number"
                   />
                 </div>
@@ -495,7 +529,7 @@ function PostOrder() {
                     required
                     value={formData.deliveryDestination}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="e.g., Addis Ababa, New York, London"
                   />
                   <p className="mt-1 text-xs text-gray-500">Enter the city or location where you want this item to be delivered</p>
@@ -511,11 +545,179 @@ function PostOrder() {
                     value={formData.preferredDeliveryDate}
                     onChange={handleChange}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   />
                 </div>
               </div>
             </div>
+
+            {/* Gift Delivery Partner Specific Fields */}
+            {formData.deliveryMethod === 'gift_delivery_partner' && (
+              <div className="border-b border-gray-200 pb-6">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="text-2xl">🎁</span>
+                  Gift Recipient Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="recipientName"
+                      required
+                      value={formData.recipientName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Recipient's full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Phone <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="recipientPhone"
+                      required
+                      value={formData.recipientPhone}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="+1234567890"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Address <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="recipientAddress"
+                      required
+                      value={formData.recipientAddress}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Full delivery address for the recipient"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Gift Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="giftType"
+                      required
+                      value={formData.giftType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    >
+                      <option value="">-- Select Gift Type --</option>
+                      <option value="Gift Products">Gift Products</option>
+                      <option value="Gift Packages">Gift Packages</option>
+                      <option value="Gift Bundles">Gift Bundles</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Gift Message (Optional)
+                    </label>
+                    <textarea
+                      name="giftMessage"
+                      value={formData.giftMessage}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Personal message to include with the gift"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Movers & Packers Specific Fields */}
+            {formData.deliveryMethod === 'movers_packers' && (
+              <div className="border-b border-gray-200 pb-6">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="text-2xl">🚚</span>
+                  Moving & Packing Details
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pickup Address <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="pickupAddress"
+                      required
+                      value={formData.pickupAddress}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Full address where items will be picked up"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Number of Items/Boxes <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="numberOfItems"
+                      required
+                      value={formData.numberOfItems}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., 5 boxes, 10 items"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preferred Delivery Mechanism <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="deliveryMechanism"
+                      required
+                      value={formData.deliveryMechanism}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    >
+                      <option value="">-- Select Mechanism --</option>
+                      <option value="truck">Truck</option>
+                      <option value="van">Van</option>
+                      <option value="pickup-truck">Pickup Truck</option>
+                      <option value="motorcycle-rider">Motorcycle Rider</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estimated Value (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      name="estimatedValue"
+                      value={formData.estimatedValue}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Estimated value of items"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Special Handling Requirements (Optional)
+                    </label>
+                    <textarea
+                      name="specialHandling"
+                      value={formData.specialHandling}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Any special handling, fragile items, or specific instructions"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Order Information Section */}
             <div className="border-b border-gray-200 pb-6">
@@ -524,20 +726,22 @@ function PostOrder() {
                 Order Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="productName"
-                    required
-                    value={formData.productName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Smartphone, Laptop, etc."
-                  />
-                </div>
+                {formData.deliveryMethod !== 'movers_packers' && formData.deliveryMethod !== 'gift_delivery_partner' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="productName"
+                      required
+                      value={formData.productName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., Smartphone, Laptop, etc."
+                    />
+                  </div>
+                )}
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Description <span className="text-red-500">*</span>
@@ -548,7 +752,7 @@ function PostOrder() {
                     value={formData.productDescription}
                     onChange={handleChange}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="Describe your product in detail..."
                   />
                 </div>
@@ -561,7 +765,7 @@ function PostOrder() {
                     name="brand"
                     value={formData.brand}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="e.g., Apple, Samsung, etc."
                   />
                 </div>
@@ -574,7 +778,7 @@ function PostOrder() {
                     required
                     value={formData.quantityType}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   >
                     <option value="pieces">Pieces</option>
                     <option value="weight">Weight</option>
@@ -590,7 +794,7 @@ function PostOrder() {
                     value={formData.quantityDescription}
                     onChange={handleChange}
                     rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="e.g., 2 pieces, 5kg, etc."
                   />
                 </div>
@@ -603,7 +807,7 @@ function PostOrder() {
                     name="manufacturingDate"
                     value={formData.manufacturingDate}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   />
                 </div>
                 <div>
@@ -615,7 +819,7 @@ function PostOrder() {
                     name="countryOfOrigin"
                     value={formData.countryOfOrigin}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="e.g., USA, China, etc."
                   />
                 </div>
@@ -676,21 +880,6 @@ function PostOrder() {
                   value={formData.video}
                   onChange={(path) => setFormData(prev => ({ ...prev, video: path }))}
                 />
-
-                {/* Link */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Link (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    name="link"
-                    value={formData.link}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/product"
-                  />
-                </div>
               </div>
             </div>
 

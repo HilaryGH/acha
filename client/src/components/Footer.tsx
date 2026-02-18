@@ -158,7 +158,16 @@ function Footer() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full px-4 py-2 text-sm bg-[#1E88E5] hover:bg-[#1976D2] text-white font-medium rounded-tr-2xl rounded-bl-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 text-sm text-white font-medium rounded-tr-2xl rounded-bl-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
               >
                 {isSubmitting ? t('footer.subscription.subscribing') : t('footer.subscription.subscribe')}
               </button>

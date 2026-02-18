@@ -24,6 +24,13 @@ interface Order {
     productDescription?: string;
     preferredDeliveryDate?: string;
   };
+  pricing?: {
+    deliveryFee?: number;
+    serviceFee?: number;
+    platformFee?: number;
+    totalAmount?: number;
+    currency?: string;
+  };
   trackingUpdates: Array<{
     status: string;
     message?: string;
@@ -56,9 +63,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      if (activeTab === 'overview' || activeTab === 'orders') {
-        await loadOrders();
-        await loadStats();
+      if (activeTab === 'overview' || activeTab === 'orders' || activeTab === 'earnings') {
+        const loadedOrders = await loadOrders();
+        if (loadedOrders) {
+          await loadStats(loadedOrders);
+        }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -67,7 +76,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
     }
   };
 
-  const loadOrders = async () => {
+  const loadOrders = async (): Promise<Order[]> => {
     try {
       // Fetch orders assigned to this partner/user
       const response = await api.orders.getForPartner() as { status?: string; data?: Order[]; count?: number };
@@ -75,6 +84,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
         // Handle both array and object response structures
         const ordersData = Array.isArray(response.data) ? response.data : [];
         setOrders(ordersData);
+        return ordersData;
       } else {
         // Fallback: fetch all orders and filter
         const fallbackResponse = await api.orders.getAll() as { data?: Order[] | { orders?: Order[] } };
@@ -90,6 +100,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
         );
         setOrders(myOrders);
+        return myOrders;
       }
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -108,23 +119,26 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
         );
         setOrders(myOrders);
+        return myOrders;
       } catch (fallbackError) {
         console.error('Fallback error loading orders:', fallbackError);
         setOrders([]);
+        return [];
       }
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = async (ordersToUse?: Order[]) => {
     try {
+      const ordersData = ordersToUse || orders;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const activeDeliveries = orders.filter(o => 
+      const activeDeliveries = ordersData.filter(o => 
         ['assigned', 'picked_up', 'in_transit'].includes(o.status)
       ).length;
 
-      const completedToday = orders.filter(o => {
+      const completedToday = ordersData.filter(o => {
         if (o.status === 'completed' || o.status === 'delivered') {
           const completedDate = o.trackingUpdates?.find(t => 
             t.status === 'completed' || t.status === 'delivered'
@@ -136,8 +150,17 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
         return false;
       }).length;
 
-      // Calculate earnings (placeholder - would need actual earnings data)
-      const totalEarnings = orders.filter(o => o.status === 'completed').length * 500; // Example: 500 per delivery
+      // Calculate actual earnings from completed orders
+      // Partner earnings = deliveryFee from completed/delivered orders
+      const completedOrders = ordersData.filter(o => 
+        o.status === 'completed' || o.status === 'delivered'
+      );
+      
+      const totalEarnings = completedOrders.reduce((total, order) => {
+        // Use deliveryFee if available, otherwise default to 0
+        const deliveryFee = order.pricing?.deliveryFee || 0;
+        return total + deliveryFee;
+      }, 0);
 
       setStats({
         activeDeliveries,
@@ -152,8 +175,10 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const handleUpdateOrderStatus = async (orderId: string, status: string, message?: string, location?: string) => {
     try {
       await api.orders.updateStatus(orderId, status, message, location);
-      await loadOrders();
-      await loadStats();
+      const updatedOrders = await loadOrders();
+      if (updatedOrders) {
+        await loadStats(updatedOrders);
+      }
     } catch (error) {
       console.error('Error updating order status:', error);
       alert('Failed to update order status');
@@ -254,7 +279,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">₦{stats.totalEarnings.toLocaleString()}</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-2">ETB {stats.totalEarnings.toLocaleString()}</p>
                       </div>
                       <div className="p-3 bg-yellow-100 rounded-lg">
                         <span className="text-2xl">💰</span>
@@ -421,16 +446,87 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">₦{stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-2">ETB {stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        From {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length} completed delivery{orders.filter(o => o.status === 'completed' || o.status === 'delivered').length !== 1 ? 'ies' : ''}
+                      </p>
                     </div>
                     <div className="p-3 bg-green-100 rounded-lg">
                       <span className="text-2xl">💰</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-center py-8 text-gray-600">
-                  <p>Detailed earnings breakdown coming soon</p>
-                  <p className="text-sm mt-2">Payment history and withdrawal options will be available here</p>
+
+                {/* Earnings Breakdown */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-600">Completed Deliveries</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-2">
+                      {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length}
+                    </p>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-600">Average per Delivery</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-2">
+                      ETB {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length > 0
+                        ? Math.round(stats.totalEarnings / orders.filter(o => o.status === 'completed' || o.status === 'delivered').length).toLocaleString()
+                        : '0'}
+                    </p>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-2">
+                      {orders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Recent Earnings */}
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Loading earnings...</p>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="text-md font-semibold text-gray-900 mb-4">Recent Completed Deliveries</h4>
+                    {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No completed deliveries yet</p>
+                        <p className="text-sm mt-2">Your earnings will appear here once you complete deliveries</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {orders
+                          .filter(o => o.status === 'completed' || o.status === 'delivered')
+                          .slice(0, 10)
+                          .map((order) => (
+                            <div key={order._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {order.orderInfo?.productName || `Order #${order.uniqueId || order._id.slice(-8)}`}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(order.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-green-600">
+                                  ETB {(order.pricing?.deliveryFee || 0).toLocaleString()}
+                                </p>
+                                <p className="text-xs text-gray-500 capitalize">{order.status}</p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-900">
+                    💡 <strong>Note:</strong> Earnings are calculated from completed deliveries. Payment processing and withdrawal options will be available soon.
+                  </p>
                 </div>
               </div>
             </div>

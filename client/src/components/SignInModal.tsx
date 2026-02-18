@@ -60,8 +60,13 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
   };
 
   const handleGoogleSignIn = async () => {
-    // TODO: Implement Google sign in
-    console.log('Google sign in');
+    try {
+      // Redirect to Google OAuth endpoint
+      const googleAuthUrl = api.users.getGoogleAuthUrl();
+      window.location.href = googleAuthUrl;
+    } catch (error: any) {
+      setSignInError(error.message || 'Failed to initiate Google sign in');
+    }
   };
 
   const handleFacebookSignIn = async () => {
@@ -203,7 +208,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                 required
                 value={signInData.email}
                 onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter your email"
               />
             </div>
@@ -216,7 +221,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                 required
                 value={signInData.password}
                 onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter your password"
               />
             </div>

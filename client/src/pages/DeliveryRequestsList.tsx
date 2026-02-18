@@ -43,17 +43,25 @@ function DeliveryRequestsList() {
     try {
       setLoading(true);
       const response = await api.orders.getAvailableRequests() as any;
+      console.log('Delivery requests response:', response);
+      
       if (response.status === 'success') {
         let filteredRequests = response.data || [];
         
+        // Filter by status if not 'all'
         if (filterStatus !== 'all') {
           filteredRequests = filteredRequests.filter((r: DeliveryRequest) => r.status === filterStatus);
         }
         
         setRequests(filteredRequests);
+        console.log(`Loaded ${filteredRequests.length} requests (filter: ${filterStatus})`);
+      } else {
+        console.error('Failed to load requests:', response.message);
+        setRequests([]);
       }
     } catch (error) {
       console.error('Error loading requests:', error);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

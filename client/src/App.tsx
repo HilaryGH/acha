@@ -26,6 +26,7 @@ import DeliveryRequestsList from './pages/DeliveryRequestsList'
 import PartnerViewRequests from './pages/PartnerViewRequests'
 import ClientViewOffers from './pages/ClientViewOffers'
 import ViewDeliveryRequest from './pages/ViewDeliveryRequest'
+import GoogleAuthCallback from './pages/GoogleAuthCallback'
 
 function AppContent() {
   const location = useLocation();
@@ -59,6 +60,7 @@ function AppContent() {
         <Route path="/delivery-requests/:orderId" element={<ViewDeliveryRequest />} />
         <Route path="/delivery-requests/:orderId/offers" element={<ClientViewOffers />} />
         <Route path="/partner/requests" element={<PartnerViewRequests />} />
+        <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
       </Routes>
       {!isLandingPage && <Footer />}
     </div>

@@ -44,9 +44,10 @@ function CommunicationWidget() {
         {/* Main Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-green-600 via-green-500 to-green-700 text-white shadow-2xl hover:shadow-green-500/50 transition-all duration-300 flex items-center justify-center group ${
+          className={`w-16 h-16 md:w-20 md:h-20 rounded-full text-white shadow-2xl hover:shadow-cyan-500/50 transition-all duration-300 flex items-center justify-center group ${
             isOpen ? 'rotate-45 scale-110' : 'hover:scale-110'
           }`}
+          style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
           aria-label="Swift Communication - Contact us"
           title="Swift Communication"
         >
@@ -67,10 +68,19 @@ function CommunicationWidget() {
           {/* Phone Option */}
           <button
             onClick={handlePhoneClick}
-            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl hover:bg-green-50 transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            style={{ 
+              background: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
             aria-label="Call us"
           >
-            <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center group-hover:bg-green-700 transition-colors flex-shrink-0">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-colors flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
@@ -84,7 +94,16 @@ function CommunicationWidget() {
           {/* WhatsApp Option */}
           <button
             onClick={handleWhatsAppClick}
-            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl hover:bg-green-50 transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            style={{ 
+              background: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
             aria-label="Chat on WhatsApp"
           >
             <div className="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center group-hover:bg-[#20BA5A] transition-colors flex-shrink-0">
@@ -101,10 +120,19 @@ function CommunicationWidget() {
           {/* Email Option */}
           <button
             onClick={handleEmailClick}
-            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl hover:bg-green-50 transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            style={{ 
+              background: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
             aria-label="Send us an email"
           >
-            <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center group-hover:bg-green-700 transition-colors flex-shrink-0">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-colors flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
@@ -118,10 +146,19 @@ function CommunicationWidget() {
           {/* App Chat Option */}
           <button
             onClick={handleAppChatClick}
-            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl hover:bg-green-50 transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            className="flex items-center gap-3 bg-white text-gray-900 px-5 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 w-full min-w-[220px] group"
+            style={{ 
+              background: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
             aria-label="Open app chat"
           >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center group-hover:from-green-700 group-hover:to-green-800 transition-colors flex-shrink-0">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-colors flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>

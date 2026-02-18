@@ -609,31 +609,74 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
             <div className="space-y-6">
               {/* Transaction Statistics */}
               {transactionStats && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {transactionStats.summary?.totalRevenue?.toFixed(2) || '0.00'} ETB
-                    </p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
+                      <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-2">
+                        ETB {(transactionStats.summary?.totalRevenue || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">From completed transactions</p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+                      <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-2">
+                        {transactionStats.summary?.totalTransactions || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">All statuses</p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4" style={{ borderLeftColor: '#43A047' }}>
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-2">
+                        {transactionStats.summary?.completedCount || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {transactionStats.summary?.totalTransactions > 0 
+                          ? `${Math.round(((transactionStats.summary?.completedCount || 0) / transactionStats.summary?.totalTransactions) * 100)}% completion rate`
+                          : 'No transactions'}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-yellow-500">
+                      <p className="text-sm font-medium text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-2">
+                        {transactionStats.summary?.pendingCount || 0}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Awaiting payment</p>
+                    </div>
                   </div>
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-                    <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {transactionStats.summary?.totalTransactions || 0}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4" style={{ borderLeftColor: '#43A047' }}>
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {transactionStats.summary?.completedCount || 0}
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-yellow-500">
-                    <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {transactionStats.summary?.pendingCount || 0}
-                    </p>
-                  </div>
+                  
+                  {/* Additional Stats for Completed Transactions */}
+                  {transactionStats.summary?.completedCount > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm p-6 border border-green-200">
+                        <p className="text-sm font-medium text-gray-600">Net Revenue</p>
+                        <p className="text-2xl font-bold text-green-700 mt-2">
+                          ETB {((transactionStats.summary?.totalRevenue || 0) - (transactionStats.summary?.totalFees || 0))
+                            .toFixed(2)
+                            .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">After fees deduction</p>
+                      </div>
+                      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg shadow-sm p-6 border border-blue-200">
+                        <p className="text-sm font-medium text-gray-600">Total Fees Collected</p>
+                        <p className="text-2xl font-bold text-blue-700 mt-2">
+                          ETB {(transactionStats.summary?.totalFees || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">Platform + Service fees</p>
+                      </div>
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg shadow-sm p-6 border border-purple-200">
+                        <p className="text-sm font-medium text-gray-600">Average Transaction</p>
+                        <p className="text-2xl font-bold text-purple-700 mt-2">
+                          ETB {transactionStats.summary?.completedCount > 0
+                            ? ((transactionStats.summary?.totalRevenue || 0) / transactionStats.summary?.completedCount)
+                                .toFixed(2)
+                                .replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                            : '0.00'}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">Per completed transaction</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -641,13 +684,28 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Filter Transactions</h3>
-                  <button
-                    onClick={loadTransactions}
-                    className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
-                    style={{ backgroundColor: '#1E88E5' }}
-                  >
-                    Refresh
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setTransactionFilters(prev => ({ ...prev, status: transactionFilters.status === 'completed' ? '' : 'completed' }));
+                        setTimeout(() => loadTransactions(), 100);
+                      }}
+                      className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                        transactionFilters.status === 'completed'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                    >
+                      {transactionFilters.status === 'completed' ? '✓ Completed Only' : 'Show Completed'}
+                    </button>
+                    <button
+                      onClick={loadTransactions}
+                      className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
+                      style={{ backgroundColor: '#1E88E5' }}
+                    >
+                      Refresh
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
@@ -714,6 +772,67 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                 </div>
               </div>
 
+              {/* Completed Transactions Summary */}
+              {transactions.filter(t => t.status === 'completed').length > 0 && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm p-6 border border-green-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      ✅ Completed Transactions Summary
+                    </h3>
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                      {transactions.filter(t => t.status === 'completed').length} Completed
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <p className="text-xs font-medium text-gray-600">Total Revenue</p>
+                      <p className="text-xl font-bold text-gray-900 mt-1">
+                        ETB {transactions
+                          .filter(t => t.status === 'completed')
+                          .reduce((sum, t) => sum + (t.amount || 0), 0)
+                          .toFixed(2)
+                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <p className="text-xs font-medium text-gray-600">Platform Fees</p>
+                      <p className="text-xl font-bold text-gray-900 mt-1">
+                        ETB {transactions
+                          .filter(t => t.status === 'completed')
+                          .reduce((sum, t) => sum + (t.fees?.platformFee || 0), 0)
+                          .toFixed(2)
+                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <p className="text-xs font-medium text-gray-600">Service Fees</p>
+                      <p className="text-xl font-bold text-gray-900 mt-1">
+                        ETB {transactions
+                          .filter(t => t.status === 'completed')
+                          .reduce((sum, t) => sum + (t.fees?.serviceFee || 0), 0)
+                          .toFixed(2)
+                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <p className="text-xs font-medium text-gray-600">Net Revenue</p>
+                      <p className="text-xl font-bold text-green-600 mt-1">
+                        ETB {transactions
+                          .filter(t => t.status === 'completed')
+                          .reduce((sum, t) => {
+                            const amount = t.amount || 0;
+                            const platformFee = t.fees?.platformFee || 0;
+                            const serviceFee = t.fees?.serviceFee || 0;
+                            return sum + (amount - platformFee - serviceFee);
+                          }, 0)
+                          .toFixed(2)
+                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Transactions Table */}
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -746,14 +865,27 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                          {transactions.some(t => t.status === 'completed' && t.fees) && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fees Breakdown</th>
+                          )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice/Receipt</th>
+                          )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {transactions.map((transaction) => (
-                          <tr key={transaction._id}>
+                        {transactions
+                          .sort((a, b) => {
+                            // Sort completed transactions first, then by date
+                            if (a.status === 'completed' && b.status !== 'completed') return -1;
+                            if (a.status !== 'completed' && b.status === 'completed') return 1;
+                            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                          })
+                          .map((transaction) => (
+                          <tr key={transaction._id} className={transaction.status === 'completed' ? 'bg-green-50/30' : ''}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {transaction.uniqueId || transaction._id.slice(-8)}
                             </td>
@@ -766,6 +898,19 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                               {transaction.amount?.toFixed(2) || '0.00'} {transaction.currency || 'ETB'}
                             </td>
+                            {transactions.some(t => t.status === 'completed' && t.fees) && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {transaction.status === 'completed' && transaction.fees ? (
+                                  <div className="text-xs">
+                                    <div>Platform: ETB {(transaction.fees.platformFee || 0).toFixed(2)}</div>
+                                    <div>Service: ETB {(transaction.fees.serviceFee || 0).toFixed(2)}</div>
+                                    <div>Delivery: ETB {(transaction.fees.deliveryFee || 0).toFixed(2)}</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                               {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
                             </td>
@@ -780,8 +925,32 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                 {transaction.status || 'N/A'}
                               </span>
                             </td>
+                            {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {transaction.status === 'completed' ? (
+                                  <div className="text-xs">
+                                    {transaction.invoiceNumber && (
+                                      <div className="text-blue-600 font-medium">INV: {transaction.invoiceNumber}</div>
+                                    )}
+                                    {transaction.receiptNumber && (
+                                      <div className="text-green-600 font-medium">RCP: {transaction.receiptNumber}</div>
+                                    )}
+                                    {!transaction.invoiceNumber && !transaction.receiptNumber && (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            )}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(transaction.createdAt).toLocaleDateString()}
+                              <div>{new Date(transaction.createdAt).toLocaleDateString()}</div>
+                              {transaction.status === 'completed' && transaction.paidAt && (
+                                <div className="text-xs text-green-600">
+                                  Paid: {new Date(transaction.paidAt).toLocaleDateString()}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}

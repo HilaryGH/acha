@@ -108,6 +108,10 @@ export const api = {
     getMe: async () => {
       return request('/users/me');
     },
+    getGoogleAuthUrl: () => {
+      // Return the Google OAuth URL
+      return `${API_BASE_URL}/users/auth/google`;
+    },
     getAll: async () => {
       return request('/users');
     },

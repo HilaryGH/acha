@@ -61,11 +61,18 @@ function DeliveryRequestsMap() {
     try {
       setLoading(true);
       const response = await api.orders.getAvailableRequests() as any;
+      console.log('Delivery requests response:', response);
+      
       if (response.status === 'success') {
         setRequests(response.data || []);
+        console.log(`Loaded ${response.data?.length || 0} requests`);
+      } else {
+        console.error('Failed to load requests:', response.message);
+        setRequests([]);
       }
     } catch (error) {
       console.error('Error loading requests:', error);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

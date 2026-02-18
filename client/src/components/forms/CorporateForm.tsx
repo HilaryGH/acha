@@ -230,7 +230,7 @@ function CorporateForm() {
               required
               value={formData.membershipLevel}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             >
               <option value="Standard Member">Standard Member</option>
               <option value="Premium Member">Premium Member</option>
@@ -249,7 +249,7 @@ function CorporateForm() {
               required
               value={formData.companyName}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
               placeholder="Enter company name"
             />
           </div>
@@ -264,7 +264,7 @@ function CorporateForm() {
               required
               value={formData.serviceType}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             >
               <option value="">Select service type</option>
               <option value="delivery">Delivery</option>
@@ -285,7 +285,7 @@ function CorporateForm() {
               required
               value={formData.businessStatus}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             >
               <option value="">Select business status</option>
               <option value="women-led">Women Led</option>
@@ -303,7 +303,7 @@ function CorporateForm() {
               required
               value={formData.ownership}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             >
               <option value="">Select ownership</option>
               <option value="women-owned">Women Owned</option>
@@ -325,7 +325,7 @@ function CorporateForm() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="example@email.com"
                 />
               </div>
@@ -339,7 +339,7 @@ function CorporateForm() {
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="+251911508734"
                 />
               </div>
@@ -352,7 +352,7 @@ function CorporateForm() {
                   name="whatsapp"
                   value={formData.whatsapp}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="+251911508734"
                 />
               </div>
@@ -365,7 +365,7 @@ function CorporateForm() {
                   name="telegram"
                   value={formData.telegram}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="@username"
                 />
               </div>
@@ -379,7 +379,7 @@ function CorporateForm() {
                   required
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="Addis Ababa"
                 />
               </div>
@@ -400,7 +400,7 @@ function CorporateForm() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="Enter your password"
                   minLength={6}
                 />
@@ -415,7 +415,7 @@ function CorporateForm() {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="Confirm your password"
                   minLength={6}
                 />
@@ -506,7 +506,7 @@ function CorporateForm() {
                   name="insuranceProfileLink"
                   value={formData.insuranceProfileLink}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="https://example.com/file.pdf"
                 />
               </div>
@@ -527,7 +527,7 @@ function CorporateForm() {
                   required
                   value={formData.tin}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="Enter TIN"
                 />
               </div>
@@ -541,7 +541,7 @@ function CorporateForm() {
                   required
                   value={formData.location}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   placeholder="Street address or area"
                 />
               </div>
@@ -594,7 +594,7 @@ function CorporateForm() {
                         type="text"
                         value={branch.city}
                         onChange={(e) => updateBranch(index, 'city', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                         placeholder="City"
                       />
                     </div>
@@ -606,7 +606,7 @@ function CorporateForm() {
                         type="text"
                         value={branch.location}
                         onChange={(e) => updateBranch(index, 'location', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                         placeholder="Location"
                       />
                     </div>
@@ -649,7 +649,7 @@ function CorporateForm() {
                       <select
                         value={account.bank}
                         onChange={(e) => updateBankAccount(index, 'bank', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                       >
                         <option value="">Select bank</option>
                         <option value="cbe">Commercial Bank of Ethiopia</option>
@@ -668,7 +668,7 @@ function CorporateForm() {
                         type="text"
                         value={account.accountNumber}
                         onChange={(e) => updateBankAccount(index, 'accountNumber', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                         placeholder="Account number"
                       />
                     </div>

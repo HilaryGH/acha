@@ -166,7 +166,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -176,7 +176,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   value={formData.partnerType}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 >
                   <option value="">-- Select Partner Type --</option>
                   <option value="Flower Seller">Flower Seller</option>
@@ -230,7 +230,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                         value={giftType.type}
                         onChange={(e) => updateGiftType(index, 'type', e.target.value)}
                         required
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                       >
                         <option value="">-- Select Type --</option>
                         <option value="Gift Products">Gift Products</option>
@@ -248,7 +248,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                         min="0"
                         step="0.01"
                         placeholder="0.00"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                       />
                     </div>
                   </div>
@@ -260,7 +260,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                       onChange={(e) => updateGiftType(index, 'description', e.target.value)}
                       required
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                       placeholder="Describe this gift type..."
                     />
                   </div>
@@ -290,7 +290,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -300,7 +300,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   name="whatsapp"
                   value={formData.whatsapp}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -310,7 +310,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   name="telegram"
                   value={formData.telegram}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -321,7 +321,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -339,7 +339,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   required
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -350,7 +350,7 @@ function GiftDeliveryPartnerForm({ onSuccess, isModal = false }: GiftDeliveryPar
                   required
                   value={formData.primaryLocation}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 />
               </div>
             </div>

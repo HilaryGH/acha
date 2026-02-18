@@ -113,7 +113,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
           <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value as any)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             required
           >
             <option value="bank_transfer">Bank Transfer</option>
@@ -135,7 +135,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
                 type="text"
                 value={paymentDetails.bankAccount}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, bankAccount: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter bank account number"
               />
             </div>
@@ -147,7 +147,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
                 type="text"
                 value={paymentDetails.transactionReference}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter transaction reference number"
               />
             </div>
@@ -172,7 +172,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
                 type="text"
                 value={paymentDetails.mobileMoneyNumber}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, mobileMoneyNumber: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter mobile money number"
               />
             </div>
@@ -184,7 +184,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
                 type="text"
                 value={paymentDetails.transactionReference}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter transaction reference number"
               />
             </div>
@@ -207,7 +207,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
             <textarea
               value={paymentDetails.notes}
               onChange={(e) => setPaymentDetails(prev => ({ ...prev, notes: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
               rows={3}
               placeholder="Any additional notes about cash payment..."
             />
@@ -224,7 +224,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
                 type="text"
                 value={paymentDetails.transactionReference}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                 placeholder="Enter card transaction reference"
               />
             </div>
@@ -256,7 +256,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
             <textarea
               value={paymentDetails.notes}
               onChange={(e) => setPaymentDetails(prev => ({ ...prev, notes: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
               rows={3}
               placeholder="Any additional information..."
             />

@@ -66,11 +66,11 @@ function SearchTravelers() {
     setError(null);
 
     try {
-      // Search both travelers and delivery partners in parallel
-      const [travelersResponse, deliveryPartnersRes, giftPartnersRes] = await Promise.all([
-        // Search travelers
+      // Search all travelers and delivery partners in parallel (all registered, not just active)
+      const [travelersResponse, deliveryPartnersRes, giftPartnersRes, achaSistersRes, moversPackersRes] = await Promise.all([
+        // Search travelers (all statuses - remove status filter)
         (async () => {
-          const params: any = { status: 'active' };
+          const params: any = {}; // Removed status: 'active' to show all registered travelers
           if (searchType === 'destination') {
             params.destinationCity = searchQuery;
           } else if (searchType === 'location') {
@@ -90,17 +90,63 @@ function SearchTravelers() {
         api.partners.getAll({ 
           registrationType: 'Gift Delivery Partner',
           search: searchQuery 
-        }) as Promise<{ status?: string; data?: Partner[]; count?: number }>
+        }) as Promise<{ status?: string; data?: Partner[]; count?: number }>,
+        // Search Acha Sisters Delivery Partners from User model (all statuses)
+        api.users.searchByLocation({
+          city: searchQuery,
+          role: 'acha_sisters_delivery_partner',
+          status: 'all' // Get all registered users regardless of status
+        }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>,
+        // Search Movers & Packers from User model (all statuses)
+        api.users.searchByLocation({
+          city: searchQuery,
+          role: 'movers_packers',
+          status: 'all' // Get all registered users regardless of status
+        }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>
       ]);
 
-      // Combine delivery partners and gift delivery partners
+      // Extract users from User model responses and format them as partners
+      const achaSistersUsers = achaSistersRes.data?.users || achaSistersRes.data || [];
+      const moversPackersUsers = moversPackersRes.data?.users || moversPackersRes.data || [];
+      
+      // Format User model results to match Partner interface
+      const formattedAchaSisters = Array.isArray(achaSistersUsers) ? achaSistersUsers.map((user: any) => ({
+        _id: user._id,
+        uniqueId: user.userId || user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        city: user.city,
+        primaryLocation: user.primaryLocation || user.location,
+        status: user.status || 'active',
+        partner: 'Acha Sisters Delivery Partner'
+      })) : [];
+      
+      const formattedMoversPackers = Array.isArray(moversPackersUsers) ? moversPackersUsers.map((user: any) => ({
+        _id: user._id,
+        uniqueId: user.userId || user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        city: user.city,
+        primaryLocation: user.primaryLocation || user.location,
+        status: user.status || 'active',
+        partner: 'Movers & Packers'
+      })) : [];
+
+      // Combine all delivery partners (from Partner model and User model)
       const partnersResponse = {
         status: 'success',
         data: [
           ...(deliveryPartnersRes.data || []),
-          ...(giftPartnersRes.data || [])
+          ...(giftPartnersRes.data || []),
+          ...formattedAchaSisters,
+          ...formattedMoversPackers
         ],
-        count: (deliveryPartnersRes.data?.length || 0) + (giftPartnersRes.data?.length || 0)
+        count: (deliveryPartnersRes.data?.length || 0) + 
+               (giftPartnersRes.data?.length || 0) + 
+               formattedAchaSisters.length + 
+               formattedMoversPackers.length
       };
 
       // Handle travelers response
@@ -345,7 +391,12 @@ function SearchTravelers() {
                           {partner.companyName && partner.name && (
                             <p className="text-sm text-gray-600 mt-1">{partner.companyName}</p>
                           )}
-                          <p className="text-sm text-gray-600 mt-1">🚚 Delivery Partner</p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {partner.partner === 'Acha Sisters Delivery Partner' ? '👭 Acha Sisters Delivery Partner' :
+                             partner.partner === 'Movers & Packers' ? '🚚 Movers & Packers' :
+                             partner.registrationType === 'Gift Delivery Partner' ? '🎁 Gift Delivery Partner' :
+                             '🚚 Delivery Partner'}
+                          </p>
                         </div>
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           {partner.status}
