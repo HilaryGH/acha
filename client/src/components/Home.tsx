@@ -140,71 +140,73 @@ function Home() {
                   </div>
       </section>
 
-      {/* Second Section - Combined: Acha Delivery (Left), Image (Center), Global Network (Right) */}
-      <section className="relative py-0.5 md:py-1 bg-gray-100 mb-2 md:mb-3">
-        <div className="w-full mx-auto px-3 sm:px-4 lg:px-6 xl:px-12 py-3 md:py-4 rounded-2xl md:rounded-2xl bg-white shadow-lg overflow-hidden">
-          <div className="flex flex-col lg:flex-row items-start gap-4 md:gap-3">
-            {/* Acha Delivery Content - First on mobile, Left on desktop */}
-            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                Acha Delivery
-              </h2>
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                አቻ ደሊቨሪ
-              </h3>
-              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
-                Your trusted delivery partner
-              </p>
-              <Link
-                to="/register"
-                className="inline-block text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-all duration-300 shadow-sm hover:shadow-md w-fit"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
-                }}
-              >
-                Get Started
-              </Link>
-            </div>
-
-            {/* Image - Second on mobile (below content), Center on desktop */}
-            <div className="w-full lg:w-1/3 flex items-center justify-center">
-              <div className="relative w-full max-w-[200px] sm:max-w-[250px] md:max-w-[300px] lg:max-w-[250px]">
-                <img
-                  src="/Delivery.svg"
-                  alt="Delivery"
-                  className="w-full h-full object-contain object-top"
-                />
+      {/* Delivery Section - Professional & Attractive */}
+      <section className="relative py-12 md:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 mb-2 md:mb-3 overflow-hidden">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-white to-blue-50"></div>
+        
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-green-200 rounded-full opacity-10 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200 rounded-full opacity-10 blur-3xl"></div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+            <div className="flex flex-col lg:flex-row items-center min-h-[300px] md:min-h-[400px] lg:min-h-[450px]">
+              {/* Left Side - Content */}
+              <div className="w-full lg:w-1/2 flex flex-col justify-center items-center lg:items-start px-8 md:px-12 lg:px-16 py-12 md:py-16 bg-gradient-to-br from-green-50 via-white to-green-50/30">
+                <div className="text-center lg:text-left max-w-lg">
+                  {/* Icon Badge */}
+                  <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg mb-6 transform hover:scale-110 transition-transform duration-300">
+                    <svg className="w-8 h-8 md:w-10 md:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  
+                  {/* Main Heading */}
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4 leading-tight">
+                    Delivery
+                  </h2>
+                  
+                  {/* Subtitle */}
+                  <p className="text-lg md:text-xl lg:text-2xl text-gray-700 font-medium mb-6 leading-relaxed">
+                    Fast, Reliable, and Secure Delivery Services
+                  </p>
+                  
+                  {/* Description */}
+                  <p className="text-base md:text-lg text-gray-600 mb-8 leading-relaxed">
+                    Experience seamless delivery solutions tailored to your needs. Our professional network ensures your packages reach their destination safely and on time.
+                  </p>
+                  
+                  {/* CTA Button */}
+                  <Link
+                    to="/delivery-requests/list"
+                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 via-green-500 to-green-600 text-white font-bold text-base md:text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                  >
+                    <span>Explore Delivery</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </Link>
+                </div>
               </div>
-            </div>
-
-            {/* Global Network Content - Third on mobile, Right on desktop */}
-            <div className="w-full lg:w-1/3 flex flex-col justify-start items-center text-center">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                Global Network
-              </h2>
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-0.5 md:mb-1 text-green-600 leading-tight">
-                Reach anywhere, anytime
-              </h3>
-              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-1.5 text-green-700 leading-snug">
-                Connect with delivery partners across the globe
-              </p>
-              <Link
-                to="/register"
-                className="inline-block text-white px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm transition-all duration-300 shadow-sm hover:shadow-md w-fit"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
-                }}
-              >
-                Join Now
-              </Link>
+              
+              {/* Right Side - Image */}
+              <div className="w-full lg:w-1/2 flex items-center justify-center px-8 md:px-12 lg:px-16 py-12 md:py-16 bg-gradient-to-br from-white via-blue-50/30 to-white relative">
+                <div className="relative w-full max-w-sm md:max-w-md lg:max-w-lg">
+                  {/* Floating Animation Container */}
+                  <div className="relative animate-float">
+                    <img
+                      src="/Delivery.svg"
+                      alt="Delivery Services"
+                      className="w-full h-full object-contain drop-shadow-2xl"
+                    />
+                  </div>
+                  
+                  {/* Decorative Circles */}
+                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-green-200 rounded-full opacity-20 blur-2xl animate-pulse"></div>
+                  <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-blue-200 rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -350,9 +352,9 @@ function Home() {
 
           {/* Service Cards Scrolling - Desktop */}
           <div className="hidden lg:block overflow-hidden">
-            <div className="flex animate-scroll-right">
+            <div className="flex gap-8 animate-scroll-right">
               {/* First set of cards */}
-              <div className="flex gap-4 flex-shrink-0">
+              <div className="flex gap-8 flex-shrink-0">
                 {/* Delivery Partners */}
                 <div 
                   className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
@@ -407,7 +409,7 @@ function Home() {
               </div>
 
               {/* Duplicate set for seamless loop */}
-              <div className="flex gap-4 flex-shrink-0">
+              <div className="flex gap-8 flex-shrink-0">
                 {/* Delivery Partners */}
                 <div 
                   className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
@@ -577,13 +579,24 @@ function Home() {
       {/* Beautiful Compact Info Section - Before Footer */}
       <section className="relative py-8 md:py-12 px-4 sm:px-6 lg:px-8 xl:px-12 overflow-hidden">
         {/* Blue Wave Background */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden leading-[0] z-0">
-          <svg
-            className="relative block w-full h-full"
-            viewBox="0 0 1440 200"
+        <div className="absolute top-0 left-0 w-full h-24 md:h-32 z-0 overflow-hidden leading-[0]">
+          <svg 
+            className="relative block w-full h-full" 
+            viewBox="0 0 1440 80" 
             preserveAspectRatio="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <path d="M0,0 C288,100 1152,100 1440,200 L1440,0 L0,0 Z" fill="#60a5fa" />
+            <path 
+              d="M1440,0 C1152,80 288,0 0,80 L0,0 L1440,0 Z" 
+              fill="url(#blueGradient)"
+            />
+            <defs>
+              <linearGradient id="blueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#3b82f6', stopOpacity: 1 }} />
+                <stop offset="50%" style={{ stopColor: '#60a5fa', stopOpacity: 0.9 }} />
+                <stop offset="100%" style={{ stopColor: '#93c5fd', stopOpacity: 0.7 }} />
+              </linearGradient>
+            </defs>
           </svg>
         </div>
         

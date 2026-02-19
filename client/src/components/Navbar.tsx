@@ -218,7 +218,6 @@ function Navbar() {
                 />
                 <div className="flex flex-col">
                   <span className="text-lg leading-tight text-gray-900">Acha Delivery</span>
-                  <span className="text-xs leading-tight text-gray-600">አቻ ደሊቨሪ</span>
                 </div>
               </Link>
 

@@ -777,7 +777,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg shadow-sm p-6 border border-green-200">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      ✅ Completed Transactions Summary
+                      ✅ Completed Transactions Summary ({transactions.filter(t => t.status === 'completed').length} of {transactions.length} total)
                     </h3>
                     <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
                       {transactions.filter(t => t.status === 'completed').length} Completed
@@ -862,8 +862,9 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                           {transactions.some(t => t.status === 'completed' && t.fees) && (
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fees Breakdown</th>
@@ -884,76 +885,165 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                             if (a.status !== 'completed' && b.status === 'completed') return 1;
                             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                           })
-                          .map((transaction) => (
-                          <tr key={transaction._id} className={transaction.status === 'completed' ? 'bg-green-50/30' : ''}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {transaction.uniqueId || transaction._id.slice(-8)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {transaction.orderId?.uniqueId || transaction.orderId?._id?.slice(-8) || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {transaction.buyerId?.name || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                              {transaction.amount?.toFixed(2) || '0.00'} {transaction.currency || 'ETB'}
-                            </td>
-                            {transactions.some(t => t.status === 'completed' && t.fees) && (
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {transaction.status === 'completed' && transaction.fees ? (
-                                  <div className="text-xs">
-                                    <div>Platform: ETB {(transaction.fees.platformFee || 0).toFixed(2)}</div>
-                                    <div>Service: ETB {(transaction.fees.serviceFee || 0).toFixed(2)}</div>
-                                    <div>Delivery: ETB {(transaction.fees.deliveryFee || 0).toFixed(2)}</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
+                          .map((transaction) => {
+                            const order = transaction.orderId;
+                            const assignedTraveler = order?.assignedTravelerId;
+                            const assignedPartner = order?.assignedPartnerId;
+                            const orderInfo = order?.orderInfo || {};
+                            
+                            return (
+                            <tr key={transaction._id} className={transaction.status === 'completed' ? 'bg-green-50/30' : ''}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {transaction.uniqueId || transaction._id.slice(-8)}
                               </td>
-                            )}
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                              {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                transaction.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {transaction.status || 'N/A'}
-                              </span>
-                            </td>
-                            {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {transaction.status === 'completed' ? (
-                                  <div className="text-xs">
-                                    {transaction.invoiceNumber && (
-                                      <div className="text-blue-600 font-medium">INV: {transaction.invoiceNumber}</div>
-                                    )}
-                                    {transaction.receiptNumber && (
-                                      <div className="text-green-600 font-medium">RCP: {transaction.receiptNumber}</div>
-                                    )}
-                                    {!transaction.invoiceNumber && !transaction.receiptNumber && (
-                                      <span className="text-gray-400">-</span>
-                                    )}
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                <div className="space-y-1">
+                                  <div className="font-medium text-gray-900">
+                                    Order: {order?.uniqueId || order?._id?.slice(-8) || 'N/A'}
                                   </div>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                            )}
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div>{new Date(transaction.createdAt).toLocaleDateString()}</div>
-                              {transaction.status === 'completed' && transaction.paidAt && (
-                                <div className="text-xs text-green-600">
-                                  Paid: {new Date(transaction.paidAt).toLocaleDateString()}
+                                  {orderInfo.productName && (
+                                    <div className="text-xs">
+                                      <span className="font-medium">Product:</span> {orderInfo.productName}
+                                    </div>
+                                  )}
+                                  {orderInfo.brand && (
+                                    <div className="text-xs">
+                                      <span className="font-medium">Brand:</span> {orderInfo.brand}
+                                    </div>
+                                  )}
+                                  {orderInfo.quantityDescription && (
+                                    <div className="text-xs">
+                                      <span className="font-medium">Quantity:</span> {orderInfo.quantityDescription}
+                                    </div>
+                                  )}
+                                  {order?.deliveryMethod && (
+                                    <div className="text-xs">
+                                      <span className="font-medium">Method:</span> {order.deliveryMethod.replace('_', ' ')}
+                                    </div>
+                                  )}
+                                  {order?.status && (
+                                    <div className="text-xs">
+                                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                        order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                        order.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {order.status}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div className="space-y-1">
+                                  <div className="font-medium text-gray-900">{transaction.buyerId?.name || 'N/A'}</div>
+                                  {transaction.buyerId?.email && (
+                                    <div className="text-xs text-gray-500">{transaction.buyerId.email}</div>
+                                  )}
+                                  {transaction.buyerId?.phone && (
+                                    <div className="text-xs text-gray-500">{transaction.buyerId.phone}</div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                {assignedTraveler ? (
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-gray-900">Traveler</div>
+                                    <div className="text-xs">{assignedTraveler.name}</div>
+                                    {assignedTraveler.email && (
+                                      <div className="text-xs text-gray-500">{assignedTraveler.email}</div>
+                                    )}
+                                    {assignedTraveler.phone && (
+                                      <div className="text-xs text-gray-500">{assignedTraveler.phone}</div>
+                                    )}
+                                    {assignedTraveler.currentLocation && (
+                                      <div className="text-xs text-gray-500">From: {assignedTraveler.currentLocation}</div>
+                                    )}
+                                    {assignedTraveler.destinationCity && (
+                                      <div className="text-xs text-gray-500">To: {assignedTraveler.destinationCity}</div>
+                                    )}
+                                  </div>
+                                ) : assignedPartner ? (
+                                  <div className="space-y-1">
+                                    <div className="font-medium text-gray-900">Partner</div>
+                                    <div className="text-xs">{assignedPartner.name || assignedPartner.companyName}</div>
+                                    {assignedPartner.companyName && assignedPartner.name && (
+                                      <div className="text-xs text-gray-500">{assignedPartner.companyName}</div>
+                                    )}
+                                    {assignedPartner.email && (
+                                      <div className="text-xs text-gray-500">{assignedPartner.email}</div>
+                                    )}
+                                    {assignedPartner.phone && (
+                                      <div className="text-xs text-gray-500">{assignedPartner.phone}</div>
+                                    )}
+                                    {assignedPartner.city && (
+                                      <div className="text-xs text-gray-500">Location: {assignedPartner.city}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">Not assigned</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                {transaction.amount?.toFixed(2) || '0.00'} {transaction.currency || 'ETB'}
+                              </td>
+                              {transactions.some(t => t.status === 'completed' && t.fees) && (
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {transaction.status === 'completed' && transaction.fees ? (
+                                    <div className="text-xs">
+                                      <div>Platform: ETB {(transaction.fees.platformFee || 0).toFixed(2)}</div>
+                                      <div>Service: ETB {(transaction.fees.serviceFee || 0).toFixed(2)}</div>
+                                      <div>Delivery: ETB {(transaction.fees.deliveryFee || 0).toFixed(2)}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
                               )}
-                            </td>
-                          </tr>
-                        ))}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                                {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                  transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  transaction.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                  transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {transaction.status || 'N/A'}
+                                </span>
+                              </td>
+                              {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {transaction.status === 'completed' ? (
+                                    <div className="text-xs">
+                                      {transaction.invoiceNumber && (
+                                        <div className="text-blue-600 font-medium">INV: {transaction.invoiceNumber}</div>
+                                      )}
+                                      {transaction.receiptNumber && (
+                                        <div className="text-green-600 font-medium">RCP: {transaction.receiptNumber}</div>
+                                      )}
+                                      {!transaction.invoiceNumber && !transaction.receiptNumber && (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div>{new Date(transaction.createdAt).toLocaleDateString()}</div>
+                                {transaction.status === 'completed' && transaction.paidAt && (
+                                  <div className="text-xs text-green-600">
+                                    Paid: {new Date(transaction.paidAt).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>

@@ -22,16 +22,43 @@ function BrowseTrips() {
       setError(null);
       const response = await api.travellers.getAll() as any;
       
+      // Filter out trips with past arrival dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const filterPastTrips = (tripsData: any[]) => {
+        return tripsData.filter((trip: any) => {
+          // Check if arrival date has passed
+          if (trip.arrivalDate) {
+            const arrivalDate = new Date(trip.arrivalDate);
+            arrivalDate.setHours(0, 0, 0, 0);
+            if (arrivalDate < today) {
+              return false; // Skip trips with past arrival dates
+            }
+          }
+          // If no arrival date, check departure date
+          if (!trip.arrivalDate && trip.departureDate) {
+            const departureDate = new Date(trip.departureDate);
+            departureDate.setHours(0, 0, 0, 0);
+            if (departureDate < today) {
+              return false; // Skip trips with past departure dates
+            }
+          }
+          return true;
+        });
+      };
+      
       // Handle different response structures
       if (response && response.status === 'success') {
         // Standard API response format
-        setTrips(Array.isArray(response.data) ? response.data : []);
+        const tripsData = Array.isArray(response.data) ? response.data : [];
+        setTrips(filterPastTrips(tripsData));
       } else if (Array.isArray(response)) {
         // If response is directly an array
-        setTrips(response);
+        setTrips(filterPastTrips(response));
       } else if (response && response.data && Array.isArray(response.data)) {
         // Handle cases where data exists but status might not be 'success'
-        setTrips(response.data);
+        setTrips(filterPastTrips(response.data));
       } else {
         // No trips found or unexpected response format
         setTrips([]);

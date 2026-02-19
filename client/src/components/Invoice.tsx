@@ -36,32 +36,153 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
   };
 
   const handleDownload = () => {
-    // Create a printable version
+    // Create a downloadable PDF version
     const printWindow = window.open('', '_blank');
     if (printWindow && transaction) {
-      printWindow.document.write(`
+      const htmlContent = `
+        <!DOCTYPE html>
         <html>
           <head>
             <title>Invoice ${transaction.invoiceNumber}</title>
+            <meta charset="utf-8">
             <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              .header { text-align: center; margin-bottom: 30px; }
-              .invoice-details { margin-bottom: 30px; }
-              .section { margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-              th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-              th { background-color: #f2f2f2; }
-              .total { font-weight: bold; font-size: 1.2em; }
+              @media print {
+                @page { margin: 1cm; }
+              }
+              body { 
+                font-family: Arial, sans-serif; 
+                padding: 40px; 
+                max-width: 800px; 
+                margin: 0 auto;
+                color: #333;
+              }
+              .header { 
+                text-align: center; 
+                margin-bottom: 40px;
+                border-bottom: 3px solid #2563eb;
+                padding-bottom: 20px;
+              }
+              .header h1 {
+                color: #2563eb;
+                margin: 0;
+                font-size: 32px;
+              }
+              .header h2 {
+                color: #1e40af;
+                margin: 10px 0 0 0;
+                font-size: 24px;
+              }
+              .invoice-details { 
+                margin-bottom: 30px;
+                background: #f8fafc;
+                padding: 20px;
+                border-radius: 8px;
+              }
+              .invoice-details p {
+                margin: 5px 0;
+              }
+              .section { 
+                margin-bottom: 25px;
+              }
+              .section h3 {
+                color: #1e40af;
+                border-bottom: 2px solid #e5e7eb;
+                padding-bottom: 5px;
+                margin-bottom: 15px;
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 20px;
+                background: white;
+              }
+              th, td { 
+                padding: 12px; 
+                text-align: left; 
+                border-bottom: 1px solid #e5e7eb;
+              }
+              th { 
+                background-color: #2563eb;
+                color: white;
+                font-weight: 600;
+              }
+              tr:hover {
+                background-color: #f8fafc;
+              }
+              .total { 
+                font-weight: bold; 
+                font-size: 1.3em;
+                color: #1e40af;
+              }
+              .total-row {
+                background-color: #eff6ff;
+                font-weight: bold;
+              }
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid #e5e7eb;
+                text-align: center;
+                color: #6b7280;
+                font-size: 12px;
+              }
             </style>
           </head>
           <body>
             ${generateInvoiceHTML(transaction)}
+            <div class="footer">
+              <p>Thank you for your business!</p>
+              <p>Acha Delivery Services - Your trusted delivery partner</p>
+            </div>
           </body>
         </html>
-      `);
+      `;
+      printWindow.document.write(htmlContent);
       printWindow.document.close();
-      printWindow.print();
+      
+      // Wait for content to load, then print
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
+  };
+
+  const handleDownloadPDF = () => {
+    // Alternative: Download as HTML file that can be converted to PDF
+    if (!transaction) return;
+    
+    const htmlContent = generateInvoiceHTML(transaction);
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice ${transaction.invoiceNumber}</title>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
+            .header h1 { color: #2563eb; margin: 0; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #2563eb; color: white; }
+            .total { font-weight: bold; font-size: 1.3em; }
+          </style>
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob([fullHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Invoice_${transaction.invoiceNumber}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const generateInvoiceHTML = (trans: any) => {
@@ -208,7 +329,13 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
           </button>
           <button
             onClick={handleDownload}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Print
+          </button>
+          <button
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={handleDownloadPDF}
           >
             Download PDF
           </button>

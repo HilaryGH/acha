@@ -40,20 +40,19 @@ interface Order {
     timestamp: string;
   }>;
   createdAt: string;
-  assignedPartnerId?: any;
 }
 
-interface DeliveryPartnerDashboardProps {
+interface TravellerDashboardProps {
   user: User;
 }
 
-function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
+function TravellerDashboard({ user }: TravellerDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'profile' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
-    activeDeliveries: 0,
-    completedToday: 0,
+    activeOrders: 0,
+    completedOrders: 0,
     totalEarnings: 0
   });
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,7 +65,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      if (activeTab === 'overview' || activeTab === 'orders' || activeTab === 'earnings') {
+      if (activeTab === 'overview' || activeTab === 'orders') {
         const loadedOrders = await loadOrders();
         if (loadedOrders) {
           await loadStats(loadedOrders);
@@ -81,93 +80,43 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
 
   const loadOrders = async (): Promise<Order[]> => {
     try {
-      // Fetch orders assigned to this partner/user
-      const response = await api.orders.getForPartner() as { status?: string; data?: Order[]; count?: number };
+      const response = await api.orders.getForTraveller() as { status?: string; data?: Order[]; count?: number };
       if (response.status === 'success') {
-        // Handle both array and object response structures
         const ordersData = Array.isArray(response.data) ? response.data : [];
         setOrders(ordersData);
         return ordersData;
-      } else {
-        // Fallback: fetch all orders and filter
-        const fallbackResponse = await api.orders.getAll() as { data?: Order[] | { orders?: Order[] } };
-        let allOrders: Order[] = [];
-        if (Array.isArray(fallbackResponse.data)) {
-          allOrders = fallbackResponse.data;
-        } else if (fallbackResponse.data && typeof fallbackResponse.data === 'object' && 'orders' in fallbackResponse.data) {
-          allOrders = Array.isArray(fallbackResponse.data.orders) ? fallbackResponse.data.orders : [];
-        }
-        const myOrders = allOrders.filter((o: any) => 
-          o.assignedPartnerId === user.id || 
-          (o.assignedPartnerId && o.assignedPartnerId.toString() === user.id) ||
-          (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
-        );
-        setOrders(myOrders);
-        return myOrders;
       }
+      setOrders([]);
+      return [];
     } catch (error) {
       console.error('Error loading orders:', error);
-      // Fallback on error
-      try {
-        const fallbackResponse = await api.orders.getAll() as { data?: Order[] | { orders?: Order[] } };
-        let allOrders: Order[] = [];
-        if (Array.isArray(fallbackResponse.data)) {
-          allOrders = fallbackResponse.data;
-        } else if (fallbackResponse.data && typeof fallbackResponse.data === 'object' && 'orders' in fallbackResponse.data) {
-          allOrders = Array.isArray(fallbackResponse.data.orders) ? fallbackResponse.data.orders : [];
-        }
-        const myOrders = allOrders.filter((o: any) => 
-          o.assignedPartnerId === user.id || 
-          (o.assignedPartnerId && o.assignedPartnerId.toString() === user.id) ||
-          (o.assignedPartnerId?._id && o.assignedPartnerId._id.toString() === user.id)
-        );
-        setOrders(myOrders);
-        return myOrders;
-      } catch (fallbackError) {
-        console.error('Fallback error loading orders:', fallbackError);
-        setOrders([]);
-        return [];
-      }
+      setOrders([]);
+      return [];
     }
   };
 
   const loadStats = async (ordersToUse?: Order[]) => {
     try {
       const ordersData = ordersToUse || orders;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       
-      const activeDeliveries = ordersData.filter(o => 
-        ['assigned', 'picked_up', 'in_transit'].includes(o.status)
+      const activeOrders = ordersData.filter(o => 
+        ['matched', 'picked_up', 'in_transit'].includes(o.status)
       ).length;
 
-      const completedToday = ordersData.filter(o => {
-        if (o.status === 'completed' || o.status === 'delivered') {
-          const completedDate = o.trackingUpdates?.find(t => 
-            t.status === 'completed' || t.status === 'delivered'
-          )?.timestamp;
-          if (completedDate) {
-            return new Date(completedDate) >= today;
-          }
-        }
-        return false;
-      }).length;
-
-      // Calculate actual earnings from completed orders
-      // Partner earnings = deliveryFee from completed/delivered orders
       const completedOrders = ordersData.filter(o => 
         o.status === 'completed' || o.status === 'delivered'
-      );
-      
-      const totalEarnings = completedOrders.reduce((total, order) => {
-        // Use deliveryFee if available, otherwise default to 0
-        const deliveryFee = order.pricing?.deliveryFee || 0;
-        return total + deliveryFee;
-      }, 0);
+      ).length;
+
+      const totalEarnings = ordersData
+        .filter(o => o.status === 'completed' || o.status === 'delivered')
+        .reduce((total, order) => {
+          const deliveryFee = order.pricing?.deliveryFee || 0;
+          return total + deliveryFee;
+        }, 0);
 
       setStats({
-        activeDeliveries,
-        completedToday,
+        activeOrders,
+        completedOrders,
         totalEarnings
       });
     } catch (error) {
@@ -204,16 +153,16 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 shadow-sm border-b">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white">Delivery Partner Dashboard</h1>
-              <p className="text-sm text-green-100 mt-1">Welcome, {user?.name || 'Partner'}! 🚚</p>
+              <h1 className="text-2xl font-bold text-white">Traveller Dashboard</h1>
+              <p className="text-sm text-blue-100 mt-1">Welcome, {user?.name || 'Traveller'}! ✈️</p>
             </div>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium text-green-900 bg-white border border-white rounded-lg hover:bg-green-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-blue-900 bg-white border border-white rounded-lg hover:bg-blue-50 transition-colors"
             >
               Logout
             </button>
@@ -228,8 +177,6 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'orders', label: 'My Orders', icon: '📦' },
-                { id: 'requests', label: 'Available Requests', icon: '🔔' },
-                { id: 'earnings', label: 'Earnings', icon: '💰' },
                 { id: 'profile', label: 'Profile', icon: '👤' },
                 { id: 'settings', label: 'Settings', icon: '⚙️' },
               ].map((tab) => (
@@ -238,7 +185,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-green-600 text-green-600'
+                      ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -255,30 +202,30 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
             <>
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-4 text-gray-600">Loading statistics...</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
+                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Active Deliveries</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeDeliveries}</p>
+                        <p className="text-sm font-medium text-gray-600">Active Orders</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeOrders}</p>
                       </div>
-                      <div className="p-3 bg-green-100 rounded-lg">
-                        <span className="text-2xl">🚚</span>
+                      <div className="p-3 bg-blue-100 rounded-lg">
+                        <span className="text-2xl">📦</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+                  <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Completed Today</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completedToday}</p>
+                        <p className="text-sm font-medium text-gray-600">Completed Orders</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completedOrders}</p>
                       </div>
-                      <div className="p-3 bg-blue-100 rounded-lg">
+                      <div className="p-3 bg-green-100 rounded-lg">
                         <span className="text-2xl">✅</span>
                       </div>
                     </div>
@@ -303,14 +250,14 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           {activeTab === 'orders' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">My Delivery Orders</h3>
+                <h3 className="text-lg font-semibold text-gray-900">My Assigned Orders</h3>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">All Status</option>
-                  <option value="assigned">Assigned</option>
+                  <option value="matched">Matched</option>
                   <option value="picked_up">Picked Up</option>
                   <option value="in_transit">In Transit</option>
                   <option value="delivered">Delivered</option>
@@ -320,13 +267,13 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
 
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-4 text-gray-600">Loading orders...</p>
                 </div>
               ) : filteredOrders.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-600 mb-4">No orders assigned yet</p>
-                  <p className="text-sm text-gray-500">Orders will appear here once assigned to you</p>
+                  <p className="text-sm text-gray-500">Orders will appear here once matched with you</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -394,11 +341,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                       )}
 
                       {/* Status Update Actions */}
-                      {order.status === 'assigned' && (
+                      {order.status === 'matched' && (
                         <div className="flex gap-2 mt-4">
                           <button
                             onClick={() => handleUpdateOrderStatus(order._id, 'picked_up', 'Item picked up')}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                           >
                             Mark as Picked Up
                           </button>
@@ -450,138 +397,9 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
             </div>
           )}
 
-          {activeTab === 'requests' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Available Delivery Requests</h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate('/partner/requests')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    View All Requests
-                  </button>
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-900 mb-4">
-                  💡 Browse available delivery requests and submit offers to get new orders.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate('/partner/requests')}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Go to Requests Page →
-                  </button>
-                  <button
-                    onClick={() => navigate('/partner-with-us')}
-                    className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                  >
-                    Complete Partner Registration
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'earnings' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Earnings & Payments</h3>
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">ETB {stats.totalEarnings.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        From {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length} completed delivery{orders.filter(o => o.status === 'completed' || o.status === 'delivered').length !== 1 ? 'ies' : ''}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-green-100 rounded-lg">
-                      <span className="text-2xl">💰</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Earnings Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-gray-600">Completed Deliveries</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length}
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-gray-600">Average per Delivery</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      ETB {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length > 0
-                        ? Math.round(stats.totalEarnings / orders.filter(o => o.status === 'completed' || o.status === 'delivered').length).toLocaleString()
-                        : '0'}
-                    </p>
-                  </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {orders.filter(o => ['assigned', 'picked_up', 'in_transit'].includes(o.status)).length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Recent Earnings */}
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading earnings...</p>
-                  </div>
-                ) : (
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h4 className="text-md font-semibold text-gray-900 mb-4">Recent Completed Deliveries</h4>
-                    {orders.filter(o => o.status === 'completed' || o.status === 'delivered').length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No completed deliveries yet</p>
-                        <p className="text-sm mt-2">Your earnings will appear here once you complete deliveries</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {orders
-                          .filter(o => o.status === 'completed' || o.status === 'delivered')
-                          .slice(0, 10)
-                          .map((order) => (
-                            <div key={order._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {order.orderInfo?.productName || `Order #${order.uniqueId || order._id.slice(-8)}`}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(order.createdAt).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-semibold text-green-600">
-                                  ETB {(order.pricing?.deliveryFee || 0).toLocaleString()}
-                                </p>
-                                <p className="text-xs text-gray-500 capitalize">{order.status}</p>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
-                    💡 <strong>Note:</strong> Earnings are calculated from completed deliveries. Payment processing and withdrawal options will be available soon.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'profile' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Partner Profile</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Traveller Profile</h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -621,66 +439,34 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                     />
                   </div>
                 </div>
-                {/* Bank Account Information */}
-                {orders.length > 0 && orders[0]?.assignedPartnerId?.bankAccount && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <h4 className="text-md font-semibold text-gray-900 mb-4">Bank Account Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {orders[0].assignedPartnerId.bankAccount.accountNumber && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
-                          <p className="text-sm text-gray-900">{orders[0].assignedPartnerId.bankAccount.accountNumber}</p>
-                        </div>
-                      )}
-                      {orders[0].assignedPartnerId.bankAccount.bankName && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
-                          <p className="text-sm text-gray-900">{orders[0].assignedPartnerId.bankAccount.bankName}</p>
-                        </div>
-                      )}
-                      {orders[0].assignedPartnerId.bankAccount.accountHolderName && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Account Holder Name</label>
-                          <p className="text-sm text-gray-900">{orders[0].assignedPartnerId.bankAccount.accountHolderName}</p>
-                        </div>
-                      )}
-                      {orders[0].assignedPartnerId.bankAccount.branch && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-                          <p className="text-sm text-gray-900">{orders[0].assignedPartnerId.bankAccount.branch}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
 
           {activeTab === 'settings' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Partner Settings</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Traveller Settings</h3>
               <div className="space-y-4">
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Availability</h4>
-                  <p className="text-sm text-gray-600">Manage your delivery availability</p>
+                  <p className="text-sm text-gray-600">Manage your trip availability</p>
                   <div className="mt-4">
                     <label className="flex items-center">
-                      <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500" defaultChecked />
+                      <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Available for deliveries</span>
                     </label>
                   </div>
                 </div>
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">Notifications</h4>
-                  <p className="text-sm text-gray-600">Configure delivery notifications</p>
+                  <p className="text-sm text-gray-600">Configure order notifications</p>
                   <div className="mt-4 space-y-2">
                     <label className="flex items-center">
-                      <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500" defaultChecked />
+                      <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">Email notifications</span>
                     </label>
                     <label className="flex items-center">
-                      <input type="checkbox" className="rounded border-gray-300 text-green-600 focus:ring-green-500" defaultChecked />
+                      <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
                       <span className="ml-2 text-sm text-gray-700">SMS notifications</span>
                     </label>
                   </div>
@@ -694,4 +480,4 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   );
 }
 
-export default DeliveryPartnerDashboard;
+export default TravellerDashboard;

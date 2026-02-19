@@ -175,6 +175,29 @@ const partnerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Bank Account Information
+  bankAccount: {
+    accountNumber: {
+      type: String,
+      trim: true
+    },
+    bankName: {
+      type: String,
+      trim: true
+    },
+    accountHolderName: {
+      type: String,
+      trim: true
+    },
+    branch: {
+      type: String,
+      trim: true
+    },
+    swiftCode: {
+      type: String,
+      trim: true
+    }
+  },
   // Status
   status: {
     type: String,

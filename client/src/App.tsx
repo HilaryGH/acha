@@ -27,6 +27,8 @@ import PartnerViewRequests from './pages/PartnerViewRequests'
 import ClientViewOffers from './pages/ClientViewOffers'
 import ViewDeliveryRequest from './pages/ViewDeliveryRequest'
 import GoogleAuthCallback from './pages/GoogleAuthCallback'
+import BrowseTrips from './pages/BrowseTrips'
+import BrowseOrders from './pages/BrowseOrders'
 
 function AppContent() {
   const location = useLocation();
@@ -43,6 +45,8 @@ function AppContent() {
         <Route path="/post-order" element={<PostOrder />} />
         <Route path="/post-delivery-item" element={<PostDeliveryItem />} />
         <Route path="/find-delivery-item" element={<FindDeliveryItem />} />
+        <Route path="/browse-trips" element={<BrowseTrips />} />
+        <Route path="/browse-orders" element={<BrowseOrders />} />
         <Route path="/orders/track/:orderId" element={<OrderTracking />} />
         <Route path="/orders/match/:orderId" element={<MatchTraveler />} />
         <Route path="/orders/assign/:orderId" element={<AssignPartner />} />

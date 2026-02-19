@@ -72,15 +72,56 @@ function TripsAndOrdersSection() {
             ? tripsResponse 
             : [];
         
+        // Filter trips - remove trips with past arrival dates
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
         // Filter trips - show active, verified, pending, or if none exist, show all recent trips
+        // Also filter out trips where arrival date has passed
         let activeTrips = tripsData
-          .filter((trip: Trip) => trip.status === 'active' || trip.status === 'verified' || trip.status === 'pending')
+          .filter((trip: Trip) => {
+            // Check if arrival date has passed
+            if (trip.arrivalDate) {
+              const arrivalDate = new Date(trip.arrivalDate);
+              arrivalDate.setHours(0, 0, 0, 0);
+              if (arrivalDate < today) {
+                return false; // Skip trips with past arrival dates
+              }
+            }
+            // If no arrival date, check departure date
+            if (!trip.arrivalDate && trip.departureDate) {
+              const departureDate = new Date(trip.departureDate);
+              departureDate.setHours(0, 0, 0, 0);
+              if (departureDate < today) {
+                return false; // Skip trips with past departure dates
+              }
+            }
+            return trip.status === 'active' || trip.status === 'verified' || trip.status === 'pending';
+          })
           .sort((a: Trip, b: Trip) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        // If no active trips found, show all recent trips (excluding cancelled/completed)
+        // If no active trips found, show all recent trips (excluding cancelled/completed and past dates)
         if (activeTrips.length === 0) {
           activeTrips = tripsData
-            .filter((trip: Trip) => trip.status !== 'cancelled' && trip.status !== 'completed')
+            .filter((trip: Trip) => {
+              // Check if arrival date has passed
+              if (trip.arrivalDate) {
+                const arrivalDate = new Date(trip.arrivalDate);
+                arrivalDate.setHours(0, 0, 0, 0);
+                if (arrivalDate < today) {
+                  return false;
+                }
+              }
+              // If no arrival date, check departure date
+              if (!trip.arrivalDate && trip.departureDate) {
+                const departureDate = new Date(trip.departureDate);
+                departureDate.setHours(0, 0, 0, 0);
+                if (departureDate < today) {
+                  return false;
+                }
+              }
+              return trip.status !== 'cancelled' && trip.status !== 'completed';
+            })
             .sort((a: Trip, b: Trip) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
         
@@ -290,53 +331,11 @@ function TripsAndOrdersSection() {
         <div className="mb-8 md:mb-12">
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 via-cyan-500 to-green-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-300"></div>
-            <div className="relative bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 overflow-hidden">
-              {/* Background Images with Dark Overlay - Posted Trips - 4 Column Grid */}
-              <div className="absolute inset-0 z-0 grid grid-cols-4">
-                {/* Image 1 */}
-                <div className="relative opacity-20">
-                  <img 
-                    src="/image 1.svg" 
-                    alt="Background decoration" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60"></div>
-                </div>
-                
-                {/* Image 2 */}
-                <div className="relative opacity-20">
-                  <img 
-                    src="/image 2.svg" 
-                    alt="Background decoration" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60"></div>
-                </div>
-                
-                {/* Image 3 */}
-                <div className="relative opacity-20">
-                  <img 
-                    src="/image 3.svg" 
-                    alt="Background decoration" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60"></div>
-                </div>
-                
-                {/* Image 4 */}
-                <div className="relative opacity-20">
-                  <img 
-                    src="/image 4.svg" 
-                    alt="Background decoration" 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60"></div>
-                </div>
-              </div>
+            <div className="relative bg-white rounded-2xl shadow-lg p-6 md:p-8 border-2 border-gray-200">
               {/* Card Header */}
-              <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -362,7 +361,7 @@ function TripsAndOrdersSection() {
               </div>
 
               {/* Trips List - Horizontal Row */}
-              <div className="overflow-x-auto relative z-10">
+              <div className="overflow-x-auto">
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -378,11 +377,11 @@ function TripsAndOrdersSection() {
                     <p className="text-gray-500">No trips posted yet</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:overflow-x-visible md:pb-0">
                     {trips.map((trip) => (
                       <div
                         key={trip._id}
-                        className="p-4 rounded-tr-2xl rounded-bl-2xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
+                        className="p-5 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-white min-w-[280px] max-w-[280px] md:min-w-0 md:max-w-none flex-shrink-0 snap-start group cursor-pointer"
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -422,53 +421,11 @@ function TripsAndOrdersSection() {
         {/* Posted Orders Section - Full Width */}
         <div className="relative group">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-green-600 via-cyan-500 to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-300"></div>
-          <div className="relative bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 overflow-hidden">
-            {/* Background Images with Dark Overlay - Posted Orders - 4 Column Grid */}
-            <div className="absolute inset-0 z-0 grid grid-cols-4">
-              {/* Image 1 */}
-              <div className="relative opacity-20">
-                <img 
-                  src="/image 1.svg" 
-                  alt="Background decoration" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/60"></div>
-              </div>
-              
-              {/* Image 2 */}
-              <div className="relative opacity-20">
-                <img 
-                  src="/image 2.svg" 
-                  alt="Background decoration" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/60"></div>
-              </div>
-              
-              {/* Image 3 */}
-              <div className="relative opacity-20">
-                <img 
-                  src="/image 3.svg" 
-                  alt="Background decoration" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/60"></div>
-              </div>
-              
-              {/* Image 4 */}
-              <div className="relative opacity-20">
-                <img 
-                  src="/image 4.svg" 
-                  alt="Background decoration" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/60"></div>
-              </div>
-            </div>
+          <div className="relative bg-white rounded-2xl shadow-lg p-6 md:p-8 border-2 border-gray-200">
             {/* Card Header */}
-            <div className="flex items-center justify-between mb-6 relative z-10">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-cyan-500 shadow-lg">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-cyan-500 shadow-md">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
@@ -479,7 +436,7 @@ function TripsAndOrdersSection() {
                 </div>
               </div>
               <Link
-                to="/find-delivery-item"
+                to="/browse-orders"
                 className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                 style={{ background: 'linear-gradient(135deg, #43A047 0%, #26C6DA 50%, #1E88E5 100%)' }}
               >
@@ -488,7 +445,7 @@ function TripsAndOrdersSection() {
             </div>
 
             {/* Orders List - Horizontal Row */}
-            <div className="overflow-x-auto relative z-10">
+            <div className="overflow-x-auto">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <svg className="animate-spin h-8 w-8 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -504,7 +461,7 @@ function TripsAndOrdersSection() {
                   <p className="text-gray-500">No orders posted yet</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:overflow-x-visible md:pb-0">
                   {orders.map((order) => {
                     const matchingTravelers = findMatchingTravelers(order);
                     const canMatch = order.deliveryMethod === 'traveler' && !order.assignedTravelerId && matchingTravelers.length > 0;
@@ -512,7 +469,7 @@ function TripsAndOrdersSection() {
                     return (
                       <div
                         key={order._id}
-                        className="p-4 rounded-tr-2xl rounded-bl-2xl border border-gray-200 hover:border-green-300 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-gray-50 min-w-[200px]"
+                        className="p-5 rounded-xl border-2 border-gray-200 hover:border-green-400 hover:shadow-lg transition-all duration-300 bg-white min-w-[280px] max-w-[280px] md:min-w-0 md:max-w-none flex-shrink-0 snap-start group cursor-pointer"
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 flex-wrap">

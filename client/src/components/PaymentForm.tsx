@@ -116,27 +116,42 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
             required
           >
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="mobile_money">Mobile Money</option>
+            <option value="bank_transfer">Bank Transfer (Coming Soon)</option>
+            <option value="mobile_money">Mobile Money (Coming Soon)</option>
             <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="acha_pay">Acha Pay</option>
+            <option value="card">Card (Coming Soon)</option>
+            <option value="acha_pay">Acha Pay (Coming Soon)</option>
           </select>
+          {(paymentMethod === 'bank_transfer' || paymentMethod === 'mobile_money' || paymentMethod === 'card' || paymentMethod === 'acha_pay') && (
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ⚠️ <strong>Coming Soon:</strong> This payment method is currently under development. Please use manual transfer and upload proof of payment.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Payment Details based on method */}
         {paymentMethod === 'bank_transfer' && (
           <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Manual Transfer Instructions:</strong>
+              </p>
+              <p className="text-sm text-blue-700">
+                Please transfer the amount manually and upload proof of payment below. Automated payment processing is coming soon.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bank Account Number
+                Bank Account Number (if applicable)
               </label>
               <input
                 type="text"
                 value={paymentDetails.bankAccount}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, bankAccount: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                placeholder="Enter bank account number"
+                placeholder="Enter bank account number (optional)"
               />
             </div>
             <div>
@@ -164,16 +179,24 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
 
         {paymentMethod === 'mobile_money' && (
           <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Manual Transfer Instructions:</strong>
+              </p>
+              <p className="text-sm text-blue-700">
+                Please transfer the amount manually via mobile money and upload proof of payment below. Automated payment processing is coming soon.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mobile Money Number
+                Mobile Money Number (if applicable)
               </label>
               <input
                 type="text"
                 value={paymentDetails.mobileMoneyNumber}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, mobileMoneyNumber: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                placeholder="Enter mobile money number"
+                placeholder="Enter mobile money number (optional)"
               />
             </div>
             <div>
@@ -216,16 +239,24 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
 
         {paymentMethod === 'card' && (
           <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Manual Transfer Instructions:</strong>
+              </p>
+              <p className="text-sm text-blue-700">
+                Please complete the payment manually and upload proof of payment below. Automated card payment processing is coming soon.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transaction Reference
+                Transaction Reference (if applicable)
               </label>
               <input
                 type="text"
                 value={paymentDetails.transactionReference}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                placeholder="Enter card transaction reference"
+                placeholder="Enter card transaction reference (optional)"
               />
             </div>
             <div>
@@ -241,8 +272,11 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
 
         {paymentMethod === 'acha_pay' && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              Payment will be processed through your Acha Pay account. Make sure you have sufficient balance.
+            <p className="text-sm text-blue-800 mb-2">
+              <strong>Coming Soon:</strong> Acha Pay integration is under development.
+            </p>
+            <p className="text-sm text-blue-700">
+              Please use manual transfer for now and upload proof of payment below.
             </p>
           </div>
         )}

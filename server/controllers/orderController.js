@@ -155,8 +155,43 @@ exports.createOrder = async (req, res) => {
 
         console.log(`Found ${matchingUsers.length} users with role ${deliveryMethod} in ${buyerCity}`);
 
+        // For gift_delivery_partner, also check Partner model with registrationType 'Gift Delivery Partner'
+        if (deliveryMethod === 'gift_delivery_partner' && matchingUsers.length === 0) {
+          console.log('Checking Partner model for Gift Delivery Partners');
+          const giftPartners = await Partner.find({
+            registrationType: 'Gift Delivery Partner',
+            status: 'approved',
+            $or: [
+              { city: { $regex: new RegExp(buyerCity, 'i') } },
+              { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } }
+            ]
+          }).limit(20);
+          
+          if (giftPartners.length > 0) {
+            // Convert Partner records to match format
+            const suitablePartners = giftPartners.filter(partner => {
+              return locationsMatch(partner.city, buyerCity) || 
+                     locationsMatch(partner.primaryLocation, buyerCity);
+            });
+            
+            availableMatches = suitablePartners.slice(0, 4).map(p => ({
+              _id: p._id,
+              uniqueId: p.uniqueId,
+              name: p.name || p.companyName,
+              companyName: p.companyName,
+              email: p.email,
+              phone: p.phone,
+              city: p.city,
+              primaryLocation: p.primaryLocation,
+              isPartnerModel: true // Flag to indicate this is from Partner model
+            }));
+            matchType = 'partner';
+            console.log(`Found ${availableMatches.length} Gift Delivery Partners from Partner model`);
+          }
+        }
+
         // If no users found in exact location, try to find users with the role regardless of location
-        if (matchingUsers.length === 0) {
+        if (matchingUsers.length === 0 && availableMatches.length === 0) {
           console.log('No users found in exact location, searching all users with role:', deliveryMethod);
           matchingUsers = await User.find({
             role: deliveryMethod,
@@ -175,18 +210,21 @@ exports.createOrder = async (req, res) => {
 
         console.log(`Filtered to ${suitableUsers.length} suitable users`);
 
-        // Take top 4 users
-        availableMatches = suitableUsers.slice(0, 4).map(u => ({
-          _id: u._id,
-          userId: u.userId,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          city: u.city,
-          primaryLocation: u.primaryLocation,
-          location: u.location,
-          role: u.role
-        }));
+        // Take top 4 users (only if we haven't already found partners from Partner model)
+        if (availableMatches.length === 0) {
+          availableMatches = suitableUsers.slice(0, 4).map(u => ({
+            _id: u._id,
+            userId: u.userId,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            city: u.city,
+            primaryLocation: u.primaryLocation,
+            location: u.location,
+            role: u.role,
+            isPartnerModel: false
+          }));
+        }
         matchType = 'partner';
         console.log(`Returning ${availableMatches.length} matches for role-based delivery`);
       } else {
@@ -224,14 +262,137 @@ exports.createOrder = async (req, res) => {
 
     console.log(`Order created. Returning ${availableMatches.length} matches, matchType: ${matchType}`);
     
+    // Automatically assign order to first available partner if found
+    let assignedPartner = null;
+    let autoAssigned = false;
+    
+    if (availableMatches.length > 0 && isPartnerDeliveryMethod(deliveryMethod)) {
+      try {
+        const firstMatch = availableMatches[0];
+        const partnerId = firstMatch._id;
+        
+        // For role-based delivery methods, assign to User or Partner model
+        if (deliveryMethod === 'delivery_partner' || deliveryMethod === 'acha_sisters_delivery_partner' || 
+            deliveryMethod === 'movers_packers' || deliveryMethod === 'gift_delivery_partner') {
+          // Check if this match is from Partner model (for gift_delivery_partner)
+          if (firstMatch.isPartnerModel && deliveryMethod === 'gift_delivery_partner') {
+            const partner = await Partner.findById(partnerId);
+            if (partner && partner.status === 'approved' && partner.registrationType === 'Gift Delivery Partner') {
+              order.assignedPartnerId = partnerId;
+              order.status = 'assigned';
+              const partnerName = partner.name || partner.companyName || 'Partner';
+              await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
+              await order.save();
+              
+              assignedPartner = {
+                _id: partner._id,
+                name: partner.name || partner.companyName,
+                email: partner.email,
+                phone: partner.phone
+              };
+              autoAssigned = true;
+              
+              // Send email notification to partner
+              try {
+                const { sendOrderAssignmentEmail } = require('../utils/emailService');
+                await sendOrderAssignmentEmail(partner.email, partnerName, {
+                  orderId: order.uniqueId,
+                  uniqueId: order.uniqueId,
+                  productName: order.orderInfo?.productName,
+                  deliveryMethod: deliveryMethod
+                });
+              } catch (emailError) {
+                console.error('Error sending assignment email:', emailError);
+              }
+              
+              console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
+            }
+          } else {
+            // Assign to User model
+            const partner = await User.findById(partnerId);
+            if (partner && partner.role === deliveryMethod && partner.status === 'active') {
+              order.assignedPartnerId = partnerId;
+              order.status = 'assigned';
+              const partnerName = partner.name || partner.companyName || 'Partner';
+              await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
+              await order.save();
+              
+              assignedPartner = {
+                _id: partner._id,
+                name: partner.name,
+                email: partner.email,
+                phone: partner.phone
+              };
+              autoAssigned = true;
+              
+              // Send email notification to partner
+              try {
+                const { sendOrderAssignmentEmail } = require('../utils/emailService');
+                await sendOrderAssignmentEmail(partner.email, partnerName, {
+                  orderId: order.uniqueId,
+                  uniqueId: order.uniqueId,
+                  productName: order.orderInfo?.productName,
+                  deliveryMethod: deliveryMethod
+                });
+              } catch (emailError) {
+                console.error('Error sending assignment email:', emailError);
+              }
+              
+              console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
+            }
+          }
+        } else {
+          // For legacy partner delivery, assign to Partner model
+          const partner = await Partner.findById(partnerId);
+          if (partner && partner.status === 'approved') {
+            order.assignedPartnerId = partnerId;
+            order.status = 'assigned';
+            const partnerName = partner.name || partner.companyName || 'Partner';
+            await order.addTrackingUpdate('assigned', `Order automatically assigned to partner: ${partnerName}`, '');
+            await order.save();
+            
+            assignedPartner = {
+              _id: partner._id,
+              name: partner.name || partner.companyName,
+              email: partner.email,
+              phone: partner.phone
+            };
+            autoAssigned = true;
+            
+            // Send email notification to partner
+            try {
+              const { sendOrderAssignmentEmail } = require('../utils/emailService');
+              await sendOrderAssignmentEmail(partner.email, partnerName, {
+                orderId: order.uniqueId,
+                uniqueId: order.uniqueId,
+                productName: order.orderInfo?.productName,
+                deliveryMethod: deliveryMethod
+              });
+            } catch (emailError) {
+              console.error('Error sending assignment email:', emailError);
+            }
+            
+            console.log(`Order ${order.uniqueId} automatically assigned to partner: ${partnerName}`);
+          }
+        }
+      } catch (assignError) {
+        console.error('Error during automatic assignment:', assignError);
+        // Continue without assignment if there's an error
+      }
+    }
+    
     res.status(201).json({
       status: 'success',
-      message: 'Order created successfully. Please select a delivery option.',
+      message: autoAssigned 
+        ? 'Order created and automatically assigned to available partner.' 
+        : 'Order created successfully. Please select a delivery option.',
       data: {
         ...order.toObject(),
         availableMatches,
         matchType,
-        requiresSelection: availableMatches.length > 0
+        requiresSelection: !autoAssigned && availableMatches.length > 0,
+        autoAssigned,
+        assignedPartner
       }
     });
   } catch (error) {
@@ -820,7 +981,7 @@ exports.getAvailableRequests = async (req, res) => {
     
     const filter = {
       deliveryMethod: { $in: allowedDeliveryMethods },
-      status: { $in: ['pending', 'offers_received', 'assigned'] },
+      status: { $nin: ['completed', 'cancelled'] }, // Exclude only completed and cancelled orders
       pickupLocation: { $exists: true, $ne: null },
       'pickupLocation.latitude': { $exists: true, $ne: null },
       'pickupLocation.longitude': { $exists: true, $ne: null }
@@ -1188,6 +1349,7 @@ exports.getOrdersForPartner = async (req, res) => {
     const assignedOrders = await Order.find({ assignedPartnerId: targetPartnerId })
       .populate('buyerId', 'name email phone currentCity location')
       .populate('assignedTravelerId', 'name email phone currentLocation destinationCity')
+      .populate('assignedPartnerId', 'name companyName email phone city primaryLocation bankAccount')
       .sort({ createdAt: -1 });
 
     // Also get available requests matching this partner's role (if role-based partner)
@@ -1252,6 +1414,60 @@ exports.getPartnerOffers = async (req, res) => {
         },
         offers: pendingOffers
       }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// Get orders assigned to a traveller
+exports.getOrdersForTraveller = async (req, res) => {
+  try {
+    const { travellerId } = req.params;
+    const userId = req.user?.id; // Get authenticated user ID if available
+
+    // Use travellerId from params or try to find traveller by user email/phone
+    let targetTravellerId = travellerId;
+    
+    if (!targetTravellerId && userId) {
+      // Try to find traveller by user ID or email
+      const User = require('../models/User');
+      const user = await User.findById(userId);
+      if (user) {
+        // Find traveller by email or phone
+        const traveller = await Traveller.findOne({
+          $or: [
+            { email: user.email },
+            { phone: user.phone }
+          ]
+        });
+        if (traveller) {
+          targetTravellerId = traveller._id.toString();
+        }
+      }
+    }
+
+    if (!targetTravellerId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Traveller ID is required'
+      });
+    }
+
+    // Find orders assigned to this traveller
+    const assignedOrders = await Order.find({ assignedTravelerId: targetTravellerId })
+      .populate('buyerId', 'name email phone currentCity location')
+      .populate('assignedTravelerId', 'name email phone currentLocation destinationCity departureDate arrivalDate bankAccount')
+      .populate('assignedPartnerId', 'name companyName email phone city primaryLocation')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      count: assignedOrders.length,
+      data: assignedOrders
     });
   } catch (error) {
     res.status(500).json({

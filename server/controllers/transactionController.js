@@ -169,8 +169,21 @@ exports.getAllTransactions = async (req, res) => {
     }
 
     const transactions = await Transaction.find(filter)
-      .populate('orderId', 'uniqueId orderInfo deliveryMethod status')
-      .populate('buyerId', 'name email phone')
+      .populate({
+        path: 'orderId',
+        select: 'uniqueId orderInfo deliveryMethod status assignedTravelerId assignedPartnerId pickupLocation deliveryLocation pricing',
+        populate: [
+          {
+            path: 'assignedTravelerId',
+            select: 'name email phone currentLocation destinationCity'
+          },
+          {
+            path: 'assignedPartnerId',
+            select: 'name companyName email phone city primaryLocation'
+          }
+        ]
+      })
+      .populate('buyerId', 'name email phone currentCity')
       .sort({ createdAt: -1 });
 
     res.status(200).json({

@@ -44,7 +44,7 @@ interface AdminDashboardProps {
 
 function AdminDashboard({ user }: AdminDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'orders' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'orders' | 'transactions' | 'settings'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     activeUsers: 0,
@@ -54,9 +54,11 @@ function AdminDashboard({ user }: AdminDashboardProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [transactionFilter, setTransactionFilter] = useState<string>('all');
 
   useEffect(() => {
     loadDashboardData();
@@ -73,6 +75,8 @@ function AdminDashboard({ user }: AdminDashboardProps) {
         await loadPartners();
       } else if (activeTab === 'orders') {
         await loadOrders();
+      } else if (activeTab === 'transactions') {
+        await loadTransactions();
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -132,6 +136,20 @@ function AdminDashboard({ user }: AdminDashboardProps) {
     }
   };
 
+  const loadTransactions = async () => {
+    try {
+      const response = await api.transactions.getAll() as { status?: string; data?: any[]; count?: number };
+      if (response.status === 'success') {
+        setTransactions(Array.isArray(response.data) ? response.data : []);
+      } else {
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      setTransactions([]);
+    }
+  };
+
   const handleUpdateUserStatus = async (userId: string, newStatus: string) => {
     try {
       await api.users.update(userId, { status: newStatus });
@@ -174,6 +192,10 @@ function AdminDashboard({ user }: AdminDashboardProps) {
     filterStatus === 'all' || o.status === filterStatus
   );
 
+  const filteredTransactions = transactions.filter(t => 
+    transactionFilter === 'all' || t.status === transactionFilter
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 shadow-sm border-b">
@@ -202,6 +224,7 @@ function AdminDashboard({ user }: AdminDashboardProps) {
                 { id: 'users', label: 'User Management', icon: '👥' },
                 { id: 'partners', label: 'Partner Approvals', icon: '🤝' },
                 { id: 'orders', label: 'Orders', icon: '📦' },
+                { id: 'transactions', label: 'Transactions', icon: '💰' },
                 { id: 'settings', label: 'Settings', icon: '⚙️' },
               ].map((tab) => (
                 <button
@@ -514,6 +537,124 @@ function AdminDashboard({ user }: AdminDashboardProps) {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'transactions' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">All Transactions</h3>
+                <select
+                  value={transactionFilter}
+                  onChange={(e) => setTransactionFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                  <option value="refunded">Refunded</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading transactions...</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No transactions found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Buyer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredTransactions.map((transaction) => (
+                        <tr key={transaction._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {transaction.uniqueId || transaction._id.slice(-8)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {transaction.orderId?.uniqueId || transaction.orderId?._id?.slice(-8) || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {transaction.buyerId?.name || 'N/A'}
+                            {transaction.buyerId?.email && (
+                              <div className="text-xs text-gray-500">{transaction.buyerId.email}</div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {transaction.amount?.toFixed(2) || '0.00'} {transaction.currency || 'ETB'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                              {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
+                              transaction.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {transaction.status || 'pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Transaction Summary */}
+              {filteredTransactions.length > 0 && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-md font-semibold text-gray-900 mb-3">Transaction Summary</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Total Transactions</p>
+                      <p className="text-2xl font-bold text-gray-900">{filteredTransactions.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Total Amount</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0).toFixed(2)} ETB
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Completed</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {filteredTransactions.filter(t => t.status === 'completed').length}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Pending</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {filteredTransactions.filter(t => t.status === 'pending' || t.status === 'processing').length}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

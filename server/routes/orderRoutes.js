@@ -7,6 +7,7 @@ const {
   getOrderById,
   getOrdersByBuyer,
   getOrdersForPartner,
+  getOrdersForTraveller,
   matchWithTraveler,
   assignToPartner,
   updateOrderStatus,
@@ -72,6 +73,12 @@ router.route('/partner/:partnerId')
 
 router.route('/partner')
   .get(authenticate, getOrdersForPartner); // Get orders for authenticated user
+
+router.route('/traveller/:travellerId')
+  .get(authenticate, getOrdersForTraveller);
+
+router.route('/traveller')
+  .get(authenticate, getOrdersForTraveller); // Get orders for authenticated traveller
 
 router.route('/:orderId/status')
   .put(updateOrderStatus);

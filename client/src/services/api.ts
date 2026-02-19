@@ -447,6 +447,10 @@ export const api = {
       const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
       return request(`/orders${queryParams}`);
     },
+    getForTraveller: async (travellerId?: string) => {
+      const path = travellerId ? `/orders/traveller/${travellerId}` : '/orders/traveller';
+      return request(path);
+    },
     getById: async (id: string) => {
       return request(`/orders/${id}`);
     },
