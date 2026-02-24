@@ -491,7 +491,7 @@ function CorporateForm() {
               />
 
               <FileUpload
-                label="WHW card"
+                label="Acha card"
                 value={whwCard}
                 onChange={setWhwCard}
                 accept="image/*,.pdf"

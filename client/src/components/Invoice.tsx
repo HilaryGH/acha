@@ -35,237 +35,277 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
     window.print();
   };
 
-  const handleDownload = () => {
-    // Create a downloadable PDF version
-    const printWindow = window.open('', '_blank');
-    if (printWindow && transaction) {
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Invoice ${transaction.invoiceNumber}</title>
-            <meta charset="utf-8">
-            <style>
-              @media print {
-                @page { margin: 1cm; }
-              }
-              body { 
-                font-family: Arial, sans-serif; 
-                padding: 40px; 
-                max-width: 800px; 
-                margin: 0 auto;
-                color: #333;
-              }
-              .header { 
-                text-align: center; 
-                margin-bottom: 40px;
-                border-bottom: 3px solid #2563eb;
-                padding-bottom: 20px;
-              }
-              .header h1 {
-                color: #2563eb;
-                margin: 0;
-                font-size: 32px;
-              }
-              .header h2 {
-                color: #1e40af;
-                margin: 10px 0 0 0;
-                font-size: 24px;
-              }
-              .invoice-details { 
-                margin-bottom: 30px;
-                background: #f8fafc;
-                padding: 20px;
-                border-radius: 8px;
-              }
-              .invoice-details p {
-                margin: 5px 0;
-              }
-              .section { 
-                margin-bottom: 25px;
-              }
-              .section h3 {
-                color: #1e40af;
-                border-bottom: 2px solid #e5e7eb;
-                padding-bottom: 5px;
-                margin-bottom: 15px;
-              }
-              table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                margin-bottom: 20px;
-                background: white;
-              }
-              th, td { 
-                padding: 12px; 
-                text-align: left; 
-                border-bottom: 1px solid #e5e7eb;
-              }
-              th { 
-                background-color: #2563eb;
-                color: white;
-                font-weight: 600;
-              }
-              tr:hover {
-                background-color: #f8fafc;
-              }
-              .total { 
-                font-weight: bold; 
-                font-size: 1.3em;
-                color: #1e40af;
-              }
-              .total-row {
-                background-color: #eff6ff;
-                font-weight: bold;
-              }
-              .footer {
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 2px solid #e5e7eb;
-                text-align: center;
-                color: #6b7280;
-                font-size: 12px;
-              }
-            </style>
-          </head>
-          <body>
-            ${generateInvoiceHTML(transaction)}
-            <div class="footer">
-              <p>Thank you for your business!</p>
-              <p>Acha Delivery Services - Your trusted delivery partner</p>
-            </div>
-          </body>
-        </html>
-      `;
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      
-      // Wait for content to load, then print
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
-  };
-
   const handleDownloadPDF = () => {
-    // Alternative: Download as HTML file that can be converted to PDF
+    // Create a downloadable invoice PDF (HTML format optimized for PDF conversion)
     if (!transaction) return;
     
-    const htmlContent = generateInvoiceHTML(transaction);
+    const invoice = {
+      invoiceNumber: transaction.invoiceNumber,
+      invoiceDate: new Date(transaction.invoiceGeneratedAt || transaction.createdAt).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      buyer: transaction.buyerId,
+      order: transaction.orderId,
+      amount: transaction.amount,
+      currency: transaction.currency || 'ETB',
+      fees: transaction.fees,
+      paymentMethod: transaction.paymentMethod,
+      paidAt: transaction.paidAt ? new Date(transaction.paidAt).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) : 'N/A',
+      status: transaction.status
+    };
+
     const fullHTML = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice ${transaction.invoiceNumber}</title>
+          <title>Invoice ${invoice.invoiceNumber}</title>
           <meta charset="utf-8">
           <style>
-            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
-            .header h1 { color: #2563eb; margin: 0; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #2563eb; color: white; }
-            .total { font-weight: bold; font-size: 1.3em; }
+            @media print {
+              @page { 
+                margin: 1.5cm;
+                size: A4;
+              }
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body { 
+              font-family: 'Arial', 'Helvetica', sans-serif; 
+              padding: 40px; 
+              max-width: 800px; 
+              margin: 0 auto;
+              color: #333;
+              line-height: 1.6;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 40px;
+              border-bottom: 4px solid #2563eb;
+              padding-bottom: 20px;
+            }
+            .header h1 { 
+              color: #2563eb; 
+              margin: 0;
+              font-size: 36px;
+              font-weight: bold;
+            }
+            .header h2 {
+              color: #1e40af;
+              margin: 10px 0 0 0;
+              font-size: 28px;
+              font-weight: 600;
+            }
+            .invoice-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 30px;
+              margin-bottom: 30px;
+              background: #f8fafc;
+              padding: 20px;
+              border-radius: 8px;
+            }
+            .info-item {
+              margin-bottom: 10px;
+            }
+            .info-label {
+              font-size: 12px;
+              color: #6b7280;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              margin-bottom: 4px;
+            }
+            .info-value {
+              font-size: 16px;
+              font-weight: 600;
+              color: #1f2937;
+            }
+            .section { 
+              margin-bottom: 30px;
+            }
+            .section h3 {
+              color: #1e40af;
+              border-bottom: 2px solid #e5e7eb;
+              padding-bottom: 8px;
+              margin-bottom: 15px;
+              font-size: 18px;
+            }
+            .section-content {
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 6px;
+              line-height: 1.8;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 20px 0;
+              background: white;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            th, td { 
+              padding: 14px; 
+              text-align: left; 
+              border-bottom: 1px solid #e5e7eb;
+            }
+            th { 
+              background-color: #2563eb;
+              color: white;
+              font-weight: 600;
+              text-transform: uppercase;
+              font-size: 12px;
+              letter-spacing: 0.5px;
+            }
+            tr:last-child td {
+              border-bottom: none;
+            }
+            .total-row {
+              background-color: #eff6ff;
+              font-weight: bold;
+            }
+            .total-row td {
+              font-size: 18px;
+              color: #1e40af;
+              padding: 18px 14px;
+            }
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 2px solid #e5e7eb;
+              text-align: center;
+              color: #6b7280;
+              font-size: 12px;
+            }
+            .footer p {
+              margin: 5px 0;
+            }
+            .company-info {
+              margin-top: 30px;
+              text-align: center;
+              color: #4b5563;
+              font-size: 11px;
+            }
           </style>
         </head>
         <body>
-          ${htmlContent}
+          <div class="header">
+            <h1>Acha Delivery Services</h1>
+            <h2>INVOICE</h2>
+          </div>
+          
+          <div class="invoice-info">
+            <div>
+              <div class="info-item">
+                <div class="info-label">Invoice Number</div>
+                <div class="info-value">${invoice.invoiceNumber}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Invoice Date</div>
+                <div class="info-value">${invoice.invoiceDate}</div>
+              </div>
+            </div>
+            <div>
+              <div class="info-item">
+                <div class="info-label">Payment Date</div>
+                <div class="info-value">${invoice.paidAt}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Payment Method</div>
+                <div class="info-value">${invoice.paymentMethod.replace(/_/g, ' ').toUpperCase()}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3>Bill To:</h3>
+            <div class="section-content">
+              <strong>${invoice.buyer?.name || 'N/A'}</strong><br>
+              ${invoice.buyer?.email || ''}<br>
+              ${invoice.buyer?.phone || ''}
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3>Order Details:</h3>
+            <div class="section-content">
+              <strong>Order ID:</strong> ${invoice.order?.uniqueId || invoice.order?._id || 'N/A'}<br>
+              <strong>Product:</strong> ${invoice.order?.orderInfo?.productName || 'N/A'}<br>
+              <strong>Delivery Method:</strong> ${invoice.order?.deliveryMethod || 'N/A'}
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Item Value</td>
+                <td style="text-align: right;">${(invoice.amount - (invoice.fees?.total || 0)).toFixed(2)} ${invoice.currency}</td>
+              </tr>
+              <tr>
+                <td>Delivery Fee</td>
+                <td style="text-align: right;">${invoice.fees?.deliveryFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
+              </tr>
+              <tr>
+                <td>Service Fee</td>
+                <td style="text-align: right;">${invoice.fees?.serviceFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
+              </tr>
+              <tr>
+                <td>Platform Fee</td>
+                <td style="text-align: right;">${invoice.fees?.platformFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
+              </tr>
+              <tr class="total-row">
+                <td>TOTAL</td>
+                <td style="text-align: right;">${invoice.amount.toFixed(2)} ${invoice.currency}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p><strong>Thank you for using Acha Delivery Services!</strong></p>
+            <p>This is an official invoice for your records.</p>
+            <div class="company-info">
+              <p>Acha Delivery Services - Your trusted delivery partner</p>
+              <p>For inquiries, please contact our support team.</p>
+            </div>
+          </div>
         </body>
       </html>
     `;
     
-    const blob = new Blob([fullHTML], { type: 'text/html' });
+    // Create blob and download
+    const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Invoice_${transaction.invoiceNumber}.html`;
+    link.download = `Invoice_${invoice.invoiceNumber}_${new Date().toISOString().split('T')[0]}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-
-  const generateInvoiceHTML = (trans: any) => {
-    if (!trans) return '';
     
-    const invoice = {
-      invoiceNumber: trans.invoiceNumber,
-      invoiceDate: new Date(trans.invoiceGeneratedAt).toLocaleDateString(),
-      buyer: trans.buyerId,
-      order: trans.orderId,
-      amount: trans.amount,
-      currency: trans.currency,
-      fees: trans.fees,
-      paymentMethod: trans.paymentMethod,
-      paidAt: new Date(trans.paidAt).toLocaleDateString()
-    };
-
-    return `
-      <div class="header">
-        <h1>Acha Delivery Services</h1>
-        <h2>INVOICE</h2>
-      </div>
-      
-      <div class="invoice-details">
-        <p><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
-        <p><strong>Invoice Date:</strong> ${invoice.invoiceDate}</p>
-        <p><strong>Payment Date:</strong> ${invoice.paidAt}</p>
-      </div>
-      
-      <div class="section">
-        <h3>Bill To:</h3>
-        <p>${invoice.buyer?.name || 'N/A'}<br>
-        ${invoice.buyer?.email || ''}<br>
-        ${invoice.buyer?.phone || ''}</p>
-      </div>
-      
-      <div class="section">
-        <h3>Order Details:</h3>
-        <p><strong>Order ID:</strong> ${invoice.order?.uniqueId || invoice.order?._id || 'N/A'}</p>
-        <p><strong>Product:</strong> ${invoice.order?.orderInfo?.productName || 'N/A'}</p>
-        <p><strong>Delivery Method:</strong> ${invoice.order?.deliveryMethod || 'N/A'}</p>
-      </div>
-      
-      <table>
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Item Value</td>
-            <td>${(invoice.amount - (invoice.fees?.total || 0)).toFixed(2)} ${invoice.currency}</td>
-          </tr>
-          <tr>
-            <td>Delivery Fee</td>
-            <td>${invoice.fees?.deliveryFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
-          </tr>
-          <tr>
-            <td>Service Fee</td>
-            <td>${invoice.fees?.serviceFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
-          </tr>
-          <tr>
-            <td>Platform Fee</td>
-            <td>${invoice.fees?.platformFee?.toFixed(2) || '0.00'} ${invoice.currency}</td>
-          </tr>
-          <tr class="total">
-            <td>Total</td>
-            <td>${invoice.amount.toFixed(2)} ${invoice.currency}</td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <div class="section">
-        <p><strong>Payment Method:</strong> ${invoice.paymentMethod.replace('_', ' ').toUpperCase()}</p>
-      </div>
-      
-      <div class="section" style="margin-top: 50px;">
-        <p>Thank you for using Acha Delivery Services!</p>
-        <p style="margin-top: 10px; font-size: 12px;">TIN: XXX</p>
-      </div>
-    `;
+    // Also open in new window for printing/saving as PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(fullHTML);
+      printWindow.document.close();
+      // Give user option to print/save as PDF
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
   };
 
   if (loading) {
@@ -328,16 +368,22 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
             Print
           </button>
           <button
-            onClick={handleDownload}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={handlePrint}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
             Print
           </button>
           <button
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
             onClick={handleDownloadPDF}
           >
-            Download PDF
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Invoice
           </button>
           {onClose && (
             <button

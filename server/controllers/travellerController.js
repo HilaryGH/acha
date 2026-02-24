@@ -1,4 +1,28 @@
 const Traveller = require('../models/Traveller');
+const Order = require('../models/Order');
+const Buyer = require('../models/Buyer');
+const { sendTripPostedEmail, sendMatchFoundEmail } = require('../utils/emailService');
+
+// Helper function to normalize location strings for matching
+const normalizeLocation = (location) => {
+  if (!location) return '';
+  return location.toLowerCase().trim().replace(/[^\w\s]/g, '');
+};
+
+// Helper function to check if locations match (fuzzy matching)
+const locationsMatch = (loc1, loc2) => {
+  if (!loc1 || !loc2) return false;
+  const normalized1 = normalizeLocation(loc1);
+  const normalized2 = normalizeLocation(loc2);
+  
+  // Exact match
+  if (normalized1 === normalized2) return true;
+  
+  // Check if one contains the other (for partial matches like "New York" and "New York City")
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) return true;
+  
+  return false;
+};
 
 // Get all travellers
 exports.getAllTravellers = async (req, res, next) => {
@@ -86,6 +110,86 @@ exports.createTraveller = async (req, res, next) => {
     console.log('Creating traveller - received data:', JSON.stringify(req.body, null, 2));
     
     const traveller = await Traveller.create(req.body);
+    
+    // Send trip posted confirmation email
+    try {
+      await sendTripPostedEmail(traveller.email, traveller.name, {
+        currentLocation: traveller.currentLocation,
+        destinationCity: traveller.destinationCity,
+        departureDate: traveller.departureDate,
+        departureTime: traveller.departureTime,
+        arrivalDate: traveller.arrivalDate,
+        arrivalTime: traveller.arrivalTime
+      });
+      console.log('Trip posted email sent to:', traveller.email);
+    } catch (emailError) {
+      console.error('Error sending trip posted email:', emailError);
+      // Don't fail the request if email fails
+    }
+    
+    // Check for matching orders
+    try {
+      // Find orders with deliveryMethod='traveler' that match this traveler's route
+      const matchingOrders = await Order.find({
+        deliveryMethod: 'traveler',
+        status: { $in: ['pending', 'offers_received'] }, // Only pending orders
+        assignedTravelerId: null // Not already assigned
+      }).populate('buyerId', 'name email phone whatsapp telegram currentCity').limit(10);
+      
+      // Filter orders that match the traveler's route
+      const suitableMatches = matchingOrders.filter(order => {
+        const buyer = order.buyerId;
+        if (!buyer) return false;
+        
+        // Check if buyer's city matches traveler's current location (pickup point)
+        const pickupMatch = locationsMatch(traveller.currentLocation, buyer.currentCity);
+        
+        // Check if order destination matches traveler's destination
+        const orderDestination = order.orderInfo?.deliveryDestination || order.orderInfo?.countryOfOrigin || buyer.currentCity;
+        const destinationMatch = locationsMatch(traveller.destinationCity, orderDestination) ||
+                                 locationsMatch(traveller.destinationCity, buyer.currentCity);
+        
+        // Check if traveler's departure date is before or on the preferred delivery date
+        const preferredDate = order.orderInfo?.preferredDeliveryDate ? new Date(order.orderInfo.preferredDeliveryDate) : null;
+        const departureDate = new Date(traveller.departureDate);
+        const isDateValid = !preferredDate || departureDate <= preferredDate;
+        
+        // Check if departure date is not too old (within last 7 days or future)
+        const now = new Date();
+        const isDateNotExpired = departureDate >= now || 
+          (departureDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
+        
+        return pickupMatch && destinationMatch && isDateValid && isDateNotExpired;
+      });
+      
+      // Sort by preferred delivery date (earliest first) and take top 5
+      suitableMatches.sort((a, b) => {
+        const dateA = a.orderInfo?.preferredDeliveryDate ? new Date(a.orderInfo.preferredDeliveryDate) : new Date(0);
+        const dateB = b.orderInfo?.preferredDeliveryDate ? new Date(b.orderInfo.preferredDeliveryDate) : new Date(0);
+        return dateA - dateB;
+      });
+      
+      const topMatches = suitableMatches.slice(0, 5);
+      
+      // If matches found, send match found email
+      if (topMatches.length > 0) {
+        try {
+          const matchesData = topMatches.map(order => ({
+            buyer: order.buyerId,
+            order: order
+          }));
+          
+          await sendMatchFoundEmail(traveller.email, traveller.name, matchesData);
+          console.log(`Match found email sent to ${traveller.email} with ${topMatches.length} matches`);
+        } catch (matchEmailError) {
+          console.error('Error sending match found email:', matchEmailError);
+          // Don't fail the request if email fails
+        }
+      }
+    } catch (matchError) {
+      console.error('Error checking for matches:', matchError);
+      // Don't fail the request if match checking fails
+    }
     
     res.status(201).json({
       status: 'success',

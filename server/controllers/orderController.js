@@ -36,6 +36,81 @@ const locationsMatch = (loc1, loc2) => {
   return false;
 };
 
+// Helper function to calculate match score for travelers (higher = better match)
+const calculateMatchScore = (traveler, buyerCity, orderDestination, preferredDate) => {
+  let score = 0;
+  
+  // Location match (base score)
+  if (locationsMatch(traveler.currentLocation, buyerCity)) {
+    score += 10;
+  }
+  
+  // Destination match
+  if (orderDestination) {
+    if (locationsMatch(traveler.destinationCity, orderDestination)) {
+      score += 10;
+    } else if (locationsMatch(traveler.destinationCity, buyerCity)) {
+      score += 5; // Partial match
+    }
+  }
+  
+  // Date match - prioritize dates AFTER preferred date, then closest to preferred date
+  if (preferredDate) {
+    const departureDate = new Date(traveler.departureDate);
+    const daysDiff = (departureDate - preferredDate) / (1000 * 60 * 60 * 24);
+    
+    // Bonus points for dates AFTER preferred date (not before)
+    if (daysDiff >= 0) {
+      // Date is on or after preferred date - give bonus
+      if (daysDiff <= 1) score += 15; // Same day or next day
+      else if (daysDiff <= 3) score += 12; // Within 3 days after
+      else if (daysDiff <= 7) score += 10; // Within a week after
+      else if (daysDiff <= 14) score += 7; // Within 2 weeks after
+      else score += 3; // More than 2 weeks after (still valid but less ideal)
+    } else {
+      // Date is before preferred date - penalize (shouldn't happen with new filter, but just in case)
+      score -= 5;
+    }
+  } else {
+    // If no preferred date, prefer earlier departures (sooner is better)
+    const departureDate = new Date(traveler.departureDate);
+    const now = new Date();
+    if (departureDate >= now) {
+      const daysUntil = (departureDate - now) / (1000 * 60 * 60 * 24);
+      if (daysUntil <= 7) score += 5;
+      else if (daysUntil <= 14) score += 3;
+    }
+  }
+  
+  return score;
+};
+
+// Helper function to calculate match score for partners (higher = better match)
+const calculatePartnerMatchScore = (partner, buyerCity, orderDestination, preferredDate) => {
+  let score = 0;
+  
+  // Location match (base score)
+  const city = partner.city || partner.primaryLocation || partner.location;
+  if (locationsMatch(city, buyerCity)) {
+    score += 10;
+  }
+  
+  // If partner has destination coverage, check that too
+  if (orderDestination && partner.primaryLocation) {
+    if (locationsMatch(partner.primaryLocation, orderDestination)) {
+      score += 5;
+    }
+  }
+  
+  // Availability match (if partner has availability data, you can enhance this)
+  // For now, all active partners get the same availability score
+  if (partner.status === 'active' || partner.status === 'approved') {
+    score += 5;
+  }
+  
+  return score;
+};
+
 // Create new order from buyer
 exports.createOrder = async (req, res) => {
   try {
@@ -76,199 +151,298 @@ exports.createOrder = async (req, res) => {
       orderInfo
     });
 
-    // Find matching travelers or partners (return up to 4 options)
-    let availableMatches = [];
-    let matchType = null;
+    // Find ALL available matches (both travelers and delivery partners)
+    // Match based on location, destination, and date
+    const buyerCity = buyer.currentCity;
+    const orderDestination = orderInfo.deliveryDestination || orderInfo.countryOfOrigin || buyerCity;
+    // Fix date handling - ensure we use the date without timezone conversion issues
+    let preferredDate = null;
+    if (orderInfo.preferredDeliveryDate) {
+      const dateStr = orderInfo.preferredDeliveryDate;
+      // If it's already a Date object, use it; otherwise parse it
+      preferredDate = dateStr instanceof Date ? dateStr : new Date(dateStr);
+      // Set to start of day in local timezone to avoid timezone issues
+      preferredDate.setHours(0, 0, 0, 0);
+    }
+    const now = new Date();
 
-    console.log('Finding matches for deliveryMethod:', deliveryMethod);
-    console.log('Buyer city:', buyer.currentCity);
+    console.log('Finding ALL matches for order:', {
+      deliveryMethod,
+      buyerCity,
+      orderDestination,
+      preferredDate: preferredDate ? preferredDate.toISOString() : null
+    });
 
-    if (deliveryMethod === 'traveler') {
-      // Find matching travelers
-      const buyerCity = buyer.currentCity;
-      const orderDestination = orderInfo.deliveryDestination || orderInfo.countryOfOrigin || buyerCity;
-      const preferredDate = orderInfo.preferredDeliveryDate ? new Date(orderInfo.preferredDeliveryDate) : null;
-      
-      // Find active travelers matching location
+    let travelerMatches = [];
+    let partnerMatches = [];
+
+    // ========== FIND MATCHING TRAVELERS ==========
+    try {
+      // Find active travelers matching pickup location
+      // Note: We'll filter out travelers already assigned to orders later
       const matchingTravelers = await Traveller.find({
         status: 'active',
         currentLocation: { $regex: new RegExp(buyerCity, 'i') }
-      }).limit(20); // Get more candidates to filter
+      }).limit(50); // Get more candidates to filter
+      
+      // Check which travelers are already assigned to pending/matched orders
+      const assignedTravelerIds = await Order.find({
+        status: { $in: ['pending', 'matched', 'assigned', 'picked_up', 'in_transit'] },
+        assignedTravelerId: { $exists: true, $ne: null }
+      }).distinct('assignedTravelerId');
+      
+      // Filter out already assigned travelers
+      const unassignedTravelers = matchingTravelers.filter(t => 
+        !assignedTravelerIds.some(id => id.toString() === t._id.toString())
+      );
+
+      console.log(`Found ${unassignedTravelers.length} unassigned travelers in ${buyerCity} (out of ${matchingTravelers.length} total)`);
 
       // Filter travelers by destination and date
-      const suitableTravelers = matchingTravelers.filter(traveler => {
+      const suitableTravelers = unassignedTravelers.filter(traveler => {
+        // Location match: traveler's current location should match buyer's city (pickup point)
+        const pickupMatch = locationsMatch(traveler.currentLocation, buyerCity);
+        
+        // Destination match: traveler's destination should match order destination
         const destinationMatch = !orderDestination || 
-          locationsMatch(traveler.destinationCity, orderDestination) ||
-          locationsMatch(traveler.destinationCity, buyerCity);
+          locationsMatch(traveler.destinationCity, orderDestination);
         
+        // Date validation: traveler's departure date should be valid (not in the past)
         const departureDate = new Date(traveler.departureDate);
-        const now = new Date();
-        const isDateValid = departureDate >= now || 
-          (departureDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
+        const isDateValid = departureDate >= now;
         
-        const isDateBeforePreferred = !preferredDate || departureDate <= preferredDate;
+        // Date match: traveler should depart on or AFTER preferred delivery date (not before)
+        // This ensures the traveler can deliver by or after the preferred date
+        const isDateAfterPreferred = !preferredDate || departureDate >= preferredDate;
         
-        return destinationMatch && isDateValid && isDateBeforePreferred;
+        return pickupMatch && destinationMatch && isDateValid && isDateAfterPreferred;
       });
 
-      // Sort by departure date (closest first) and take top 4
+      // Sort travelers: prioritize those with dates AFTER preferred date, then by closest date
       suitableTravelers.sort((a, b) => {
         const dateA = new Date(a.departureDate);
         const dateB = new Date(b.departureDate);
+        
+        if (preferredDate) {
+          const aIsAfter = dateA >= preferredDate;
+          const bIsAfter = dateB >= preferredDate;
+          
+          // Prioritize dates after preferred date
+          if (aIsAfter && !bIsAfter) return -1;
+          if (!aIsAfter && bIsAfter) return 1;
+          
+          // If both are after or both are before, sort by closest to preferred date
+          const diffA = Math.abs(dateA - preferredDate);
+          const diffB = Math.abs(dateB - preferredDate);
+          return diffA - diffB;
+        }
+        
+        // If no preferred date, sort by closest to now
         return dateA - dateB;
       });
 
-      availableMatches = suitableTravelers.slice(0, 4).map(t => ({
+      travelerMatches = suitableTravelers.map(t => ({
         _id: t._id,
         uniqueId: t.uniqueId,
         name: t.name,
         email: t.email,
         phone: t.phone,
+        whatsapp: t.whatsapp,
+        telegram: t.telegram,
         currentLocation: t.currentLocation,
         destinationCity: t.destinationCity,
         departureDate: t.departureDate,
+        departureTime: t.departureTime,
         arrivalDate: t.arrivalDate,
-        travellerType: t.travellerType
+        arrivalTime: t.arrivalTime,
+        travellerType: t.travellerType,
+        matchType: 'traveler',
+        matchScore: calculateMatchScore(t, buyerCity, orderDestination, preferredDate)
       }));
-      matchType = 'traveler';
-    } else if (deliveryMethod === 'partner' || deliveryMethod === 'delivery_partner' || 
-               deliveryMethod === 'acha_sisters_delivery_partner' || 
-               deliveryMethod === 'movers_packers' || 
-               deliveryMethod === 'gift_delivery_partner') {
-      const buyerCity = buyer.currentCity;
-      
-      // For role-based delivery methods, find users with matching roles
-      if (deliveryMethod === 'delivery_partner' || deliveryMethod === 'acha_sisters_delivery_partner' || 
-          deliveryMethod === 'movers_packers' || deliveryMethod === 'gift_delivery_partner') {
-        console.log('Searching for users with role:', deliveryMethod);
-        
-        // First, try to find users with matching role and location
-        let matchingUsers = await User.find({
-          role: deliveryMethod,
-          status: 'active',
-          $or: [
-            { city: { $regex: new RegExp(buyerCity, 'i') } },
-            { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } },
-            { location: { $regex: new RegExp(buyerCity, 'i') } }
-          ]
-        }).limit(20);
 
-        console.log(`Found ${matchingUsers.length} users with role ${deliveryMethod} in ${buyerCity}`);
-
-        // For gift_delivery_partner, also check Partner model with registrationType 'Gift Delivery Partner'
-        if (deliveryMethod === 'gift_delivery_partner' && matchingUsers.length === 0) {
-          console.log('Checking Partner model for Gift Delivery Partners');
-          const giftPartners = await Partner.find({
-            registrationType: 'Gift Delivery Partner',
-            status: 'approved',
-            $or: [
-              { city: { $regex: new RegExp(buyerCity, 'i') } },
-              { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } }
-            ]
-          }).limit(20);
-          
-          if (giftPartners.length > 0) {
-            // Convert Partner records to match format
-            const suitablePartners = giftPartners.filter(partner => {
-              return locationsMatch(partner.city, buyerCity) || 
-                     locationsMatch(partner.primaryLocation, buyerCity);
-            });
-            
-            availableMatches = suitablePartners.slice(0, 4).map(p => ({
-              _id: p._id,
-              uniqueId: p.uniqueId,
-              name: p.name || p.companyName,
-              companyName: p.companyName,
-              email: p.email,
-              phone: p.phone,
-              city: p.city,
-              primaryLocation: p.primaryLocation,
-              isPartnerModel: true // Flag to indicate this is from Partner model
-            }));
-            matchType = 'partner';
-            console.log(`Found ${availableMatches.length} Gift Delivery Partners from Partner model`);
-          }
-        }
-
-        // If no users found in exact location, try to find users with the role regardless of location
-        if (matchingUsers.length === 0 && availableMatches.length === 0) {
-          console.log('No users found in exact location, searching all users with role:', deliveryMethod);
-          matchingUsers = await User.find({
-            role: deliveryMethod,
-            status: 'active'
-          }).limit(20);
-          console.log(`Found ${matchingUsers.length} total users with role ${deliveryMethod}`);
-        }
-
-        // Filter by exact or fuzzy location match
-        const suitableUsers = matchingUsers.filter(user => {
-          const matches = locationsMatch(user.city, buyerCity) || 
-                         locationsMatch(user.primaryLocation, buyerCity) ||
-                         locationsMatch(user.location, buyerCity);
-          return matches || matchingUsers.length === 0; // Include all if no location matches found
-        });
-
-        console.log(`Filtered to ${suitableUsers.length} suitable users`);
-
-        // Take top 4 users (only if we haven't already found partners from Partner model)
-        if (availableMatches.length === 0) {
-          availableMatches = suitableUsers.slice(0, 4).map(u => ({
-            _id: u._id,
-            userId: u.userId,
-            name: u.name,
-            email: u.email,
-            phone: u.phone,
-            city: u.city,
-            primaryLocation: u.primaryLocation,
-            location: u.location,
-            role: u.role,
-            isPartnerModel: false
-          }));
-        }
-        matchType = 'partner';
-        console.log(`Returning ${availableMatches.length} matches for role-based delivery`);
-      } else {
-        // Legacy partner matching - Find approved partners matching location
-        const matchingPartners = await Partner.find({
-          status: 'approved',
-          registrationType: 'Invest/Partner',
-          partner: 'Delivery Partner',
-          $or: [
-            { city: { $regex: new RegExp(buyerCity, 'i') } },
-            { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } }
-          ]
-        }).limit(20);
-
-        // Filter by exact or fuzzy location match
-        const suitablePartners = matchingPartners.filter(partner => {
-          return locationsMatch(partner.city, buyerCity) || 
-                 locationsMatch(partner.primaryLocation, buyerCity);
-        });
-
-        // Take top 4 partners
-        availableMatches = suitablePartners.slice(0, 4).map(p => ({
-          _id: p._id,
-          uniqueId: p.uniqueId,
-          name: p.name || p.companyName,
-          companyName: p.companyName,
-          email: p.email,
-          phone: p.phone,
-          city: p.city,
-          primaryLocation: p.primaryLocation
-        }));
-        matchType = 'partner';
-      }
+      console.log(`Found ${travelerMatches.length} suitable travelers`);
+    } catch (travelerError) {
+      console.error('Error finding traveler matches:', travelerError);
     }
 
-    console.log(`Order created. Returning ${availableMatches.length} matches, matchType: ${matchType}`);
+    // ========== FIND MATCHING DELIVERY PARTNERS ==========
+    try {
+      // Find all delivery partner types
+      const partnerRoles = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
+      
+      // Find users with delivery partner roles matching location
+      let matchingUsers = await User.find({
+        role: { $in: partnerRoles },
+        status: 'active',
+        $or: [
+          { city: { $regex: new RegExp(buyerCity, 'i') } },
+          { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } },
+          { location: { $regex: new RegExp(buyerCity, 'i') } }
+        ]
+      }).limit(50);
+
+      console.log(`Found ${matchingUsers.length} potential delivery partners (users) in ${buyerCity}`);
+
+      // Filter by location match and date availability (if partner has availability info)
+      const suitableUsers = matchingUsers.filter(user => {
+        const locationMatch = locationsMatch(user.city, buyerCity) || 
+                             locationsMatch(user.primaryLocation, buyerCity) ||
+                             locationsMatch(user.location, buyerCity);
+        
+        // For partners, we can check if they have availability settings
+        // If preferredDate is set, check if partner is available around that time
+        // (This is a basic check - you can enhance this with actual availability data)
+        return locationMatch;
+      });
+
+      // Convert to match format
+      const userMatches = suitableUsers.map(u => ({
+        _id: u._id,
+        userId: u.userId,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        city: u.city,
+        primaryLocation: u.primaryLocation,
+        location: u.location,
+        role: u.role,
+        matchType: 'partner',
+        isPartnerModel: false,
+        matchScore: calculatePartnerMatchScore(u, buyerCity, orderDestination, preferredDate)
+      }));
+
+      partnerMatches.push(...userMatches);
+
+      // Also check Partner model for legacy partners and gift delivery partners
+      const legacyPartners = await Partner.find({
+        status: 'approved',
+        $or: [
+          { registrationType: 'Invest/Partner', partner: 'Delivery Partner' },
+          { registrationType: 'Gift Delivery Partner' }
+        ],
+        $or: [
+          { city: { $regex: new RegExp(buyerCity, 'i') } },
+          { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } }
+        ]
+      }).limit(50);
+
+      console.log(`Found ${legacyPartners.length} potential legacy partners in ${buyerCity}`);
+
+      const suitableLegacyPartners = legacyPartners.filter(partner => {
+        return locationsMatch(partner.city, buyerCity) || 
+               locationsMatch(partner.primaryLocation, buyerCity);
+      });
+
+      const legacyMatches = suitableLegacyPartners.map(p => ({
+        _id: p._id,
+        uniqueId: p.uniqueId,
+        name: p.name || p.companyName,
+        companyName: p.companyName,
+        email: p.email,
+        phone: p.phone,
+        city: p.city,
+        primaryLocation: p.primaryLocation,
+        registrationType: p.registrationType,
+        matchType: 'partner',
+        isPartnerModel: true,
+        matchScore: calculatePartnerMatchScore(p, buyerCity, orderDestination, preferredDate)
+      }));
+
+      partnerMatches.push(...legacyMatches);
+
+      // Sort partners by match score (best matches first)
+      partnerMatches.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+
+      console.log(`Found ${partnerMatches.length} suitable delivery partners`);
+    } catch (partnerError) {
+      console.error('Error finding partner matches:', partnerError);
+    }
+
+    // Combine all matches
+    const availableMatches = {
+      travelers: travelerMatches,
+      partners: partnerMatches,
+      total: travelerMatches.length + partnerMatches.length
+    };
+
+    console.log(`Order created. Found ${travelerMatches.length} travelers and ${partnerMatches.length} partners (${availableMatches.total} total matches)`);
     
-    // Automatically assign order to first available partner if found
+    // Automatically match/assign based on delivery method
     let assignedPartner = null;
+    let assignedTraveler = null;
     let autoAssigned = false;
+    let autoMatched = false;
     
-    if (availableMatches.length > 0 && isPartnerDeliveryMethod(deliveryMethod)) {
+    // Auto-match with traveler if delivery method is 'traveler' and matches found
+    if (deliveryMethod === 'traveler' && travelerMatches.length > 0) {
       try {
-        const firstMatch = availableMatches[0];
+        const bestTraveler = travelerMatches[0]; // Get best matching traveler
+        const travelerId = bestTraveler._id;
+        
+        const traveler = await Traveller.findById(travelerId);
+        if (traveler && traveler.status === 'active') {
+          order.assignedTravelerId = travelerId;
+          order.status = 'matched';
+          await order.addTrackingUpdate('matched', `Order automatically matched with traveler: ${traveler.name}`, '');
+          await order.save();
+          
+          assignedTraveler = {
+            _id: traveler._id,
+            name: traveler.name,
+            email: traveler.email,
+            phone: traveler.phone
+          };
+          autoMatched = true;
+          
+          // Send email notification to traveler
+          try {
+            const { sendOrderAssignmentEmail } = require('../utils/emailService');
+            await sendOrderAssignmentEmail(traveler.email, traveler.name, {
+              orderId: order.uniqueId,
+              uniqueId: order.uniqueId,
+              productName: order.orderInfo?.productName,
+              deliveryDestination: order.orderInfo?.deliveryDestination,
+              preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate,
+              deliveryMethod: 'traveler'
+            });
+          } catch (emailError) {
+            console.error('Error sending match email to traveler:', emailError);
+          }
+          
+          // Send email notification to buyer about match found
+          try {
+            const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
+            await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
+              orderId: order.uniqueId,
+              uniqueId: order.uniqueId,
+              productName: order.orderInfo?.productName,
+              deliveryDestination: order.orderInfo?.deliveryDestination,
+              preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+            }, {
+              name: traveler.name,
+              email: traveler.email,
+              phone: traveler.phone,
+              currentLocation: traveler.currentLocation,
+              destinationCity: traveler.destinationCity,
+              departureDate: traveler.departureDate
+            });
+          } catch (emailError) {
+            console.error('Error sending match email to buyer:', emailError);
+          }
+          
+          console.log(`Order ${order.uniqueId} automatically matched with traveler: ${traveler.name}`);
+        }
+      } catch (matchError) {
+        console.error('Error during automatic traveler matching:', matchError);
+        // Continue without matching if there's an error
+      }
+    }
+    
+    // Automatically assign order to first available partner if found (only for partner delivery methods)
+    
+    if (partnerMatches.length > 0 && isPartnerDeliveryMethod(deliveryMethod)) {
+      try {
+        const firstMatch = partnerMatches[0]; // Get best matching partner
         const partnerId = firstMatch._id;
         
         // For role-based delivery methods, assign to User or Partner model
@@ -280,6 +454,7 @@ exports.createOrder = async (req, res) => {
             if (partner && partner.status === 'approved' && partner.registrationType === 'Gift Delivery Partner') {
               order.assignedPartnerId = partnerId;
               order.status = 'assigned';
+              order.partnerAcceptanceStatus = 'pending';
               const partnerName = partner.name || partner.companyName || 'Partner';
               await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
               await order.save();
@@ -299,10 +474,31 @@ exports.createOrder = async (req, res) => {
                   orderId: order.uniqueId,
                   uniqueId: order.uniqueId,
                   productName: order.orderInfo?.productName,
+                  deliveryDestination: order.orderInfo?.deliveryDestination,
+                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate,
                   deliveryMethod: deliveryMethod
                 });
               } catch (emailError) {
                 console.error('Error sending assignment email:', emailError);
+              }
+              
+              // Send email notification to buyer about match found
+              try {
+                const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
+                await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
+                  orderId: order.uniqueId,
+                  uniqueId: order.uniqueId,
+                  productName: order.orderInfo?.productName,
+                  deliveryDestination: order.orderInfo?.deliveryDestination,
+                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+                }, {
+                  name: partnerName,
+                  email: partner.email,
+                  phone: partner.phone,
+                  city: partner.city || partner.primaryLocation
+                });
+              } catch (emailError) {
+                console.error('Error sending match email to buyer:', emailError);
               }
               
               console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
@@ -313,6 +509,7 @@ exports.createOrder = async (req, res) => {
             if (partner && partner.role === deliveryMethod && partner.status === 'active') {
               order.assignedPartnerId = partnerId;
               order.status = 'assigned';
+              order.partnerAcceptanceStatus = 'pending';
               const partnerName = partner.name || partner.companyName || 'Partner';
               await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
               await order.save();
@@ -332,10 +529,31 @@ exports.createOrder = async (req, res) => {
                   orderId: order.uniqueId,
                   uniqueId: order.uniqueId,
                   productName: order.orderInfo?.productName,
+                  deliveryDestination: order.orderInfo?.deliveryDestination,
+                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate,
                   deliveryMethod: deliveryMethod
                 });
               } catch (emailError) {
                 console.error('Error sending assignment email:', emailError);
+              }
+              
+              // Send email notification to buyer about match found
+              try {
+                const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
+                await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
+                  orderId: order.uniqueId,
+                  uniqueId: order.uniqueId,
+                  productName: order.orderInfo?.productName,
+                  deliveryDestination: order.orderInfo?.deliveryDestination,
+                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+                }, {
+                  name: partnerName,
+                  email: partner.email,
+                  phone: partner.phone,
+                  city: partner.city || partner.primaryLocation
+                });
+              } catch (emailError) {
+                console.error('Error sending match email to buyer:', emailError);
               }
               
               console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
@@ -347,6 +565,7 @@ exports.createOrder = async (req, res) => {
           if (partner && partner.status === 'approved') {
             order.assignedPartnerId = partnerId;
             order.status = 'assigned';
+            order.partnerAcceptanceStatus = 'pending';
             const partnerName = partner.name || partner.companyName || 'Partner';
             await order.addTrackingUpdate('assigned', `Order automatically assigned to partner: ${partnerName}`, '');
             await order.save();
@@ -366,10 +585,31 @@ exports.createOrder = async (req, res) => {
                 orderId: order.uniqueId,
                 uniqueId: order.uniqueId,
                 productName: order.orderInfo?.productName,
+                deliveryDestination: order.orderInfo?.deliveryDestination,
+                preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate,
                 deliveryMethod: deliveryMethod
               });
             } catch (emailError) {
               console.error('Error sending assignment email:', emailError);
+            }
+            
+            // Send email notification to buyer about match found
+            try {
+              const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
+              await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
+                orderId: order.uniqueId,
+                uniqueId: order.uniqueId,
+                productName: order.orderInfo?.productName,
+                deliveryDestination: order.orderInfo?.deliveryDestination,
+                preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+              }, {
+                name: partnerName,
+                email: partner.email,
+                phone: partner.phone,
+                city: partner.city || partner.primaryLocation
+              });
+            } catch (emailError) {
+              console.error('Error sending match email to buyer:', emailError);
             }
             
             console.log(`Order ${order.uniqueId} automatically assigned to partner: ${partnerName}`);
@@ -381,18 +621,40 @@ exports.createOrder = async (req, res) => {
       }
     }
     
+    // Determine match type and if match was found
+    let matchType = null;
+    if (deliveryMethod === 'traveler' && travelerMatches.length > 0) {
+      matchType = 'traveler';
+    } else if (isPartnerDeliveryMethod(deliveryMethod) && partnerMatches.length > 0) {
+      matchType = 'partner';
+    }
+    
+    const hasMatch = autoMatched || autoAssigned;
+    const matchFound = (deliveryMethod === 'traveler' && travelerMatches.length > 0) || 
+                      (isPartnerDeliveryMethod(deliveryMethod) && partnerMatches.length > 0);
+    
     res.status(201).json({
       status: 'success',
-      message: autoAssigned 
-        ? 'Order created and automatically assigned to available partner.' 
-        : 'Order created successfully. Please select a delivery option.',
+      message: hasMatch
+        ? (autoMatched ? 'Order created and automatically matched with traveler. We will email you shortly.' : 'Order created and automatically assigned to available partner. We will email you shortly.')
+        : matchFound
+        ? `Order created successfully. Found ${availableMatches.total} available matches. Please proceed to payment.`
+        : `Order created successfully. No match found at this moment. We will email you when a match becomes available.`,
       data: {
         ...order.toObject(),
-        availableMatches,
-        matchType,
-        requiresSelection: !autoAssigned && availableMatches.length > 0,
-        autoAssigned,
-        assignedPartner
+        availableMatches: {
+          travelers: travelerMatches,
+          partners: partnerMatches,
+          all: [...travelerMatches, ...partnerMatches], // Combined list for backward compatibility
+          total: availableMatches.total
+        },
+        matchType: matchType, // 'traveler' or 'partner' or null
+        matchFound: matchFound,
+        autoMatched: autoMatched,
+        autoAssigned: autoAssigned,
+        requiresSelection: !hasMatch && availableMatches.total > 0,
+        assignedPartner: assignedPartner,
+        assignedTraveler: assignedTraveler
       }
     });
   } catch (error) {
@@ -646,6 +908,7 @@ exports.assignToPartner = async (req, res) => {
 
     order.assignedPartnerId = partnerId;
     order.status = 'assigned'; // Confirmed status
+    order.partnerAcceptanceStatus = 'pending';
     const partnerName = partner.name || partner.companyName || 'Partner';
     const partnerEmail = partner.email;
     await order.addTrackingUpdate('assigned', `Order confirmed and assigned to partner: ${partnerName}`, '');
@@ -1276,6 +1539,7 @@ exports.partnerAcceptRequest = async (req, res) => {
     // Assign order to partner
     order.assignedPartnerId = partnerId;
     order.status = 'assigned';
+    order.partnerAcceptanceStatus = 'pending';
     const partnerName = partner.name || partner.companyName || 'Partner';
     const partnerEmail = partner.email;
     await order.addTrackingUpdate('assigned', `Order accepted and assigned to partner: ${partnerName}`, '');
@@ -1311,6 +1575,218 @@ exports.partnerAcceptRequest = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error.message
+    });
+  }
+};
+
+// Partner accepts an assigned order
+exports.partnerAcceptOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const userId = req.user?.id;
+
+    if (!orderId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order ID is required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Authentication required'
+      });
+    }
+
+    const User = require('../models/User');
+    const Buyer = require('../models/Buyer');
+    const order = await Order.findById(orderId).populate('buyerId');
+
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Verify the order is assigned to this partner
+    if (!order.assignedPartnerId || order.assignedPartnerId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'This order is not assigned to you'
+      });
+    }
+
+    // Check if order is in assigned status
+    if (order.status !== 'assigned') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order is not in assigned status'
+      });
+    }
+
+    // Get partner info
+    let partner = null;
+    if (order.deliveryMethod === 'delivery_partner' || order.deliveryMethod === 'acha_sisters_delivery_partner' || 
+        order.deliveryMethod === 'movers_packers' || order.deliveryMethod === 'gift_delivery_partner') {
+      partner = await User.findById(userId);
+    } else {
+      const Partner = require('../models/Partner');
+      partner = await Partner.findById(userId);
+    }
+
+    if (!partner) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Partner not found'
+      });
+    }
+
+    // Update order acceptance status
+    order.partnerAcceptanceStatus = 'accepted';
+    const partnerName = partner.name || partner.companyName || 'Delivery Partner';
+    await order.addTrackingUpdate('assigned', `Order accepted by delivery partner: ${partnerName}`, '');
+    await order.save();
+
+    // Send email to client
+    try {
+      const buyer = order.buyerId;
+      if (buyer && buyer.email) {
+        const { sendOrderAcceptedEmail } = require('../utils/emailService');
+        await sendOrderAcceptedEmail(buyer.email, buyer.name || 'Client', {
+          orderId: order.uniqueId,
+          uniqueId: order.uniqueId,
+          productName: order.orderInfo?.productName,
+          productDescription: order.orderInfo?.productDescription,
+          deliveryDestination: order.orderInfo?.deliveryDestination
+        }, partnerName);
+      }
+    } catch (emailError) {
+      console.error('Error sending acceptance email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order accepted successfully',
+      data: { order }
+    });
+  } catch (error) {
+    console.error('Error accepting order:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to accept order'
+    });
+  }
+};
+
+// Partner rejects an assigned order
+exports.partnerRejectOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const userId = req.user?.id;
+
+    if (!orderId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order ID is required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Authentication required'
+      });
+    }
+
+    const User = require('../models/User');
+    const Buyer = require('../models/Buyer');
+    const order = await Order.findById(orderId).populate('buyerId');
+
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Verify the order is assigned to this partner
+    if (!order.assignedPartnerId || order.assignedPartnerId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'This order is not assigned to you'
+      });
+    }
+
+    // Check if order is in assigned status
+    if (order.status !== 'assigned') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order is not in assigned status'
+      });
+    }
+
+    // Get partner info
+    let partner = null;
+    if (order.deliveryMethod === 'delivery_partner' || order.deliveryMethod === 'acha_sisters_delivery_partner' || 
+        order.deliveryMethod === 'movers_packers' || order.deliveryMethod === 'gift_delivery_partner') {
+      partner = await User.findById(userId);
+    } else {
+      const Partner = require('../models/Partner');
+      partner = await Partner.findById(userId);
+    }
+
+    if (!partner) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Partner not found'
+      });
+    }
+
+    const partnerName = partner.name || partner.companyName || 'Delivery Partner';
+
+    // Update order - reject and unassign
+    order.partnerAcceptanceStatus = 'rejected';
+    order.assignedPartnerId = null;
+    // Change status back to pending or offers_received based on whether there are offers
+    if (order.partnerOffers && order.partnerOffers.length > 0) {
+      order.status = 'offers_received';
+    } else {
+      order.status = 'pending';
+    }
+    await order.addTrackingUpdate('pending', `Order rejected by delivery partner: ${partnerName}. Order will be reassigned.`, '');
+    await order.save();
+
+    // Send email to client
+    try {
+      const buyer = order.buyerId;
+      if (buyer && buyer.email) {
+        const { sendOrderRejectedEmail } = require('../utils/emailService');
+        await sendOrderRejectedEmail(buyer.email, buyer.name || 'Client', {
+          orderId: order.uniqueId,
+          uniqueId: order.uniqueId,
+          productName: order.orderInfo?.productName,
+          productDescription: order.orderInfo?.productDescription,
+          deliveryDestination: order.orderInfo?.deliveryDestination
+        }, partnerName);
+      }
+    } catch (emailError) {
+      console.error('Error sending rejection email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order rejected successfully. Order will be reassigned.',
+      data: { order }
+    });
+  } catch (error) {
+    console.error('Error rejecting order:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to reject order'
     });
   }
 };

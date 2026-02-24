@@ -41,6 +41,7 @@ interface Order {
   }>;
   createdAt: string;
   assignedPartnerId?: any;
+  partnerAcceptanceStatus?: 'pending' | 'accepted' | 'rejected';
 }
 
 interface DeliveryPartnerDashboardProps {
@@ -58,6 +59,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   });
   const [orders, setOrders] = useState<Order[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [processingOrder, setProcessingOrder] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -185,6 +187,48 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
     } catch (error) {
       console.error('Error updating order status:', error);
       alert('Failed to update order status');
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to accept this delivery order?')) {
+      return;
+    }
+
+    try {
+      setProcessingOrder(orderId);
+      await api.orders.partnerAcceptOrder({ orderId });
+      const updatedOrders = await loadOrders();
+      if (updatedOrders) {
+        await loadStats(updatedOrders);
+      }
+      alert('Order accepted successfully! The client has been notified.');
+    } catch (error: any) {
+      console.error('Error accepting order:', error);
+      alert(error.message || 'Failed to accept order');
+    } finally {
+      setProcessingOrder(null);
+    }
+  };
+
+  const handleRejectOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to reject this delivery order? The order will be reassigned to another partner.')) {
+      return;
+    }
+
+    try {
+      setProcessingOrder(orderId);
+      await api.orders.partnerRejectOrder({ orderId });
+      const updatedOrders = await loadOrders();
+      if (updatedOrders) {
+        await loadStats(updatedOrders);
+      }
+      alert('Order rejected. The client has been notified and the order will be reassigned.');
+    } catch (error: any) {
+      console.error('Error rejecting order:', error);
+      alert(error.message || 'Failed to reject order');
+    } finally {
+      setProcessingOrder(null);
     }
   };
 
@@ -393,8 +437,28 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                         </div>
                       )}
 
-                      {/* Status Update Actions */}
-                      {order.status === 'assigned' && (
+                      {/* Accept/Reject Actions for Assigned Orders */}
+                      {order.status === 'assigned' && (!order.partnerAcceptanceStatus || order.partnerAcceptanceStatus === 'pending') && (
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={() => handleAcceptOrder(order._id)}
+                            disabled={processingOrder === order._id}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {processingOrder === order._id ? 'Processing...' : '✓ Accept Order'}
+                          </button>
+                          <button
+                            onClick={() => handleRejectOrder(order._id)}
+                            disabled={processingOrder === order._id}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {processingOrder === order._id ? 'Processing...' : '✗ Reject Order'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Status Update Actions - Only show after acceptance */}
+                      {order.status === 'assigned' && order.partnerAcceptanceStatus === 'accepted' && (
                         <div className="flex gap-2 mt-4">
                           <button
                             onClick={() => handleUpdateOrderStatus(order._id, 'picked_up', 'Item picked up')}

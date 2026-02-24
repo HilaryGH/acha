@@ -23,10 +23,16 @@ interface MatchSelectionProps {
   destination: string;
   onSelect: (matchId: string) => void;
   onSkip: () => void;
+  autoMatched?: boolean;
+  autoAssigned?: boolean;
+  assignedMatchId?: string | null;
 }
 
-function MatchSelection({ matches, matchType, origin, destination, onSelect, onSkip }: MatchSelectionProps) {
-  const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
+function MatchSelection({ matches, matchType, origin, destination, onSelect, onSkip, autoMatched = false, autoAssigned = false, assignedMatchId = null }: MatchSelectionProps) {
+  // Pre-select the assigned match if auto-matched/assigned
+  const [selectedMatch, setSelectedMatch] = useState<string | null>(
+    (autoMatched || autoAssigned) && assignedMatchId ? assignedMatchId : null
+  );
   const [distances, setDistances] = useState<Record<string, any>>({});
   const [loadingDistances, setLoadingDistances] = useState(false);
   const [isLocal, setIsLocal] = useState(false);
@@ -122,14 +128,25 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
     );
   }
 
+  const isAutoMatched = autoMatched || autoAssigned;
+  
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-        Select {matchType === 'traveler' ? 'Traveler' : 'Delivery Partner'}
+        {isAutoMatched ? 'Match Found!' : `Select ${matchType === 'traveler' ? 'Traveler' : 'Delivery Partner'}`}
       </h2>
       <p className="text-gray-600 mb-6">
-        We found {matches.length} {matchType === 'traveler' ? 'traveler' : 'partner'}{matches.length > 1 ? 's' : ''} matching your route.
-        {isLocal && ' Distance and delivery fees are calculated below.'}
+        {isAutoMatched ? (
+          <>
+            We've automatically found and matched you with a {matchType === 'traveler' ? 'traveler' : 'delivery partner'}!
+            Please review the details below and confirm to proceed to payment.
+          </>
+        ) : (
+          <>
+            We found {matches.length} {matchType === 'traveler' ? 'traveler' : 'partner'}{matches.length > 1 ? 's' : ''} matching your route.
+            {isLocal && ' Distance and delivery fees are calculated below.'}
+          </>
+        )}
       </p>
 
       {loadingDistances && (
@@ -223,14 +240,16 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
           className="flex-1 py-3 px-6 rounded-lg text-white font-semibold text-lg transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
         >
-          Select & Continue
+          {isAutoMatched ? 'Confirm & Proceed to Payment' : 'Select & Continue'}
         </button>
-        <button
-          onClick={onSkip}
-          className="px-6 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50"
-        >
-          Skip for Now
-        </button>
+        {!isAutoMatched && (
+          <button
+            onClick={onSkip}
+            className="px-6 py-3 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50"
+          >
+            Skip for Now
+          </button>
+        )}
       </div>
     </div>
   );

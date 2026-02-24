@@ -117,6 +117,12 @@ const orderSchema = new mongoose.Schema({
     ref: 'Partner',
     default: null
   },
+  // Partner acceptance status for assigned orders
+  partnerAcceptanceStatus: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: null
+  },
   // Partner Offers/Bids (for partner delivery method)
   partnerOffers: [{
     partnerId: {

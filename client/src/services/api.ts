@@ -546,6 +546,18 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
+    partnerAcceptOrder: async (data: { orderId: string }) => {
+      return request('/orders/accept-assigned', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+    partnerRejectOrder: async (data: { orderId: string }) => {
+      return request('/orders/reject-assigned', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
   },
 
 

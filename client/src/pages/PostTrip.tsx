@@ -18,7 +18,7 @@ function PostTrip() {
     arrivalDate: '',
     arrivalTime: '',
     bankAccount: '',
-    travellerType: 'international' as 'international' | 'domestic',
+    travellerType: 'international' as 'international' | 'domestic' | 'intra-city',
     internationalDocuments: {
       flightTicket: '',
       visa: '',
@@ -120,7 +120,7 @@ function PostTrip() {
           internationalDocuments: processedInternationalDocs
         };
       } else {
-        // Process domestic documents - remove empty strings
+        // Process domestic documents - remove empty strings (for both domestic and intra-city)
         const processedDomesticDocs: any = {};
         Object.keys(baseData.domesticDocuments).forEach(key => {
           const typedKey = key as keyof typeof baseData.domesticDocuments;
@@ -319,6 +319,7 @@ function PostTrip() {
                   >
                     <option value="international">International</option>
                     <option value="domestic">Domestic/Local</option>
+                    <option value="intra-city">Intra City</option>
                   </select>
                 </div>
                 <div>
@@ -410,7 +411,7 @@ function PostTrip() {
             <div className="pb-6">
               <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
                 <span className="text-2xl">📄</span>
-                Documents {formData.travellerType === 'international' ? '(International)' : '(Domestic/Local)'}
+                Documents {formData.travellerType === 'international' ? '(International)' : formData.travellerType === 'intra-city' ? '(Intra City)' : '(Domestic/Local)'}
               </h2>
               
               {formData.travellerType === 'international' ? (

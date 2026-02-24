@@ -49,8 +49,8 @@ const buyerSchema = new mongoose.Schema({
   // Financial Information
   bankAccount: {
     type: String,
-    required: [true, 'Bank account is required'],
-    trim: true
+    trim: true,
+    default: null
   },
   
   // Attached Documents

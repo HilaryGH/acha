@@ -18,7 +18,9 @@ const {
   getAvailableRequests,
   submitPartnerOffer,
   getPartnerOffers,
-  partnerAcceptRequest
+  partnerAcceptRequest,
+  partnerAcceptOrder,
+  partnerRejectOrder
 } = require('../controllers/orderController');
 
 console.log('✅ Order routes module loaded');
@@ -58,6 +60,12 @@ router.route('/offer')
 
 router.route('/accept')
   .post(partnerAcceptRequest);
+
+router.route('/accept-assigned')
+  .post(authenticate, partnerAcceptOrder);
+
+router.route('/reject-assigned')
+  .post(authenticate, partnerRejectOrder);
 
 router.route('/match/traveler')
   .post(matchWithTraveler);

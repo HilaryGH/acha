@@ -18,7 +18,6 @@ function PostOrder() {
     currentCity: '',
     location: '',
     deliveryDestination: '',
-    bankAccount: '',
     idDocument: '',
     // Delivery Method
     deliveryMethod: 'traveler' as 'traveler' | 'delivery_partner' | 'acha_sisters_delivery_partner' | 'movers_packers' | 'gift_delivery_partner',
@@ -101,7 +100,6 @@ function PostOrder() {
         telegram: formData.telegram || undefined,
         currentCity: formData.currentCity,
         location: formData.location || undefined,
-        bankAccount: formData.bankAccount,
         idDocument: formData.idDocument || undefined,
         deliveryMethod: formData.deliveryMethod
       };
@@ -123,7 +121,7 @@ function PostOrder() {
         manufacturingDate: formData.manufacturingDate ? new Date(formData.manufacturingDate).toISOString() : undefined,
         countryOfOrigin: formData.countryOfOrigin || undefined,
         deliveryDestination: formData.deliveryDestination || undefined,
-        preferredDeliveryDate: formData.preferredDeliveryDate ? new Date(formData.preferredDeliveryDate).toISOString() : undefined,
+        preferredDeliveryDate: formData.preferredDeliveryDate ? new Date(formData.preferredDeliveryDate + 'T00:00:00').toISOString() : undefined,
         photos: formData.photos.length > 0 ? formData.photos : undefined,
         video: formData.video || undefined,
         link: formData.link || undefined
@@ -175,31 +173,70 @@ function PostOrder() {
         console.log('Response data:', responseData);
         console.log('Available matches:', responseData?.availableMatches);
         console.log('Match type:', responseData?.matchType);
+        console.log('Match found:', responseData?.matchFound);
+        console.log('Auto matched:', responseData?.autoMatched);
+        console.log('Auto assigned:', responseData?.autoAssigned);
         
         // Store order and buyer info
         setCreatedOrder(responseData);
         setCreatedBuyerId(buyerId);
         
-        // Check if there are available matches
-        const matches = responseData?.availableMatches || [];
+        // Check if match was automatically found and assigned
+        const autoMatched = responseData?.autoMatched || false;
+        const autoAssigned = responseData?.autoAssigned || false;
+        const matchFound = responseData?.matchFound || false;
+        const availableMatches = responseData?.availableMatches || {};
+        const matches = availableMatches.all || [];
         const matchTypeValue = responseData?.matchType || null;
+        const assignedTraveler = responseData?.assignedTraveler;
+        const assignedPartner = responseData?.assignedPartner;
         
-        console.log(`Found ${matches.length} matches, matchType: ${matchTypeValue}`);
+        // Get the assigned match ID
+        let assignedMatchId = null;
+        if (autoMatched && assignedTraveler?._id) {
+          assignedMatchId = assignedTraveler._id;
+        } else if (autoAssigned && assignedPartner?._id) {
+          assignedMatchId = assignedPartner._id;
+        } else if (responseData?.assignedTravelerId) {
+          assignedMatchId = responseData.assignedTravelerId;
+        } else if (responseData?.assignedPartnerId) {
+          assignedMatchId = responseData.assignedPartnerId;
+        }
         
-        if (matches.length > 0 && matchTypeValue) {
+        console.log(`Auto matched: ${autoMatched}, Auto assigned: ${autoAssigned}, Match found: ${matchFound}, Assigned match ID: ${assignedMatchId}`);
+        
+        // Always show match results first before payment
+        if (matchFound && matches.length > 0 && matchTypeValue) {
+          // Matches found - show match selection/confirmation
           setAvailableMatches(matches);
           setMatchType(matchTypeValue);
           setShowMatchSelection(true);
-          setMessage({ 
-            type: 'success', 
-            text: `Found ${matches.length} ${matchTypeValue === 'traveler' ? 'traveler' : 'partner'}${matches.length > 1 ? 's' : ''} matching your route. Please select one.`
-          });
+          
+          // Store assigned match ID in createdOrder for MatchSelection component
+          if (assignedMatchId) {
+            responseData.assignedMatchId = assignedMatchId;
+            setCreatedOrder(responseData);
+          }
+          
+          if (autoMatched || autoAssigned) {
+            // Match was automatically assigned - show confirmation
+            setMessage({ 
+              type: 'success', 
+              text: `Match found! We've automatically matched you with a ${matchTypeValue === 'traveler' ? 'traveler' : 'delivery partner'}. Please review and confirm, then proceed to payment.`
+            });
+          } else {
+            // Matches found but not auto-assigned - show selection
+            setMessage({ 
+              type: 'success', 
+              text: `Found ${matches.length} ${matchTypeValue === 'traveler' ? 'traveler' : 'partner'}${matches.length > 1 ? 's' : ''} matching your route. Please select one.`
+            });
+          }
         } else {
-          // No matches found, proceed to payment
+          // No matches found at this moment - show message and allow payment
           setShowPayment(true);
           setMessage({ 
-            type: 'success', 
-            text: 'Order created successfully! Please proceed with payment.'
+            type: 'info', 
+            text: 'Order created successfully! No match found at this moment. We will email you when a match becomes available. You can proceed with payment now.'
           });
         }
       } else {
@@ -244,23 +281,33 @@ function PostOrder() {
   const handleMatchSelect = async (matchId: string) => {
     try {
       setLoading(true);
-      if (matchType === 'traveler') {
-        await api.orders.matchWithTraveler(createdOrder._id, matchId);
-      } else if (matchType === 'partner') {
-        await api.orders.assignToPartner(createdOrder._id, matchId);
+      // Only call API if not already auto-matched/assigned
+      const autoMatched = createdOrder?.autoMatched || false;
+      const autoAssigned = createdOrder?.autoAssigned || false;
+      
+      if (!autoMatched && !autoAssigned) {
+        // Match not yet assigned - assign it now
+        if (matchType === 'traveler') {
+          await api.orders.matchWithTraveler(createdOrder._id, matchId);
+        } else if (matchType === 'partner') {
+          await api.orders.assignToPartner(createdOrder._id, matchId);
+        }
+        
+        // Refresh order data
+        const updatedOrder = await api.orders.getById(createdOrder._id) as { status?: string; data?: any };
+        if (updatedOrder.status === 'success') {
+          setCreatedOrder(updatedOrder.data);
+        }
       }
       
-      // Refresh order data
-      const updatedOrder = await api.orders.getById(createdOrder._id) as { status?: string; data?: any };
-      if (updatedOrder.status === 'success') {
-        setCreatedOrder(updatedOrder.data);
-      }
-      
+      // Proceed to payment after match confirmation
       setShowMatchSelection(false);
       setShowPayment(true);
       setMessage({ 
         type: 'success', 
-        text: 'Match selected successfully! Please proceed with payment.'
+        text: autoMatched || autoAssigned 
+          ? 'Match confirmed! Please proceed with payment.'
+          : 'Match selected successfully! Please proceed with payment.'
       });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to select match. Please try again.' });
@@ -311,6 +358,9 @@ function PostOrder() {
               destination={formData.deliveryDestination}
               onSelect={handleMatchSelect}
               onSkip={handleMatchSkip}
+              autoMatched={createdOrder?.autoMatched || false}
+              autoAssigned={createdOrder?.autoAssigned || false}
+              assignedMatchId={createdOrder?.assignedMatchId || createdOrder?.assignedTravelerId || createdOrder?.assignedPartnerId || null}
             />
           </div>
         )}
@@ -485,20 +535,6 @@ function PostOrder() {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="Street address"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bank Account <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="bankAccount"
-                    required
-                    value={formData.bankAccount}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="Account number"
                   />
                 </div>
                 <div className="md:col-span-2">

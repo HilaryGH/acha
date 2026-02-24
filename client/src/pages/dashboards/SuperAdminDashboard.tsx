@@ -48,6 +48,8 @@ interface Document {
   entityName: string;
   email: string;
   phone: string;
+  whatsapp?: string;
+  telegram?: string;
   status: string;
   documents: Array<{
     type: string;
@@ -57,6 +59,14 @@ interface Document {
   createdAt: string;
   updatedAt: string;
   travellerType?: string;
+  // Trip details (for travellers)
+  currentLocation?: string;
+  destinationCity?: string;
+  departureDate?: string;
+  departureTime?: string;
+  arrivalDate?: string;
+  arrivalTime?: string;
+  bankAccount?: string;
 }
 
 interface SuperAdminDashboardProps {
@@ -65,7 +75,7 @@ interface SuperAdminDashboardProps {
 
 function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'documents' | 'partner-with-us' | 'women-initiatives' | 'premium-community'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'partner-with-us' | 'women-initiatives' | 'premium-community' | 'trips'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -81,13 +91,13 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transactionStats, setTransactionStats] = useState<any>(null);
-  const [documents, setDocuments] = useState<Document[]>([]);
   const [userDocuments, setUserDocuments] = useState<Record<string, Document[]>>({});
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [loadingUserDocs, setLoadingUserDocs] = useState<Set<string>>(new Set());
+  const [trips, setTrips] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [documentFilter, setDocumentFilter] = useState<{ status?: string; type?: string }>({});
+  const [tripFilters, setTripFilters] = useState<{ status?: string; travellerType?: string; search?: string }>({});
   const [partnerWithUsFilter, setPartnerWithUsFilter] = useState<{ status?: string }>({});
   const [womenInitiativesFilter, setWomenInitiativesFilter] = useState<{ status?: string }>({});
   const [premiumFilter, setPremiumFilter] = useState<{ status?: string; category?: string }>({});
@@ -96,6 +106,12 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     url: '',
     title: ''
   });
+  const [userDetailsModal, setUserDetailsModal] = useState<{ isOpen: boolean; userId: string | null; userDetails: any | null }>({
+    isOpen: false,
+    userId: null,
+    userDetails: null
+  });
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   const [transactionFilters, setTransactionFilters] = useState({
     status: '',
     paymentMethod: '',
@@ -112,8 +128,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     if (activeTab === 'transactions') {
       loadTransactions();
       loadTransactionStats();
-    } else if (activeTab === 'documents') {
-      loadDocuments();
+    } else if (activeTab === 'trips') {
+      loadTrips();
     } else if (activeTab === 'partner-with-us') {
       loadPartnerWithUs();
     } else if (activeTab === 'women-initiatives') {
@@ -122,7 +138,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       loadPremiumCommunity();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactionFilters, documentFilter, partnerWithUsFilter, womenInitiativesFilter, premiumFilter]);
+  }, [transactionFilters, tripFilters, partnerWithUsFilter, womenInitiativesFilter, premiumFilter]);
 
   const loadDashboardData = async () => {
     try {
@@ -138,8 +154,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
         await loadTransactionStats();
       } else if (activeTab === 'audit') {
         await loadAuditLogs();
-      } else if (activeTab === 'documents') {
-        await loadDocuments();
+      } else if (activeTab === 'trips') {
+        await loadTrips();
       } else if (activeTab === 'partner-with-us') {
         await loadPartnerWithUs();
       } else if (activeTab === 'women-initiatives') {
@@ -179,8 +195,13 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
 
   const loadUsers = async () => {
     try {
-      const response = await api.users.getAll() as { data?: { users?: User[] } };
-      setUsers(response.data?.users || []);
+      const response = await api.users.getAll() as { data?: { users?: any[] } };
+      // Map _id to id for compatibility
+      const users = (response.data?.users || []).map((user: any) => ({
+        ...user,
+        id: user._id || user.id
+      }));
+      setUsers(users);
     } catch (error) {
       console.error('Error loading users:', error);
     }
@@ -261,10 +282,39 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     try {
       await api.users.update(userId, { status: newStatus });
       await loadUsers();
+      // Update user details if modal is open
+      if (userDetailsModal.isOpen && userDetailsModal.userId === userId) {
+        await fetchUserDetails(userId);
+      }
     } catch (error) {
       console.error('Error updating user status:', error);
       alert('Failed to update user status');
     }
+  };
+
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      setLoadingUserDetails(true);
+      const response = await api.users.getById(userId) as { status?: string; data?: { user?: any } };
+      if (response.status === 'success' && response.data?.user) {
+        setUserDetailsModal({
+          isOpen: true,
+          userId,
+          userDetails: response.data.user
+        });
+      } else {
+        alert('Failed to fetch user details');
+      }
+    } catch (error: any) {
+      console.error('Error fetching user details:', error);
+      alert(error.message || 'Failed to fetch user details');
+    } finally {
+      setLoadingUserDetails(false);
+    }
+  };
+
+  const handleViewUserDetails = (userId: string) => {
+    fetchUserDetails(userId);
   };
 
   const handleUpdatePartnerStatus = async (partnerId: string, newStatus: string) => {
@@ -278,39 +328,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     }
   };
 
-  const loadDocuments = async () => {
-    try {
-      setLoading(true);
-      const response = await api.documents.getAll(documentFilter) as { status?: string; data?: { documents?: Document[] }; count?: number; message?: string };
-      console.log('Documents API response:', response);
-      
-      if (response.status === 'success') {
-        // Handle both response structures: data.documents or data directly as array
-        if (response.data) {
-          if (Array.isArray(response.data)) {
-            setDocuments(response.data);
-          } else if (response.data.documents && Array.isArray(response.data.documents)) {
-            setDocuments(response.data.documents);
-          } else {
-            console.warn('Unexpected response structure:', response);
-            setDocuments([]);
-          }
-        } else {
-          setDocuments([]);
-        }
-      } else {
-        console.error('Documents API returned error:', response.message || 'Unknown error');
-        setDocuments([]);
-      }
-    } catch (error: any) {
-      console.error('Error loading documents:', error);
-      setDocuments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyDocument = async (entityType: string, entityId: string, action: 'approve' | 'reject' | 'verify', documentType?: string) => {
+  const handleVerifyDocument = async (entityType: string, entityId: string, action: 'approve' | 'reject' | 'verify', documentType?: string, userId?: string) => {
     try {
       await api.documents.verify({
         entityType,
@@ -318,11 +336,15 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
         action,
         documentType
       });
-      await loadDocuments();
-      // Reload user documents if any user is expanded
-      expandedUsers.forEach(userId => {
-        loadUserDocuments(userId);
-      });
+      // Reload user documents if userId is provided
+      if (userId) {
+        await loadUserDocuments(userId);
+      } else {
+        // Reload user documents for all expanded users
+        expandedUsers.forEach(uid => {
+          loadUserDocuments(uid);
+        });
+      }
       alert(`Document ${action}d successfully`);
     } catch (error: any) {
       console.error('Error verifying document:', error);
@@ -331,34 +353,64 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   };
 
   const loadUserDocuments = async (userId: string) => {
-    if (userDocuments[userId]) {
-      // Already loaded, just toggle expansion
+    // Validate userId
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      console.error('[loadUserDocuments] Invalid userId:', userId);
+      alert('Invalid user ID. Please refresh the page and try again.');
+      return;
+    }
+
+    // Check if already expanded - if so, just toggle to collapse
+    if (expandedUsers.has(userId)) {
       toggleUserExpansion(userId);
       return;
     }
 
+    // Always fetch fresh data when expanding (even if we have cached data)
     setLoadingUserDocs(prev => new Set(prev).add(userId));
     try {
-      const response = await api.documents.getByUser(userId) as { status?: string; data?: { documents?: Document[] } };
-      if (response.status === 'success' && response.data?.documents) {
+      console.log(`[loadUserDocuments] Fetching documents for user ID: ${userId}`);
+      const response = await api.documents.getByUser(userId) as { status?: string; data?: { documents?: Document[]; user?: any } };
+      console.log(`[loadUserDocuments] Response:`, response);
+      
+      if (response.status === 'success') {
+        // Handle different response structures
+        let documents: Document[] = [];
+        
+        if (response.data) {
+          if (Array.isArray(response.data)) {
+            documents = response.data;
+          } else if (response.data.documents && Array.isArray(response.data.documents)) {
+            documents = response.data.documents;
+          } else if (Array.isArray((response.data as any).data)) {
+            documents = (response.data as any).data;
+          }
+        }
+        
+        console.log(`[loadUserDocuments] Found ${documents.length} documents for user ${userId}`);
+        
         setUserDocuments(prev => ({
           ...prev,
-          [userId]: response.data!.documents!
+          [userId]: documents
         }));
         setExpandedUsers(prev => new Set(prev).add(userId));
       } else {
+        console.warn(`[loadUserDocuments] API returned non-success status:`, response);
         setUserDocuments(prev => ({
           ...prev,
           [userId]: []
         }));
         setExpandedUsers(prev => new Set(prev).add(userId));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading user documents:', error);
+      console.error('Error details:', error.message, error.stack);
       setUserDocuments(prev => ({
         ...prev,
         [userId]: []
       }));
+      setExpandedUsers(prev => new Set(prev).add(userId));
+      alert(`Failed to load documents: ${error.message || 'Unknown error'}`);
     } finally {
       setLoadingUserDocs(prev => {
         const newSet = new Set(prev);
@@ -474,6 +526,42 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     }
   };
 
+  const loadTrips = async () => {
+    try {
+      setLoading(true);
+      const params: any = {};
+      if (tripFilters.status) params.status = tripFilters.status;
+      if (tripFilters.travellerType) params.travellerType = tripFilters.travellerType;
+      if (tripFilters.search) params.search = tripFilters.search;
+      
+      const response = await api.travellers.search(params) as { status?: string; data?: any[]; count?: number };
+      if (response.status === 'success') {
+        if (Array.isArray(response.data)) {
+          setTrips(response.data);
+        } else {
+          setTrips([]);
+        }
+      } else {
+        setTrips([]);
+      }
+    } catch (error) {
+      console.error('Error loading trips:', error);
+      setTrips([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateTripStatus = async (tripId: string, newStatus: string) => {
+    try {
+      await api.travellers.update(tripId, { status: newStatus });
+      await loadTrips();
+    } catch (error) {
+      console.error('Error updating trip status:', error);
+      alert('Failed to update trip status');
+    }
+  };
+
   const handleLogout = () => {
     logout(navigate);
   };
@@ -516,7 +604,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'users', label: 'User Management', icon: '👥' },
-                { id: 'documents', label: 'Documents', icon: '📄' },
+                { id: 'trips', label: 'Posted Trips', icon: '✈️' },
                 { id: 'partner-with-us', label: 'Partner With Us', icon: '🤝' },
                 { id: 'women-initiatives', label: 'Women Initiatives', icon: '👩' },
                 { id: 'premium-community', label: 'Premium Community', icon: '⭐' },
@@ -1052,216 +1140,6 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
             </div>
           )}
 
-          {activeTab === 'documents' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Document Verification</h3>
-                <button
-                  onClick={loadDocuments}
-                  className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
-                  style={{ backgroundColor: '#1E88E5' }}
-                >
-                  Refresh
-                </button>
-              </div>
-
-              {/* Filters */}
-              <div className="mb-6 flex gap-4">
-                <select
-                  value={documentFilter.status || ''}
-                  onChange={(e) => setDocumentFilter({ ...documentFilter, status: e.target.value || undefined })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
-                >
-                  <option value="">All Statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="reviewed">Reviewed</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="verified">Verified</option>
-                </select>
-                <select
-                  value={documentFilter.type || ''}
-                  onChange={(e) => setDocumentFilter({ ...documentFilter, type: e.target.value || undefined })}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
-                >
-                  <option value="">All Types</option>
-                  <option value="partner">Partners</option>
-                  <option value="traveller">Travellers</option>
-                  <option value="womenInitiative">Women Initiatives</option>
-                  <option value="buyer">Buyers</option>
-                  <option value="sender">Senders</option>
-                  <option value="receiver">Receivers</option>
-                </select>
-              </div>
-
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
-                  <p className="mt-4 text-gray-600">Loading documents...</p>
-                </div>
-              ) : documents.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">No documents found</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {documents.map((doc) => (
-                    <div key={doc.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">{doc.entityName}</h4>
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              doc.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              doc.status === 'approved' || doc.status === 'verified' ? 'bg-green-100 text-green-800' :
-                              doc.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {doc.status}
-                            </span>
-                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 capitalize">
-                              {doc.entityType}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                            <div>
-                              <span className="font-medium">Email:</span> {doc.email}
-                            </div>
-                            <div>
-                              <span className="font-medium">Phone:</span> {doc.phone}
-                            </div>
-                            <div>
-                              <span className="font-medium">ID:</span> {doc.uniqueId}
-                            </div>
-                            {doc.travellerType && (
-                              <div>
-                                <span className="font-medium">Type:</span> {doc.travellerType}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Documents */}
-                          <div className="mt-4">
-                            <h5 className="text-sm font-semibold text-gray-700 mb-2">Uploaded Documents:</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {doc.documents.map((document, idx) => (
-                                <div key={idx} className="border border-gray-200 rounded-lg p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">{document.name}</span>
-                                  </div>
-                                  <div className="mb-2">
-                                    {(() => {
-                                      // Check if it's a Cloudinary URL or local path
-                                      const isCloudinaryUrl = document.path.startsWith('http://') || document.path.startsWith('https://');
-                                      const imageUrl = isCloudinaryUrl ? document.path : `${import.meta.env.VITE_API_BASE_URL || ''}${document.path}`;
-                                      const isImage = document.path.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
-                                                     (isCloudinaryUrl && document.path.includes('image/upload'));
-                                      const isVideo = document.path.match(/\.(mp4|mov|avi|webm|mkv)$/i) || 
-                                                     (isCloudinaryUrl && document.path.includes('video/upload'));
-                                      
-                                      if (isImage) {
-                                        return (
-                                          <img 
-                                            src={imageUrl}
-                                            alt={document.name}
-                                            className="w-full h-32 object-cover rounded"
-                                            onError={(e) => {
-                                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
-                                            }}
-                                          />
-                                        );
-                                      } else if (isVideo) {
-                                        return (
-                                          <video 
-                                            src={imageUrl}
-                                            className="w-full h-32 object-cover rounded"
-                                            controls
-                                          />
-                                        );
-                                      } else {
-                                        return (
-                                          <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
-                                            <span className="text-gray-500 text-sm">📄 {document.name.includes('pdf') ? 'PDF' : 'Document'}</span>
-                                          </div>
-                                        );
-                                      }
-                                    })()}
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      const url = document.path.startsWith('http://') || document.path.startsWith('https://') 
-                                        ? document.path 
-                                        : `${import.meta.env.VITE_API_BASE_URL || ''}${document.path}`;
-                                      setPdfViewer({ isOpen: true, url, title: document.name });
-                                    }}
-                                    className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
-                                    style={{ color: '#1E88E5' }}
-                                  >
-                                    View Document
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-2 ml-4">
-                          {doc.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'verify')}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
-                              >
-                                Verify
-                              </button>
-                              <button
-                                onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve')}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const reason = prompt('Please provide a reason for rejection:');
-                                  if (reason) {
-                                    handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined);
-                                  }
-                                }}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {doc.status === 'reviewed' && (
-                            <>
-                              <button
-                                onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve')}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const reason = prompt('Please provide a reason for rejection:');
-                                  if (reason) {
-                                    handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined);
-                                  }
-                                }}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === 'users' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
@@ -1323,13 +1201,18 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredUsers.map((u) => {
-                        const isExpanded = expandedUsers.has(u.id);
-                        const userDocs = userDocuments[u.id] || [];
-                        const isLoadingDocs = loadingUserDocs.has(u.id);
+                        const userId = (u as any).id || (u as any)._id || u.id;
+                        if (!userId) {
+                          console.error('User missing ID:', u);
+                          return null;
+                        }
+                        const isExpanded = expandedUsers.has(userId);
+                        const userDocs = userDocuments[userId] || [];
+                        const isLoadingDocs = loadingUserDocs.has(userId);
                         
                         return (
                           <>
-                            <tr key={u.id} className="hover:bg-gray-50">
+                            <tr key={userId} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{u.name}</div>
                             {u.phone && <div className="text-sm text-gray-500">{u.phone}</div>}
@@ -1351,7 +1234,15 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                           </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button
-                                  onClick={() => loadUserDocuments(u.id)}
+                                  onClick={() => {
+                                    const userId = (u as any).id || (u as any)._id;
+                                    if (!userId) {
+                                      console.error('User ID is missing:', u);
+                                      alert('User ID is missing. Please refresh the page.');
+                                      return;
+                                    }
+                                    loadUserDocuments(userId);
+                                  }}
                                   className="flex items-center gap-1 transition-colors hover:opacity-80"
                                   style={{ color: '#1E88E5' }}
                                   disabled={isLoadingDocs}
@@ -1375,19 +1266,28 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                 </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <select
-                              value={u.status}
-                              onChange={(e) => handleUpdateUserStatus(u.id, e.target.value)}
-                                  className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
-                            >
-                              <option value="active">Active</option>
-                              <option value="inactive">Inactive</option>
-                              <option value="suspended">Suspended</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleViewUserDetails(userId)}
+                                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                title="View User Details"
+                              >
+                                View Details
+                              </button>
+                              <select
+                                value={u.status}
+                                onChange={(e) => handleUpdateUserStatus(userId, e.target.value)}
+                                className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                              >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="suspended">Suspended</option>
+                              </select>
+                            </div>
                           </td>
                         </tr>
                             {isExpanded && (
-                              <tr key={`${u.id}-docs`}>
+                              <tr key={`${userId}-docs`}>
                                 <td colSpan={6} className="px-6 py-4 bg-gray-50">
                                   {isLoadingDocs ? (
                                     <div className="text-center py-4">
@@ -1482,13 +1382,13 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                               {doc.status === 'pending' && (
                                                 <>
                                                   <button
-                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'verify')}
+                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'verify', undefined, userId)}
                                                     className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs whitespace-nowrap hover:bg-blue-700"
                                                   >
                                                     Verify
                                                   </button>
                                                   <button
-                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve')}
+                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve', undefined, userId)}
                                                     className="px-3 py-1.5 bg-green-600 text-white rounded text-xs whitespace-nowrap hover:bg-green-700"
                                                   >
                                                     Approve
@@ -1497,7 +1397,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                                     onClick={() => {
                                                       const reason = prompt('Please provide a reason for rejection:');
                                                       if (reason) {
-                                                        handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined);
+                                                        handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined, userId);
                                                       }
                                                     }}
                                                     className="px-3 py-1.5 bg-red-600 text-white rounded text-xs whitespace-nowrap hover:bg-red-700"
@@ -1509,7 +1409,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                               {doc.status === 'reviewed' && (
                                                 <>
                                                   <button
-                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve')}
+                                                    onClick={() => handleVerifyDocument(doc.entityType, doc.id, 'approve', undefined, userId)}
                                                     className="px-3 py-1.5 bg-green-600 text-white rounded text-xs whitespace-nowrap hover:bg-green-700"
                                                   >
                                                     Approve
@@ -1518,7 +1418,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                                     onClick={() => {
                                                       const reason = prompt('Please provide a reason for rejection:');
                                                       if (reason) {
-                                                        handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined);
+                                                        handleVerifyDocument(doc.entityType, doc.id, 'reject', undefined, userId);
                                                       }
                                                     }}
                                                     className="px-3 py-1.5 bg-red-600 text-white rounded text-xs whitespace-nowrap hover:bg-red-700"
@@ -2190,6 +2090,469 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
             </div>
           )}
 
+          {activeTab === 'trips' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Posted Trips</h3>
+                <button
+                  onClick={loadTrips}
+                  className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
+                  style={{ backgroundColor: '#1E88E5' }}
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="mb-6 flex gap-4 flex-wrap">
+                <input
+                  type="text"
+                  placeholder="Search by location or destination..."
+                  value={tripFilters.search || ''}
+                  onChange={(e) => setTripFilters({ ...tripFilters, search: e.target.value || undefined })}
+                  className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                />
+                <select
+                  value={tripFilters.status || ''}
+                  onChange={(e) => setTripFilters({ ...tripFilters, status: e.target.value || undefined })}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select
+                  value={tripFilters.travellerType || ''}
+                  onChange={(e) => setTripFilters({ ...tripFilters, travellerType: e.target.value || undefined })}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                >
+                  <option value="">All Types</option>
+                  <option value="international">International</option>
+                  <option value="domestic">Domestic</option>
+                </select>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
+                  <p className="mt-4 text-gray-600">Loading trips...</p>
+                </div>
+              ) : trips.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No trips found</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {trips.map((trip) => (
+                    <div key={trip._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h4 className="text-lg font-semibold text-gray-900">{trip.name}</h4>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              trip.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              trip.status === 'verified' || trip.status === 'active' ? 'bg-green-100 text-green-800' :
+                              trip.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {trip.status}
+                            </span>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              trip.travellerType === 'international' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {trip.travellerType === 'international' ? '🌍 International' : '🏠 Domestic'}
+                            </span>
+                            {trip.uniqueId && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                ID: {trip.uniqueId}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Contact Information */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
+                            <div>
+                              <span className="font-medium">Email:</span> {trip.email}
+                            </div>
+                            <div>
+                              <span className="font-medium">Phone:</span> {trip.phone}
+                            </div>
+                            {trip.whatsapp && (
+                              <div>
+                                <span className="font-medium">WhatsApp:</span> {trip.whatsapp}
+                              </div>
+                            )}
+                            {trip.telegram && (
+                              <div>
+                                <span className="font-medium">Telegram:</span> {trip.telegram}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Trip Details */}
+                          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                              <span>✈️</span>
+                              Trip Details
+                            </h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                              {trip.currentLocation && (
+                                <div>
+                                  <span className="font-medium text-gray-600">From:</span> {trip.currentLocation}
+                                </div>
+                              )}
+                              {trip.destinationCity && (
+                                <div>
+                                  <span className="font-medium text-gray-600">To:</span> {trip.destinationCity}
+                                </div>
+                              )}
+                              {trip.departureDate && (
+                                <div>
+                                  <span className="font-medium text-gray-600">Departure:</span>{' '}
+                                  {new Date(trip.departureDate).toLocaleDateString()}
+                                  {trip.departureTime && ` at ${trip.departureTime}`}
+                                </div>
+                              )}
+                              {trip.arrivalDate && (
+                                <div>
+                                  <span className="font-medium text-gray-600">Arrival:</span>{' '}
+                                  {new Date(trip.arrivalDate).toLocaleDateString()}
+                                  {trip.arrivalTime && ` at ${trip.arrivalTime}`}
+                                </div>
+                              )}
+                              {trip.bankAccount && (
+                                <div className="md:col-span-2">
+                                  <span className="font-medium text-gray-600">Bank Account:</span> {trip.bankAccount}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Documents */}
+                          {(trip.internationalDocuments || trip.domesticDocuments) && (
+                            <div className="mt-4">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-2">Uploaded Documents:</h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {trip.travellerType === 'international' && trip.internationalDocuments && (
+                                  <>
+                                    {trip.internationalDocuments.flightTicket && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Flight Ticket</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.internationalDocuments.flightTicket;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Flight Ticket"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.internationalDocuments.flightTicket.startsWith('http://') || trip.internationalDocuments.flightTicket.startsWith('https://') 
+                                              ? trip.internationalDocuments.flightTicket 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.internationalDocuments.flightTicket}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Flight Ticket' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                    {trip.internationalDocuments.visa && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Visa</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.internationalDocuments.visa;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Visa"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.internationalDocuments.visa.startsWith('http://') || trip.internationalDocuments.visa.startsWith('https://') 
+                                              ? trip.internationalDocuments.visa 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.internationalDocuments.visa}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Visa' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                    {trip.internationalDocuments.passport && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Passport</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.internationalDocuments.passport;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Passport"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.internationalDocuments.passport.startsWith('http://') || trip.internationalDocuments.passport.startsWith('https://') 
+                                              ? trip.internationalDocuments.passport 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.internationalDocuments.passport}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Passport' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                                {trip.travellerType === 'domestic' && trip.domesticDocuments && (
+                                  <>
+                                    {trip.domesticDocuments.governmentID && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Government ID</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.domesticDocuments.governmentID;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Government ID"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.domesticDocuments.governmentID.startsWith('http://') || trip.domesticDocuments.governmentID.startsWith('https://') 
+                                              ? trip.domesticDocuments.governmentID 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.domesticDocuments.governmentID}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Government ID' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                    {trip.domesticDocuments.flightTicket && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Flight Ticket</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.domesticDocuments.flightTicket;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Flight Ticket"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.domesticDocuments.flightTicket.startsWith('http://') || trip.domesticDocuments.flightTicket.startsWith('https://') 
+                                              ? trip.domesticDocuments.flightTicket 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.domesticDocuments.flightTicket}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Flight Ticket' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                    {trip.domesticDocuments.photo && (
+                                      <div className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm font-medium text-gray-700">Photo</span>
+                                        </div>
+                                        <div className="mb-2">
+                                          {(() => {
+                                            const docPath = trip.domesticDocuments.photo;
+                                            const isCloudinaryUrl = docPath.startsWith('http://') || docPath.startsWith('https://');
+                                            const imageUrl = isCloudinaryUrl ? docPath : `${import.meta.env.VITE_API_BASE_URL || ''}${docPath}`;
+                                            const isImage = docPath.match(/\.(jpg|jpeg|png|gif|webp)$/i) || (isCloudinaryUrl && docPath.includes('image/upload'));
+                                            
+                                            if (isImage) {
+                                              return (
+                                                <img 
+                                                  src={imageUrl}
+                                                  alt="Photo"
+                                                  className="w-full h-32 object-cover rounded"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                                                  }}
+                                                />
+                                              );
+                                            } else {
+                                              return (
+                                                <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                                                  <span className="text-gray-500 text-sm">📄 Document</span>
+                                                </div>
+                                              );
+                                            }
+                                          })()}
+                                        </div>
+                                        <button
+                                          onClick={() => {
+                                            const url = trip.domesticDocuments.photo.startsWith('http://') || trip.domesticDocuments.photo.startsWith('https://') 
+                                              ? trip.domesticDocuments.photo 
+                                              : `${import.meta.env.VITE_API_BASE_URL || ''}${trip.domesticDocuments.photo}`;
+                                            setPdfViewer({ isOpen: true, url, title: 'Photo' });
+                                          }}
+                                          className="text-xs underline transition-colors hover:opacity-80 cursor-pointer"
+                                          style={{ color: '#1E88E5' }}
+                                        >
+                                          View Document
+                                        </button>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Timestamps */}
+                          <div className="mt-4 text-xs text-gray-500">
+                            <div>Created: {new Date(trip.createdAt).toLocaleString()}</div>
+                            {trip.updatedAt && trip.updatedAt !== trip.createdAt && (
+                              <div>Updated: {new Date(trip.updatedAt).toLocaleString()}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 ml-4">
+                          <select
+                            value={trip.status}
+                            onChange={(e) => handleUpdateTripStatus(trip._id, e.target.value)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent text-sm"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="verified">Verified</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">System Settings</h3>
@@ -2207,6 +2570,205 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
           )}
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {userDetailsModal.isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setUserDetailsModal({ isOpen: false, userId: null, userDetails: null })}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-gray-900">User Details</h2>
+              <button
+                onClick={() => setUserDetailsModal({ isOpen: false, userId: null, userDetails: null })}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {loadingUserDetails ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
+                <p className="mt-4 text-gray-600">Loading user details...</p>
+              </div>
+            ) : userDetailsModal.userDetails ? (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.name || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.email || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.phone || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">User ID</label>
+                      <p className="text-base text-gray-900 mt-1 font-mono text-sm">{userDetailsModal.userDetails.userId || userDetailsModal.userDetails._id || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Google ID</label>
+                      <p className="text-base text-gray-900 mt-1 font-mono text-sm">{userDetailsModal.userDetails.googleId || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Role & Status */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Role & Status</h3>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Role</label>
+                      <p className="mt-1">
+                        <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full capitalize" style={{ backgroundColor: 'rgba(30, 136, 229, 0.1)', color: '#1E88E5' }}>
+                          {userDetailsModal.userDetails.role?.replace('_', ' ') || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <p className="mt-1">
+                        <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${
+                          userDetailsModal.userDetails.status === 'active' ? 'bg-green-100 text-green-800' :
+                          userDetailsModal.userDetails.status === 'suspended' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {userDetailsModal.userDetails.status || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Department</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.department || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Location Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Location Information</h3>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">City</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.city || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Location</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.location || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Primary Location</label>
+                      <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.primaryLocation || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Account Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Account Information</h3>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Account Created</label>
+                      <p className="text-base text-gray-900 mt-1">
+                        {userDetailsModal.userDetails.createdAt 
+                          ? new Date(userDetailsModal.userDetails.createdAt).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Updated</label>
+                      <p className="text-base text-gray-900 mt-1">
+                        {userDetailsModal.userDetails.updatedAt 
+                          ? new Date(userDetailsModal.userDetails.updatedAt).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Login</label>
+                      <p className="text-base text-gray-900 mt-1">
+                        {userDetailsModal.userDetails.lastLogin 
+                          ? new Date(userDetailsModal.userDetails.lastLogin).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'Never'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div className="mt-6 pt-6 border-t flex gap-3">
+                  <button
+                    onClick={() => {
+                      if (userDetailsModal.userId) {
+                        handleUpdateUserStatus(
+                          userDetailsModal.userId,
+                          userDetailsModal.userDetails.status === 'active' ? 'inactive' : 'active'
+                        );
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    {userDetailsModal.userDetails.status === 'active' ? 'Deactivate' : 'Activate'} User
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (userDetailsModal.userId) {
+                        handleUpdateUserStatus(userDetailsModal.userId, 'suspended');
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Suspend User
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-12 text-center">
+                <p className="text-gray-600">Failed to load user details</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PDF Viewer Modal */}
       {pdfViewer.isOpen && (

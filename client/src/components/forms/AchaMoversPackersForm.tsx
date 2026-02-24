@@ -317,7 +317,6 @@ function AchaMoversPackersForm() {
                   <option value="truck">Truck</option>
                   <option value="van">Van</option>
                   <option value="pickup-truck">Pickup Truck</option>
-                  <option value="motorcycle-rider">Motorcycle Rider</option>
                 </select>
               </div>
               
@@ -347,16 +346,6 @@ function AchaMoversPackersForm() {
                 onChange={(path) => setFormData(prev => ({ ...prev, businessLicense: path }))}
                 accept="image/*,.pdf"
               />
-              
-              {/* Driving Licence - Only for Motorcycle Riders */}
-              {formData.deliveryMechanism === 'motorcycle-rider' && (
-                <FileUpload
-                  label="Driving Licence (Required for Motorcycle Riders)"
-                  value={formData.drivingLicense}
-                  onChange={(path) => setFormData(prev => ({ ...prev, drivingLicense: path }))}
-                  accept="image/*,.pdf"
-                />
-              )}
 
               {/* Photos */}
               <div>
