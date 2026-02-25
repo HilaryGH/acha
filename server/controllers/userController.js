@@ -678,6 +678,20 @@ const initializeGoogleStrategy = () => {
       });
 
       await user.save();
+      
+      // Send registration email (don't fail registration if email fails)
+      // Only send email if userId was successfully generated
+      if (user.userId) {
+        try {
+          await sendRegistrationEmail(user.email, user.name, user.userId, user.role);
+        } catch (emailError) {
+          console.error('Error sending registration email for Google OAuth user:', emailError);
+          // Continue even if email fails
+        }
+      } else {
+        console.warn('User ID not generated, skipping registration email for Google OAuth user:', user.email);
+      }
+      
       return done(null, user);
     } catch (error) {
       return done(error, null);

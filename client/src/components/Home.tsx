@@ -180,7 +180,7 @@ function Home() {
                   {/* CTA Button */}
                   <Link
                     to="/delivery-requests/list"
-                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 via-green-500 to-green-600 text-white font-bold text-base md:text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 via-green-500 to-green-600 text-white font-bold text-base md:text-lg rounded-tr-2xl rounded-bl-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                   >
                     <span>Explore Delivery</span>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,7 +505,7 @@ function Home() {
               </p>
               <Link 
                 to="/partner-with-us"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -531,7 +531,7 @@ function Home() {
               </p>
               <Link 
                 to="/women-initiatives"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -557,7 +557,7 @@ function Home() {
               </p>
               <Link 
                 to="/premium"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-full font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -720,7 +720,7 @@ function Home() {
                 
                 <Link
                   to="/about"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-xs font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-colors duration-300 shadow-md"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-xs font-semibold rounded-tr-2xl rounded-bl-2xl hover:from-green-700 hover:to-green-800 transition-colors duration-300 shadow-md"
                 >
                   <span>Read More About Us</span>
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

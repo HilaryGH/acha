@@ -30,10 +30,14 @@ const transactionSchema = new mongoose.Schema({
   paymentMethod: {
     type: String,
     enum: [
-      'bank_transfer', 'transfer', // Manual transfer (active)
-      'm_pesa', 'm_birr', 'cbe_birr', 'telebirr', 'mpesa_ethiopia', // Ethiopia gateways (coming soon)
-      'paypal', 'stripe', 'wise', 'skrill', 'payoneer', 'remitly', 'western_union', 'moneygram', // Worldwide gateways (coming soon)
-      'cash', 'acha_pay' // Other options
+      // ETB/Birr methods
+      'telebirr', 'bank_transfer', 'card', 'bank_app', 'wallet', 'chapa',
+      // USD methods
+      'paypal', 'stripe', 'visa_mastercard', 'international_bank_transfer',
+      // Legacy methods (for backward compatibility)
+      'transfer', 'm_pesa', 'm_birr', 'cbe_birr', 'mpesa_ethiopia',
+      'wise', 'skrill', 'payoneer', 'remitly', 'western_union', 'moneygram',
+      'cash', 'acha_pay'
     ],
     required: [true, 'Payment method is required']
   },

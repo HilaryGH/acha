@@ -299,7 +299,9 @@ function SearchTravelers() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900">{traveler.name}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {traveler.name || `Traveler ${traveler.uniqueId || traveler._id.slice(-6)}`}
+                        </h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {traveler.travellerType === 'international' ? '🌍 International' : '🚗 Domestic'} Traveler
                         </p>
@@ -360,8 +362,16 @@ function SearchTravelers() {
                     <div className="pt-4 border-t border-gray-200">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-gray-500">Contact</p>
-                          <p className="text-sm text-gray-900">{traveler.phone}</p>
+                          {traveler.phone ? (
+                            <>
+                              <p className="text-xs text-gray-500">Contact</p>
+                              <p className="text-sm text-gray-900">{traveler.phone}</p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-gray-500 italic">
+                              Contact info available after order placement
+                            </p>
+                          )}
                         </div>
                         <Link
                           to={`/post-order`}

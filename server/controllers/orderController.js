@@ -367,6 +367,28 @@ exports.createOrder = async (req, res) => {
 
     console.log(`Order created. Found ${travelerMatches.length} travelers and ${partnerMatches.length} partners (${availableMatches.total} total matches)`);
     
+    // Send email to gift recipient if this is a gift delivery order
+    if (deliveryMethod === 'gift_delivery_partner' && orderInfo.recipientEmail && orderInfo.recipientName) {
+      try {
+        const { sendGiftRecipientEmail } = require('../utils/emailService');
+        await sendGiftRecipientEmail(
+          orderInfo.recipientEmail,
+          orderInfo.recipientName,
+          buyer.name,
+          {
+            giftType: orderInfo.giftType,
+            giftMessage: orderInfo.giftMessage,
+            deliveryAddress: orderInfo.recipientAddress,
+            preferredDeliveryDate: orderInfo.preferredDeliveryDate
+          }
+        );
+        console.log(`Gift recipient notification email sent to: ${orderInfo.recipientEmail}`);
+      } catch (emailError) {
+        console.error('Error sending gift recipient email:', emailError);
+        // Don't fail order creation if email fails
+      }
+    }
+    
     // Automatically match/assign based on delivery method
     let assignedPartner = null;
     let assignedTraveler = null;
@@ -1050,10 +1072,30 @@ exports.getAvailableTravelers = async (req, res) => {
       destinationCity: { $regex: new RegExp(order.orderInfo.countryOfOrigin || '', 'i') }
     }).limit(20);
 
+    // Exclude name and other sensitive information for privacy before order is matched
+    const sanitizedTravelers = travelers.map(traveler => {
+      const travelerObj = traveler.toObject();
+      // Remove name and other personal info, keep only necessary matching info
+      delete travelerObj.name;
+      return {
+        _id: travelerObj._id,
+        uniqueId: travelerObj.uniqueId,
+        currentLocation: travelerObj.currentLocation,
+        destinationCity: travelerObj.destinationCity,
+        departureDate: travelerObj.departureDate,
+        departureTime: travelerObj.departureTime,
+        arrivalDate: travelerObj.arrivalDate,
+        arrivalTime: travelerObj.arrivalTime,
+        travellerType: travelerObj.travellerType,
+        status: travelerObj.status
+        // Note: email and phone will be revealed only after order is matched
+      };
+    });
+
     res.status(200).json({
       status: 'success',
-      count: travelers.length,
-      data: travelers
+      count: sanitizedTravelers.length,
+      data: sanitizedTravelers
     });
   } catch (error) {
     res.status(500).json({
@@ -1213,6 +1255,7 @@ exports.getAvailableRequests = async (req, res) => {
     const User = require('../models/User');
 
     // Determine which delivery methods to show based on user role or partnerId
+    // For public view (no auth), show all delivery methods that can use partners
     let allowedDeliveryMethods = ['partner', 'delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
     
     // If user is authenticated, filter by their role
@@ -1242,18 +1285,38 @@ exports.getAvailableRequests = async (req, res) => {
       }
     }
     
+    // Build filter - make pickupLocation optional for public view
+    // Show all orders with partner delivery methods, regardless of location data
+    // Filter out orders that are already assigned and accepted (show unmatched requests)
     const filter = {
       deliveryMethod: { $in: allowedDeliveryMethods },
       status: { $nin: ['completed', 'cancelled'] }, // Exclude only completed and cancelled orders
-      pickupLocation: { $exists: true, $ne: null },
-      'pickupLocation.latitude': { $exists: true, $ne: null },
-      'pickupLocation.longitude': { $exists: true, $ne: null }
+      // Filter to show only unmatched requests:
+      // - No assignedPartnerId, OR
+      // - assignedPartnerId exists but partnerAcceptanceStatus is not 'accepted' (pending/rejected)
+      $or: [
+        { assignedPartnerId: { $exists: false } },
+        { assignedPartnerId: null },
+        { partnerAcceptanceStatus: { $ne: 'accepted' } }
+      ]
     };
+    
+    // Only require pickupLocation with coordinates if coordinates are provided (for distance filtering)
+    // Otherwise, show all orders regardless of location data
+    if (latitude && longitude) {
+      filter.pickupLocation = { $exists: true, $ne: null };
+      filter['pickupLocation.latitude'] = { $exists: true, $ne: null };
+      filter['pickupLocation.longitude'] = { $exists: true, $ne: null };
+    }
 
+    console.log('Fetching delivery requests with filter:', JSON.stringify(filter, null, 2));
+    
     const orders = await Order.find(filter)
       .populate('buyerId', 'name email phone currentCity')
-      .sort({ createdAt: -1 })
-      .limit(50);
+      .sort({ createdAt: -1 });
+      // Removed limit to fetch all delivery requests
+    
+    console.log(`Found ${orders.length} orders matching filter`);
 
     // If partnerId is provided, exclude orders where this partner already made an offer
     let availableRequests = orders;
@@ -1949,6 +2012,66 @@ exports.getOrdersForTraveller = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error.message
+    });
+  }
+};
+
+// Download gift card for an order
+exports.downloadGiftCard = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const path = require('path');
+    const fs = require('fs');
+
+    const order = await Order.findById(orderId).populate('buyerId');
+    
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Check if this is a gift delivery order
+    if (order.deliveryMethod !== 'gift_delivery_partner') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'This order is not a gift delivery order'
+      });
+    }
+
+    // Check if gift card exists
+    if (!order.giftCardUrl) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Gift card has not been generated yet. Please complete payment first.'
+      });
+    }
+
+    // Get the file path
+    const filePath = path.join(__dirname, '..', order.giftCardUrl);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Gift card file not found'
+      });
+    }
+
+    // Set headers for PDF download
+    const filename = `gift-card-${order.uniqueId || order._id}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Send the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error('Error downloading gift card:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to download gift card'
     });
   }
 };

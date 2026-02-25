@@ -66,10 +66,34 @@ exports.getAllTravellers = async (req, res, next) => {
     
     console.log(`Found ${travellers.length} travellers`);
     
+    // Exclude name and other sensitive information for privacy before order is placed
+    const sanitizedTravellers = travellers.map(traveller => {
+      const travellerObj = traveller.toObject();
+      // Remove name and other personal info, keep only necessary matching info
+      delete travellerObj.name;
+      delete travellerObj.email;
+      delete travellerObj.phone;
+      delete travellerObj.whatsapp;
+      delete travellerObj.telegram;
+      return {
+        _id: travellerObj._id,
+        uniqueId: travellerObj.uniqueId,
+        currentLocation: travellerObj.currentLocation,
+        destinationCity: travellerObj.destinationCity,
+        departureDate: travellerObj.departureDate,
+        departureTime: travellerObj.departureTime,
+        arrivalDate: travellerObj.arrivalDate,
+        arrivalTime: travellerObj.arrivalTime,
+        travellerType: travellerObj.travellerType,
+        status: travellerObj.status
+        // Note: name, email, phone, and other contact info will be revealed only after order is matched
+      };
+    });
+    
     res.status(200).json({
       status: 'success',
-      count: travellers.length,
-      data: travellers
+      count: sanitizedTravellers.length,
+      data: sanitizedTravellers
     });
   } catch (error) {
     console.error('Error searching travellers:', error);

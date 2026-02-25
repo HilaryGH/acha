@@ -16,25 +16,24 @@ interface PaymentFormProps {
 }
 
 type PaymentMethod = 
-  | 'transfer' 
-  | 'm_pesa' 
-  | 'm_birr' 
-  | 'cbe_birr' 
-  | 'telebirr' 
-  | 'mpesa_ethiopia' 
-  | 'paypal' 
-  | 'stripe' 
-  | 'wise' 
-  | 'skrill' 
-  | 'payoneer' 
-  | 'remitly' 
-  | 'western_union' 
-  | 'moneygram' 
-  | 'cash' 
-  | 'acha_pay';
+  // ETB/Birr methods
+  | 'telebirr'
+  | 'bank_transfer'
+  | 'card'
+  | 'bank_app'
+  | 'wallet'
+  | 'chapa'
+  // USD methods
+  | 'paypal'
+  | 'stripe'
+  | 'visa_mastercard'
+  | 'international_bank_transfer';
+
+type Currency = 'ETB' | 'USD';
 
 function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: PaymentFormProps) {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('transfer');
+  const [currency, setCurrency] = useState<Currency>('ETB');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('telebirr');
   const [paymentDetails, setPaymentDetails] = useState({
     transactionReference: '',
     bankAccount: '',
@@ -53,8 +52,15 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
     try {
       const { api } = await import('../services/api');
       
-      // Map transfer to bank_transfer for backend compatibility
-      const backendPaymentMethod = paymentMethod === 'transfer' ? 'bank_transfer' : paymentMethod;
+      // Map payment methods for backend compatibility
+      let backendPaymentMethod = paymentMethod;
+      if (paymentMethod === 'bank_transfer') {
+        backendPaymentMethod = 'bank_transfer';
+      } else if (paymentMethod === 'visa_mastercard') {
+        backendPaymentMethod = 'stripe'; // Use stripe for card payments
+      } else if (paymentMethod === 'international_bank_transfer') {
+        backendPaymentMethod = 'bank_transfer';
+      }
       
       const transactionData = {
         orderId,
@@ -62,7 +68,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
         transactionType: 'order_payment',
         paymentMethod: backendPaymentMethod,
         amount: amount + fees.total,
-        currency: 'ETB',
+        currency: currency,
         fees,
         paymentDetails: {
           transactionReference: paymentDetails.transactionReference || undefined,
@@ -96,25 +102,25 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
         <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Item Value:</span>
-            <span className="font-semibold">{amount.toFixed(2)} ETB</span>
+            <span className="font-semibold">{amount.toFixed(2)} {currency}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Delivery Fee:</span>
-            <span className="font-semibold">{fees.deliveryFee.toFixed(2)} ETB</span>
+            <span className="font-semibold">{fees.deliveryFee.toFixed(2)} {currency}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Service Fee:</span>
-            <span className="font-semibold">{fees.serviceFee.toFixed(2)} ETB</span>
+            <span className="font-semibold">{fees.serviceFee.toFixed(2)} {currency}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Platform Fee:</span>
-            <span className="font-semibold">{fees.platformFee.toFixed(2)} ETB</span>
+            <span className="font-semibold">{fees.platformFee.toFixed(2)} {currency}</span>
           </div>
           <div className="border-t border-gray-300 pt-2 mt-2">
-            <div className="flex justify-between">
-              <span className="text-lg font-bold text-gray-900">Total Amount:</span>
-              <span className="text-lg font-bold text-blue-600">{(amount + fees.total).toFixed(2)} ETB</span>
-            </div>
+          <div className="flex justify-between">
+            <span className="text-lg font-bold text-gray-900">Total Amount:</span>
+            <span className="text-lg font-bold text-blue-600">{(amount + fees.total).toFixed(2)} {currency}</span>
+          </div>
           </div>
         </div>
       </div>
@@ -126,105 +132,179 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Currency Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Currency <span className="text-red-500">*</span>
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="currency"
+                value="ETB"
+                checked={currency === 'ETB'}
+                onChange={(e) => {
+                  setCurrency(e.target.value as Currency);
+                  setPaymentMethod('telebirr'); // Reset to default for ETB
+                }}
+                className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700 font-medium">Birr (ETB)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="currency"
+                value="USD"
+                checked={currency === 'USD'}
+                onChange={(e) => {
+                  setCurrency(e.target.value as Currency);
+                  setPaymentMethod('paypal'); // Reset to default for USD
+                }}
+                className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-gray-700 font-medium">USD</span>
+            </label>
+          </div>
+        </div>
+
         {/* Payment Method */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Method <span className="text-red-500">*</span>
+            Choose Payment Method <span className="text-red-500">*</span>
           </label>
+          <p className="text-sm text-gray-500 mb-4">Select a secure method to complete your payment</p>
           
-          {/* Transfer - Active */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Available Now:</label>
-            <select
-              value={paymentMethod === 'transfer' ? 'transfer' : ''}
-              onChange={() => setPaymentMethod('transfer')}
-              className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-green-50"
-            >
-              <option value="transfer">Bank Transfer / Manual Transfer</option>
-            </select>
-          </div>
-
-          {/* Ethiopia Payment Gateways - Coming Soon */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ethiopia Payment Gateways (Coming Soon):</label>
-            <select
-              value={paymentMethod.startsWith('m_') || paymentMethod === 'cbe_birr' || paymentMethod === 'telebirr' || paymentMethod === 'mpesa_ethiopia' ? paymentMethod : ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setPaymentMethod(e.target.value as PaymentMethod);
-                } else {
-                  setPaymentMethod('transfer');
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-            >
-              <option value="">Select Ethiopia Gateway...</option>
-              <option value="m_pesa">M-Pesa (Coming Soon)</option>
-              <option value="m_birr">M-Birr (Coming Soon)</option>
-              <option value="cbe_birr">CBE Birr (Coming Soon)</option>
-              <option value="telebirr">Telebirr (Coming Soon)</option>
-              <option value="mpesa_ethiopia">M-Pesa Ethiopia (Coming Soon)</option>
-            </select>
-          </div>
-
-          {/* Worldwide Payment Gateways - Coming Soon */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Worldwide Payment Gateways (Coming Soon):</label>
-            <select
-              value={paymentMethod === 'paypal' || paymentMethod === 'stripe' || paymentMethod === 'wise' || paymentMethod === 'skrill' || paymentMethod === 'payoneer' || paymentMethod === 'remitly' || paymentMethod === 'western_union' || paymentMethod === 'moneygram' ? paymentMethod : ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setPaymentMethod(e.target.value as PaymentMethod);
-                } else {
-                  setPaymentMethod('transfer');
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-            >
-              <option value="">Select Worldwide Gateway...</option>
-              <option value="paypal">PayPal (Coming Soon)</option>
-              <option value="stripe">Stripe (Coming Soon)</option>
-              <option value="wise">Wise (Coming Soon)</option>
-              <option value="skrill">Skrill (Coming Soon)</option>
-              <option value="payoneer">Payoneer (Coming Soon)</option>
-              <option value="remitly">Remitly (Coming Soon)</option>
-              <option value="western_union">Western Union (Coming Soon)</option>
-              <option value="moneygram">MoneyGram (Coming Soon)</option>
-            </select>
-          </div>
-
-          {/* Other Options */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Other Options:</label>
-            <select
-              value={paymentMethod === 'cash' || paymentMethod === 'acha_pay' ? paymentMethod : ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setPaymentMethod(e.target.value as PaymentMethod);
-                } else {
-                  setPaymentMethod('transfer');
-                }
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select Other Option...</option>
-              <option value="cash">Cash</option>
-              <option value="acha_pay">Acha Pay (Coming Soon)</option>
-            </select>
-          </div>
-
-          {/* Warning for Coming Soon methods */}
-          {paymentMethod !== 'transfer' && paymentMethod !== 'cash' && (
-            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                ⚠️ <strong>Coming Soon:</strong> This payment method is currently under development. Please use manual transfer and upload proof of payment.
-              </p>
+          {currency === 'ETB' ? (
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="telebirr"
+                  checked={paymentMethod === 'telebirr'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Telebirr</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="bank_transfer"
+                  checked={paymentMethod === 'bank_transfer'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Bank Transfer</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="card"
+                  checked={paymentMethod === 'card'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Card</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="bank_app"
+                  checked={paymentMethod === 'bank_app'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Bank App</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="wallet"
+                  checked={paymentMethod === 'wallet'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Wallet</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="chapa"
+                  checked={paymentMethod === 'chapa'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Chapa</span>
+              </label>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="paypal"
+                  checked={paymentMethod === 'paypal'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">PayPal</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="stripe"
+                  checked={paymentMethod === 'stripe'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Stripe</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="visa_mastercard"
+                  checked={paymentMethod === 'visa_mastercard'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">Visa/MasterCard</span>
+              </label>
+              
+              <label className="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="international_bank_transfer"
+                  checked={paymentMethod === 'international_bank_transfer'}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-5 h-5 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium">International Bank Transfer</span>
+              </label>
             </div>
           )}
         </div>
 
         {/* Payment Details based on method */}
-        {paymentMethod === 'transfer' && (
+        {(paymentMethod === 'bank_transfer' || paymentMethod === 'international_bank_transfer') && (
           <>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-blue-800 mb-2">
@@ -269,27 +349,16 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
           </>
         )}
 
-        {(paymentMethod === 'm_pesa' || paymentMethod === 'm_birr' || paymentMethod === 'cbe_birr' || paymentMethod === 'telebirr' || paymentMethod === 'mpesa_ethiopia') && (
+        {/* Payment Details for ETB methods */}
+        {(paymentMethod === 'telebirr' || paymentMethod === 'wallet' || paymentMethod === 'chapa') && (
           <>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-blue-800 mb-2">
-                <strong>Manual Transfer Instructions:</strong>
+                <strong>Payment Instructions:</strong>
               </p>
               <p className="text-sm text-blue-700">
-                Please transfer the amount manually via mobile money and upload proof of payment below. Automated payment processing is coming soon.
+                Please complete the payment via {paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} and upload proof of payment below.
               </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mobile Money Number (if applicable)
-              </label>
-              <input
-                type="text"
-                value={paymentDetails.mobileMoneyNumber}
-                onChange={(e) => setPaymentDetails(prev => ({ ...prev, mobileMoneyNumber: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                placeholder="Enter mobile money number (optional)"
-              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -305,50 +374,35 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
             </div>
             <div>
               <FileUpload
-                label="Payment Proof (Screenshot)"
+                label="Payment Proof (Screenshot/Receipt)"
                 value={paymentDetails.paymentProof}
                 onChange={(path) => setPaymentDetails(prev => ({ ...prev, paymentProof: path }))}
-                accept="image/*"
+                accept="image/*,.pdf"
               />
             </div>
           </>
         )}
 
-        {paymentMethod === 'cash' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
-            </label>
-            <textarea
-              value={paymentDetails.notes}
-              onChange={(e) => setPaymentDetails(prev => ({ ...prev, notes: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-              rows={3}
-              placeholder="Any additional notes about cash payment..."
-            />
-          </div>
-        )}
-
-        {(paymentMethod === 'paypal' || paymentMethod === 'stripe' || paymentMethod === 'wise' || paymentMethod === 'skrill' || paymentMethod === 'payoneer' || paymentMethod === 'remitly' || paymentMethod === 'western_union' || paymentMethod === 'moneygram') && (
+        {(paymentMethod === 'card' || paymentMethod === 'bank_app') && (
           <>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-blue-800 mb-2">
-                <strong>Manual Transfer Instructions:</strong>
+                <strong>Payment Instructions:</strong>
               </p>
               <p className="text-sm text-blue-700">
-                Please complete the payment manually via {paymentMethod.replace('_', ' ').toUpperCase()} and upload proof of payment below. Automated payment processing is coming soon.
+                Please complete the payment via {paymentMethod === 'card' ? 'Card' : 'Bank App'} and upload proof of payment below.
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transaction Reference (if applicable)
+                Transaction Reference
               </label>
               <input
                 type="text"
                 value={paymentDetails.transactionReference}
                 onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                placeholder={`Enter ${paymentMethod.replace('_', ' ')} transaction reference (optional)`}
+                placeholder="Enter transaction reference number"
               />
             </div>
             <div>
@@ -362,19 +416,42 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
           </>
         )}
 
-        {paymentMethod === 'acha_pay' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 mb-2">
-              <strong>Coming Soon:</strong> Acha Pay integration is under development.
-            </p>
-            <p className="text-sm text-blue-700">
-              Please use manual transfer for now and upload proof of payment below.
-            </p>
-          </div>
+        {/* Payment Details for USD methods */}
+        {(paymentMethod === 'paypal' || paymentMethod === 'stripe' || paymentMethod === 'visa_mastercard') && (
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Payment Instructions:</strong>
+              </p>
+              <p className="text-sm text-blue-700">
+                Please complete the payment via {paymentMethod === 'visa_mastercard' ? 'Visa/MasterCard' : paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} and upload proof of payment below.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Transaction Reference
+              </label>
+              <input
+                type="text"
+                value={paymentDetails.transactionReference}
+                onChange={(e) => setPaymentDetails(prev => ({ ...prev, transactionReference: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                placeholder="Enter transaction reference number"
+              />
+            </div>
+            <div>
+              <FileUpload
+                label="Payment Proof (Receipt)"
+                value={paymentDetails.paymentProof}
+                onChange={(path) => setPaymentDetails(prev => ({ ...prev, paymentProof: path }))}
+                accept="image/*,.pdf"
+              />
+            </div>
+          </>
         )}
 
         {/* Notes */}
-        {paymentMethod !== 'cash' && (
+        {(
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Additional Notes (Optional)

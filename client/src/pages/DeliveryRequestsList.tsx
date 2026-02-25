@@ -33,6 +33,7 @@ function DeliveryRequestsList() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<DeliveryRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {
@@ -44,24 +45,36 @@ function DeliveryRequestsList() {
       setLoading(true);
       const response = await api.orders.getAvailableRequests() as any;
       console.log('Delivery requests response:', response);
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      console.log('Response count:', response.count);
       
       if (response.status === 'success') {
         let filteredRequests = response.data || [];
+        console.log(`Received ${filteredRequests.length} requests from API`);
         
         // Filter by status if not 'all'
         if (filterStatus !== 'all') {
           filteredRequests = filteredRequests.filter((r: DeliveryRequest) => r.status === filterStatus);
+          console.log(`After status filter (${filterStatus}): ${filteredRequests.length} requests`);
         }
         
         setRequests(filteredRequests);
+        setError(null);
         console.log(`Loaded ${filteredRequests.length} requests (filter: ${filterStatus})`);
       } else {
-        console.error('Failed to load requests:', response.message);
+        const errorMsg = response.message || 'Failed to load delivery requests';
+        console.error('Failed to load requests:', errorMsg);
+        console.error('Full response:', response);
         setRequests([]);
+        setError(errorMsg);
       }
-    } catch (error) {
+    } catch (error: any) {
+      const errorMsg = error.message || 'An error occurred while loading delivery requests';
       console.error('Error loading requests:', error);
+      console.error('Error details:', error.message, error.stack);
       setRequests([]);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -134,6 +147,18 @@ function DeliveryRequestsList() {
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Loading requests...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Requests</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button
+                onClick={loadRequests}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
             </div>
           ) : requests.length === 0 ? (
             <div className="text-center py-12">

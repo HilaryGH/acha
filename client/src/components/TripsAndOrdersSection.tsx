@@ -126,7 +126,7 @@ function TripsAndOrdersSection() {
         }
         
         setAllTrips(activeTrips);
-        setTrips(activeTrips.slice(0, 5)); // Keep 5 trips for display
+        setTrips(activeTrips.slice(0, 4)); // Keep 4 trips for display (one row on desktop)
         console.log('Active trips:', activeTrips.length, 'Total trips:', tripsData.length);
       }
 
@@ -160,7 +160,7 @@ function TripsAndOrdersSection() {
         }
         
         setAllOrders(activeOrders);
-        setOrders(activeOrders.slice(0, 5));
+        setOrders(activeOrders.slice(0, 4)); // Keep 4 orders for display (one row on desktop)
         console.log('Active orders:', activeOrders.length, 'Total orders:', ordersData.length);
       }
     } catch (error) {
@@ -218,8 +218,8 @@ function TripsAndOrdersSection() {
       );
     }
 
-    setTrips(filteredTrips.slice(0, 5));
-    setOrders(filteredOrders.slice(0, 5));
+    setTrips(filteredTrips.slice(0, 4)); // Limit to 4 items for desktop view
+    setOrders(filteredOrders.slice(0, 4)); // Limit to 4 items for desktop view
   };
 
   const handleMatchOrder = async (orderId: string) => {
@@ -318,7 +318,7 @@ function TripsAndOrdersSection() {
                     setSearchQuery('');
                     setLocationFilter('');
                   }}
-                  className="px-3 md:px-4 py-2.5 md:py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-medium transition-colors text-xs md:text-sm whitespace-nowrap shadow-sm hover:shadow-md flex-shrink-0"
+                  className="px-3 md:px-4 py-2.5 md:py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-tr-2xl rounded-bl-2xl font-medium transition-colors text-xs md:text-sm whitespace-nowrap shadow-sm hover:shadow-md flex-shrink-0"
                 >
                   Clear
                 </button>
@@ -347,7 +347,7 @@ function TripsAndOrdersSection() {
                 </div>
                 <Link
                   to="/browse-trips"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                  className="px-4 py-2 rounded-tr-2xl rounded-bl-2xl text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                   style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -377,7 +377,7 @@ function TripsAndOrdersSection() {
                     <p className="text-gray-500">No trips posted yet</p>
                   </div>
                 ) : (
-                  <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:overflow-x-visible md:pb-0">
+                  <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-x-visible md:pb-0">
                     {trips.map((trip) => (
                       <div
                         key={trip._id}
@@ -437,7 +437,7 @@ function TripsAndOrdersSection() {
               </div>
               <Link
                 to="/browse-orders"
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                className="px-4 py-2 rounded-tr-2xl rounded-bl-2xl text-sm font-semibold text-white transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                 style={{ background: 'linear-gradient(135deg, #43A047 0%, #26C6DA 50%, #1E88E5 100%)' }}
               >
                 View All
@@ -514,7 +514,7 @@ function TripsAndOrdersSection() {
                               <button
                                 onClick={() => handleMatchOrder(order._id)}
                                 disabled={matching === order._id}
-                                className="w-full mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-tr-2xl rounded-bl-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {matching === order._id ? 'Loading...' : 'Match with Traveler'}
                               </button>

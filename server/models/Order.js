@@ -67,6 +67,32 @@ const orderSchema = new mongoose.Schema({
     link: {
       type: String,
       trim: true
+    },
+    // Gift Delivery Partner specific fields
+    recipientName: {
+      type: String,
+      trim: true
+    },
+    recipientEmail: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+    recipientPhone: {
+      type: String,
+      trim: true
+    },
+    recipientAddress: {
+      type: String,
+      trim: true
+    },
+    giftType: {
+      type: String,
+      trim: true
+    },
+    giftMessage: {
+      type: String,
+      trim: true
     }
   },
   // Pickup and Delivery Locations (for location-based matching)
@@ -233,6 +259,15 @@ const orderSchema = new mongoose.Schema({
       type: String,
       default: 'ETB'
     }
+  },
+  // Gift Card Information (for gift delivery orders)
+  giftCardUrl: {
+    type: String,
+    default: null
+  },
+  giftCardGeneratedAt: {
+    type: Date,
+    default: null
   },
   // Timestamps
   createdAt: {

@@ -20,7 +20,8 @@ const {
   getPartnerOffers,
   partnerAcceptRequest,
   partnerAcceptOrder,
-  partnerRejectOrder
+  partnerRejectOrder,
+  downloadGiftCard
 } = require('../controllers/orderController');
 
 console.log('✅ Order routes module loaded');
@@ -102,6 +103,9 @@ router.route('/:orderId/partners')
 
 router.route('/:orderId/offers')
   .get(getPartnerOffers);
+
+router.route('/:orderId/gift-card')
+  .get(downloadGiftCard);
 
 router.route('/:id')
   .get(getOrderById);

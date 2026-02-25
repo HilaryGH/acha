@@ -165,7 +165,9 @@ function MatchTraveler() {
               {travelers.map((traveler) => (
                 <div key={traveler._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="mb-4">
-                    <h3 className="font-semibold text-gray-900 text-lg mb-2">{traveler.name}</h3>
+                    <h3 className="font-semibold text-gray-900 text-lg mb-2">
+                      {traveler.name || `Traveler ${traveler.uniqueId || traveler._id.slice(-6)}`}
+                    </h3>
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">From:</span>
@@ -191,14 +193,16 @@ function MatchTraveler() {
                   </div>
                   
                   <div className="border-t border-gray-200 pt-4 mt-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <a
-                        href={`mailto:${traveler.email}`}
-                        className="text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        {traveler.email}
-                      </a>
-                    </div>
+                    {traveler.email && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <a
+                          href={`mailto:${traveler.email}`}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          {traveler.email}
+                        </a>
+                      </div>
+                    )}
                     {traveler.phone && (
                       <div className="mb-3">
                         <a
@@ -208,6 +212,11 @@ function MatchTraveler() {
                           {traveler.phone}
                         </a>
                       </div>
+                    )}
+                    {!traveler.email && !traveler.phone && (
+                      <p className="text-sm text-gray-500 mb-3 italic">
+                        Contact information will be available after matching
+                      </p>
                     )}
                     <button
                       onClick={() => handleMatch(traveler._id)}

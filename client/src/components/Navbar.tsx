@@ -352,132 +352,153 @@ function Navbar() {
         )}
         
         {/* Mobile Menu - Slide from Left */}
-        <div className={`fixed top-0 left-0 h-full w-80 bg-gradient-to-br from-white via-green-50/30 to-blue-50 shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
+        <div className={`fixed top-0 left-0 h-full w-[85%] max-w-sm bg-gradient-to-br from-white via-green-50/40 to-blue-50/40 backdrop-blur-md shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
           <div className="flex flex-col h-full overflow-hidden">
             {/* Mobile Menu Header - Beautiful Gradient */}
-            <div className="relative bg-gradient-to-r from-green-600 via-green-500 to-green-700 p-4 shadow-lg flex-shrink-0">
+            <div className="relative bg-gradient-to-br from-green-600 via-green-500 to-cyan-600 p-5 shadow-xl flex-shrink-0 border-b border-green-400/30">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/25 backdrop-blur-md rounded-xl flex items-center justify-center shadow-lg ring-2 ring-white/30">
                     <img 
                       src="/acha.png" 
                       alt="Acha Logo" 
-                      className="h-6 w-auto"
+                      className="h-7 w-auto"
                     />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-white font-bold text-sm">Acha Delivery</span>
-                    <span className="text-green-100 text-[10px]">አቻ ደሊቨሪ</span>
+                    <span className="text-white font-bold text-base leading-tight">Acha Delivery</span>
+                    <span className="text-green-50 text-xs leading-tight">አቻ ደሊቨሪ</span>
                   </div>
                 </div>
                 <button 
                   onClick={toggleMenu}
-                  className="p-1.5 hover:bg-white/20 rounded-lg transition-all duration-300 text-white"
+                  className="p-2 hover:bg-white/25 rounded-xl transition-all duration-300 text-white hover:scale-110 active:scale-95"
                   aria-label="Close menu"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
             
-            {/* Mobile Menu Links - Professional Styling */}
-            <div className="flex flex-col flex-1 py-3 px-3 gap-2 overflow-y-auto">
+            {/* Mobile Menu Links - Compact Styling */}
+            <div className="flex flex-col flex-1 py-2 px-3 gap-1.5 overflow-y-auto">
               <Link 
                 to="/" 
-                className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                   </svg>
                 </div>
-                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Home</span>
+                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Home</span>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
 
               <Link 
                 to="/post-trip" 
-                className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
-                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Post Trip</span>
+                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Post Trip</span>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
 
               <Link 
                 to="/post-order" 
-                className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
                 </div>
-                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Post Order</span>
+                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Post Order</span>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
 
               <Link 
                 to="/delivery-requests/list" 
-                className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Find Delivery</span>
+                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Find Delivery</span>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
 
               <Link 
                 to="/about" 
-                className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">About</span>
+                <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">About</span>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
 
               {isLoggedIn ? (
                 <>
                   <Link 
                     to="/dashboard" 
-                    className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                    className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                     </div>
-                    <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Dashboard</span>
+                    <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Dashboard</span>
+                    <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </Link>
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
                       logout(navigate);
                     }}
-                    className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100 border border-gray-100 hover:border-red-200"
+                    className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100 border border-gray-200/50 hover:border-red-300 active:scale-[0.98]"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                    <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                       </svg>
                     </div>
-                    <span className="text-red-600 font-semibold text-sm group-hover:text-red-700 transition-colors duration-300">Logout</span>
+                    <span className="text-red-600 font-semibold text-sm group-hover:text-red-700 transition-colors duration-300 flex-1">Logout</span>
+                    <svg className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
                 </>
               ) : (
@@ -486,14 +507,17 @@ function Navbar() {
                     setIsMenuOpen(false);
                     setIsSignInModalOpen(true);
                   }}
-                  className="group flex items-center gap-3 p-2.5 bg-white rounded-tr-xl rounded-bl-xl shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-100 hover:border-green-200"
+                  className="group flex items-center gap-3 p-2.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 border border-gray-200/50 hover:border-green-300 active:scale-[0.98]"
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-all duration-300 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)' }}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300">Login</span>
+                  <span className="text-gray-800 font-semibold text-sm group-hover:text-green-700 transition-colors duration-300 flex-1">Login</span>
+                  <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 transition-colors duration-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               )}
               
@@ -563,24 +587,27 @@ function Navbar() {
             </div>
             
             {/* Mobile Menu Footer */}
-            <div className="p-3 border-t border-gray-200 bg-white/50 flex-shrink-0">
+            <div className="p-4 border-t border-gray-200/50 bg-white/60 backdrop-blur-sm flex-shrink-0">
               {isLoggedIn ? (
                 <Link
                   to="/dashboard"
-                  className="block w-full text-center bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-tr-xl rounded-bl-xl font-bold text-sm transition-all duration-300 shadow-lg hover:shadow-xl whitespace-nowrap"
+                  className="block w-full text-center bg-gradient-to-r from-green-600 via-green-500 to-cyan-600 hover:from-green-700 hover:via-green-600 hover:to-cyan-700 text-white px-6 py-3.5 rounded-xl font-bold text-base transition-all duration-300 shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
                   Go to Dashboard
                 </Link>
               ) : (
                 <button 
-                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-tr-xl rounded-bl-xl font-bold text-sm transition-all duration-300 shadow-lg hover:shadow-xl whitespace-nowrap flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-green-600 via-green-500 to-cyan-600 hover:from-green-700 hover:via-green-600 hover:to-cyan-700 text-white px-6 py-3.5 rounded-xl font-bold text-base transition-all duration-300 shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
                   onClick={() => {
                     setIsMenuOpen(false);
                     setIsSignInModalOpen(true);
                   }}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Sign In

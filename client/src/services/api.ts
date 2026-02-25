@@ -628,4 +628,48 @@ export const api = {
       });
     },
   },
+
+  // Survey endpoints
+  surveys: {
+    getAll: async (params?: { isActive?: boolean; category?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams({
+        ...(params.isActive !== undefined && { isActive: params.isActive.toString() }),
+        ...(params.category && { category: params.category }),
+      }).toString() : '';
+      return request(`/surveys${queryParams}`);
+    },
+    getById: async (id: string) => {
+      return request(`/surveys/${id}`);
+    },
+    create: async (surveyData: any) => {
+      return request('/surveys', {
+        method: 'POST',
+        body: JSON.stringify(surveyData),
+      });
+    },
+    update: async (id: string, surveyData: any) => {
+      return request(`/surveys/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(surveyData),
+      });
+    },
+    delete: async (id: string) => {
+      return request(`/surveys/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    submitResponse: async (surveyId: string, responseData: {
+      responses: Array<{ questionId: string; value: any; text?: string }>;
+      respondentEmail?: string;
+      respondentName?: string;
+    }) => {
+      return request(`/surveys/${surveyId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify(responseData),
+      });
+    },
+    getResponses: async (surveyId: string) => {
+      return request(`/surveys/${surveyId}/responses`);
+    },
+  },
 };

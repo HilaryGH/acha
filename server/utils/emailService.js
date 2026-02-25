@@ -68,6 +68,9 @@ async function sendRegistrationEmail(userEmail, userName, userId, role) {
 
     const roleDisplayName = roleDisplayNames[role] || role;
 
+    // Generate reference number (same as userId for consistency)
+    const referenceNumber = userId;
+
     const mailOptions = {
       from: `"${process.env.EMAIL_FROM_NAME || 'Acha Platform'}" <${process.env.EMAIL_USER}>`,
       to: userEmail,
@@ -108,6 +111,24 @@ async function sendRegistrationEmail(userEmail, userName, userId, role) {
               margin: 20px 0;
               border-radius: 5px;
             }
+            .reference-number {
+              background-color: #fff;
+              border: 2px solid #1E88E5;
+              padding: 15px;
+              text-align: center;
+              font-size: 20px;
+              font-weight: bold;
+              color: #1E88E5;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .info-section {
+              background-color: #E3F2FD;
+              border-left: 4px solid #1E88E5;
+              padding: 15px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
             .footer {
               margin-top: 20px;
               padding-top: 20px;
@@ -127,11 +148,21 @@ async function sendRegistrationEmail(userEmail, userName, userId, role) {
             
             <p>Thank you for registering with Acha Platform as a <strong>${roleDisplayName}</strong>!</p>
             
-            <p>Your registration has been successfully completed. Please save your unique user ID for future reference:</p>
+            <p>Your registration has been successfully completed. Please save the following information for future reference:</p>
             
-            <div class="user-id">${userId}</div>
+            <div style="margin: 20px 0;">
+              <p style="margin-bottom: 10px; font-weight: bold; color: #333;">Your Unique ID:</p>
+              <div class="user-id">${userId}</div>
+            </div>
             
-            <p>You can use this ID to identify yourself when contacting support or accessing certain features on our platform.</p>
+            <div style="margin: 20px 0;">
+              <p style="margin-bottom: 10px; font-weight: bold; color: #333;">Your Reference Number:</p>
+              <div class="reference-number">${referenceNumber}</div>
+            </div>
+            
+            <div class="info-section">
+              <p style="margin: 0;"><strong>Important:</strong> Please keep this information safe. You can use your Unique ID and Reference Number to identify yourself when contacting support or accessing certain features on our platform.</p>
+            </div>
             
             <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
             
@@ -150,11 +181,12 @@ async function sendRegistrationEmail(userEmail, userName, userId, role) {
         
         Thank you for registering with Acha Platform as a ${roleDisplayName}!
         
-        Your registration has been successfully completed. Please save your unique user ID for future reference:
+        Your registration has been successfully completed. Please save the following information for future reference:
         
-        ${userId}
+        Your Unique ID: ${userId}
+        Your Reference Number: ${referenceNumber}
         
-        You can use this ID to identify yourself when contacting support or accessing certain features on our platform.
+        Important: Please keep this information safe. You can use your Unique ID and Reference Number to identify yourself when contacting support or accessing certain features on our platform.
         
         If you have any questions or need assistance, please don't hesitate to contact our support team.
         
@@ -1160,6 +1192,174 @@ async function sendMatchFoundEmailToBuyer(buyerEmail, buyerName, orderDetails, m
   }
 }
 
+/**
+ * Sends an email to gift recipient notifying them about an incoming gift
+ */
+async function sendGiftRecipientEmail(recipientEmail, recipientName, buyerName, giftDetails) {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('Email not sent - email service not configured');
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'Acha Platform'}" <${process.env.EMAIL_USER}>`,
+      to: recipientEmail,
+      subject: '🎁 You Have a Gift Coming Your Way!',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .gift-box {
+              background-color: #fff;
+              border: 3px solid #f5576c;
+              padding: 25px;
+              text-align: center;
+              margin: 20px 0;
+              border-radius: 10px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .gift-icon {
+              font-size: 48px;
+              margin-bottom: 15px;
+            }
+            .gift-details {
+              background-color: #fff;
+              border-left: 4px solid #f5576c;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .detail-row {
+              margin: 10px 0;
+              padding: 8px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #666;
+            }
+            .message-box {
+              background-color: #FFF9E6;
+              border-left: 4px solid #FFD700;
+              padding: 15px;
+              margin: 20px 0;
+              border-radius: 5px;
+              font-style: italic;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🎁 You Have a Gift!</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${recipientName},</p>
+            
+            <p>Great news! <strong>${buyerName}</strong> has sent you a special gift through Acha Delivery!</p>
+            
+            <div class="gift-box">
+              <div class="gift-icon">🎁</div>
+              <h2 style="color: #f5576c; margin: 10px 0;">A Gift is Coming Your Way!</h2>
+            </div>
+            
+            <div class="gift-details">
+              <h3 style="color: #f5576c; margin-top: 0;">Gift Details</h3>
+              <div class="detail-row">
+                <span class="detail-label">Gift Type:</span> ${giftDetails.giftType || 'Special Gift'}
+              </div>
+              ${giftDetails.giftMessage ? `
+              <div class="message-box">
+                <strong>Personal Message:</strong><br>
+                "${giftDetails.giftMessage}"
+              </div>
+              ` : ''}
+              ${giftDetails.deliveryAddress ? `
+              <div class="detail-row">
+                <span class="detail-label">Delivery Address:</span> ${giftDetails.deliveryAddress}
+              </div>
+              ` : ''}
+              ${giftDetails.preferredDeliveryDate ? `
+              <div class="detail-row">
+                <span class="detail-label">Expected Delivery Date:</span> ${new Date(giftDetails.preferredDeliveryDate).toLocaleDateString()}
+              </div>
+              ` : ''}
+            </div>
+            
+            <p>Your gift will be delivered to you soon. You'll receive another notification once it's on its way!</p>
+            
+            <p>Thank you for being part of the Acha Delivery community!</p>
+            
+            <p>Best regards,<br>The Acha Platform Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        You Have a Gift!
+        
+        Dear ${recipientName},
+        
+        Great news! ${buyerName} has sent you a special gift through Acha Delivery!
+        
+        Gift Details:
+        Gift Type: ${giftDetails.giftType || 'Special Gift'}
+        ${giftDetails.giftMessage ? `Personal Message: "${giftDetails.giftMessage}"\n` : ''}
+        ${giftDetails.deliveryAddress ? `Delivery Address: ${giftDetails.deliveryAddress}\n` : ''}
+        ${giftDetails.preferredDeliveryDate ? `Expected Delivery Date: ${new Date(giftDetails.preferredDeliveryDate).toLocaleDateString()}\n` : ''}
+        
+        Your gift will be delivered to you soon. You'll receive another notification once it's on its way!
+        
+        Thank you for being part of the Acha Delivery community!
+        
+        Best regards,
+        The Acha Platform Team
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Gift recipient email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending gift recipient email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendRegistrationEmail,
   sendOrderAssignmentEmail,
@@ -1168,5 +1368,6 @@ module.exports = {
   sendTripPostedEmail,
   sendMatchFoundEmail,
   sendMatchFoundEmailToBuyer,
+  sendGiftRecipientEmail,
   createTransporter
 };

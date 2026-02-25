@@ -127,10 +127,24 @@ exports.updateTransactionStatus = async (req, res) => {
     await transaction.save();
 
     // Update order payment status
-    const order = await Order.findById(transaction.orderId);
+    const order = await Order.findById(transaction.orderId).populate('buyerId');
     if (order) {
       if (status === 'completed') {
         order.paymentStatus = 'paid';
+        
+        // Generate gift card for gift delivery orders after payment
+        if (order.deliveryMethod === 'gift_delivery_partner' && order.orderInfo?.recipientEmail) {
+          try {
+            const { generateGiftCard } = require('../utils/giftCardGenerator');
+            const giftCardPath = await generateGiftCard(order, order.buyerId);
+            order.giftCardUrl = giftCardPath;
+            order.giftCardGeneratedAt = new Date();
+            console.log(`Gift card generated for order ${order.uniqueId}: ${giftCardPath}`);
+          } catch (giftCardError) {
+            console.error('Error generating gift card:', giftCardError);
+            // Don't fail transaction if gift card generation fails
+          }
+        }
       } else if (status === 'failed') {
         order.paymentStatus = 'failed';
       } else if (status === 'refunded') {

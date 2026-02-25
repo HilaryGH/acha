@@ -36,6 +36,7 @@ function PostOrder() {
     link: '',
     // Gift Delivery Partner specific fields
     recipientName: '',
+    recipientEmail: '',
     recipientPhone: '',
     recipientAddress: '',
     giftType: '',
@@ -135,6 +136,7 @@ function PostOrder() {
       // Add gift-specific fields if delivery method is gift_delivery_partner
       if (formData.deliveryMethod === 'gift_delivery_partner') {
         orderInfo.recipientName = formData.recipientName || undefined;
+        orderInfo.recipientEmail = formData.recipientEmail || undefined;
         orderInfo.recipientPhone = formData.recipientPhone || undefined;
         orderInfo.recipientAddress = formData.recipientAddress || undefined;
         orderInfo.giftType = formData.giftType || undefined;
@@ -621,6 +623,20 @@ function PostOrder() {
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                       placeholder="+1234567890"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="recipientEmail"
+                      required
+                      value={formData.recipientEmail}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="recipient@example.com"
                     />
                   </div>
                   <div className="md:col-span-2">

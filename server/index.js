@@ -20,6 +20,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const surveyRoutes = require('./routes/surveyRoutes');
 
 // Initialize Express app
 const app = express();
@@ -159,6 +160,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/surveys', surveyRoutes);
 
 // Log route registration
 console.log('✅ Routes registered: /api/orders');
