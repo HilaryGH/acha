@@ -3,8 +3,16 @@
     "home": "Home",
     "postTrip": "Post Trip",
     "postOrder": "Post Order",
-    "searchPlaceholder": "Search trips & orders...",
-    "signUp": "Sign Up"
+    "findDelivery": "Find Delivery",
+    "about": "About",
+    "login": "Login",
+    "dashboard": "Dashboard",
+    "logout": "Logout",
+    "searchPlaceholder": "Search travelers by destination or location...",
+    "signUp": "Sign Up",
+    "mobileFast": "Fast",
+    "mobileSecure": "Secure",
+    "mobileGlobal": "Global"
   },
   "home": {
     "hero": {

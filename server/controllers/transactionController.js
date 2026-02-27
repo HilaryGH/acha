@@ -16,29 +16,41 @@ exports.createTransaction = async (req, res) => {
       paymentDetails
     } = req.body;
 
-    if (!orderId || !buyerId || !paymentMethod || !amount) {
+    // For partner earnings, orderId is optional
+    const isPartnerEarning = transactionType === 'partner_earning_record' || paymentMethod === 'manual_partner_entry';
+    
+    if (!buyerId || !paymentMethod || !amount) {
       return res.status(400).json({
         status: 'error',
-        message: 'Order ID, Buyer ID, payment method, and amount are required'
+        message: 'Buyer ID, payment method, and amount are required'
       });
     }
 
-    // Verify order exists
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Order not found'
-      });
+    // Verify order exists only if orderId is provided
+    let order = null;
+    if (orderId) {
+      order = await Order.findById(orderId);
+      if (!order) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Order not found'
+        });
+      }
     }
 
-    // Verify buyer exists
+    // Verify buyer/partner exists
     const buyer = await Buyer.findById(buyerId);
     if (!buyer) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Buyer not found'
-      });
+      // For partner earnings, buyerId might be the partner's user ID
+      // Try to find user instead
+      const User = require('../models/User');
+      const user = await User.findById(buyerId);
+      if (!user && !isPartnerEarning) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Buyer/Partner not found'
+        });
+      }
     }
 
     // Calculate fees if not provided
@@ -52,7 +64,7 @@ exports.createTransaction = async (req, res) => {
 
     // Create transaction
     const transaction = await Transaction.create({
-      orderId,
+      orderId: orderId || null, // Allow null for partner earnings
       buyerId,
       transactionType: transactionType || 'order_payment',
       paymentMethod,
@@ -60,19 +72,44 @@ exports.createTransaction = async (req, res) => {
       currency: currency || 'ETB',
       fees: calculatedFees,
       paymentDetails: paymentDetails || {},
-      status: 'pending'
+      status: isPartnerEarning ? 'completed' : 'pending' // Partner earnings are auto-completed
     });
 
-    // Update order with transaction reference
-    order.transactionId = transaction._id;
-    order.paymentStatus = 'processing';
-    if (order.pricing) {
+    // Update order with transaction reference and calculated payment only if order exists
+    if (order) {
+      order.transactionId = transaction._id;
+      order.paymentStatus = 'processing';
+      
+      // Update order pricing with calculated payment from form
+      if (!order.pricing) {
+        order.pricing = {};
+      }
+      
+      // Set pricing based on calculated payment
       order.pricing.totalAmount = amount;
-      order.pricing.deliveryFee = calculatedFees.deliveryFee;
-      order.pricing.serviceFee = calculatedFees.serviceFee;
-      order.pricing.platformFee = calculatedFees.platformFee;
+      order.pricing.deliveryFee = calculatedFees.deliveryFee || amount;
+      order.pricing.serviceFee = calculatedFees.serviceFee || 0;
+      order.pricing.platformFee = calculatedFees.platformFee || 0;
+      order.pricing.currency = currency || 'ETB';
+      
+      // Store payment calculation details in order for reference
+      if (paymentDetails && isPartnerEarning) {
+        // Store calculation details in order (MongoDB allows flexible schema)
+        order.paymentCalculationDetails = {
+          paymentBasis: paymentDetails.paymentBasis,
+          baseAmount: paymentDetails.baseAmount || (amount - (calculatedFees.extraFees || paymentDetails.extraFees || 0)),
+          extraFees: calculatedFees.extraFees || paymentDetails.extraFees || 0,
+          totalAmount: amount,
+          calculatedAt: new Date(),
+          unitType: paymentDetails.unitType,
+          quantity: paymentDetails.quantity,
+          ratePerUnit: paymentDetails.ratePerUnit,
+          notes: paymentDetails.notes
+        };
+      }
+      
+      await order.save();
     }
-    await order.save();
 
     res.status(201).json({
       status: 'success',
@@ -91,22 +128,7 @@ exports.createTransaction = async (req, res) => {
 exports.updateTransactionStatus = async (req, res) => {
   try {
     const { transactionId } = req.params;
-    const { status, paymentProof, notes } = req.body;
-
-    if (!status) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Status is required'
-      });
-    }
-
-    const validStatuses = ['pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid status'
-      });
-    }
+    const { status, paymentProof, notes, amount, fees, paymentDetails } = req.body;
 
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
@@ -116,19 +138,72 @@ exports.updateTransactionStatus = async (req, res) => {
       });
     }
 
-    // Update transaction
-    transaction.status = status;
+    // Update status if provided
+    if (status) {
+      const validStatuses = ['pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid status'
+        });
+      }
+      transaction.status = status;
+    }
+
+    // Update amount and fees if provided (for editing payment records)
+    if (amount !== undefined) {
+      transaction.amount = amount;
+    }
+    if (fees) {
+      transaction.fees = { ...transaction.fees, ...fees };
+    }
+    if (paymentDetails) {
+      transaction.paymentDetails = { ...transaction.paymentDetails, ...paymentDetails };
+    }
     if (paymentProof) {
       transaction.paymentDetails.paymentProof = paymentProof;
     }
-    if (notes) {
+    if (notes !== undefined) {
       transaction.paymentDetails.notes = notes;
     }
+    
     await transaction.save();
 
-    // Update order payment status
+    // Update order payment status and pricing if order exists
     const order = await Order.findById(transaction.orderId).populate('buyerId');
     if (order) {
+      // Update order pricing if amount or fees were changed
+      if (amount !== undefined || fees) {
+        if (!order.pricing) {
+          order.pricing = {};
+        }
+        if (amount !== undefined) {
+          order.pricing.totalAmount = amount;
+        }
+        if (fees) {
+          order.pricing.deliveryFee = fees.deliveryFee || order.pricing.deliveryFee || 0;
+          order.pricing.serviceFee = fees.serviceFee || order.pricing.serviceFee || 0;
+          order.pricing.platformFee = fees.platformFee || order.pricing.platformFee || 0;
+        }
+        
+        // Update payment calculation details if paymentDetails were provided
+        if (paymentDetails) {
+          order.paymentCalculationDetails = {
+            ...(order.paymentCalculationDetails || {}),
+            paymentBasis: paymentDetails.paymentBasis,
+            baseAmount: paymentDetails.baseAmount || (amount - (fees?.extraFees || paymentDetails.extraFees || 0)),
+            extraFees: fees?.extraFees || paymentDetails.extraFees || 0,
+            totalAmount: amount,
+            calculatedAt: new Date(),
+            unitType: paymentDetails.unitType,
+            quantity: paymentDetails.quantity,
+            ratePerUnit: paymentDetails.ratePerUnit,
+            notes: paymentDetails.notes
+          };
+        }
+      }
+      
+      // Update payment status based on transaction status
       if (status === 'completed') {
         order.paymentStatus = 'paid';
         

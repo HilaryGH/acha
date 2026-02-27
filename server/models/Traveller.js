@@ -74,6 +74,18 @@ const travellerSchema = new mongoose.Schema({
     trim: true
   },
   
+  // Delivery Capacity and Pricing
+  maximumKilograms: {
+    type: Number,
+    min: 0,
+    default: null
+  },
+  priceOffer: {
+    type: Number,
+    min: 0,
+    default: null
+  },
+  
   // Traveller Type
   travellerType: {
     type: String,

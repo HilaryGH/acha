@@ -115,7 +115,7 @@ const calculatePartnerMatchScore = (partner, buyerCity, orderDestination, prefer
 exports.createOrder = async (req, res) => {
   try {
     console.log('Create order request received:', { body: req.body });
-    const { buyerId, deliveryMethod, orderInfo } = req.body;
+    const { buyerId, deliveryMethod, orderInfo, assignedTravelerId } = req.body;
 
     if (!buyerId || !deliveryMethod || !orderInfo) {
       console.log('Missing required fields:', { buyerId: !!buyerId, deliveryMethod: !!deliveryMethod, orderInfo: !!orderInfo });
@@ -145,11 +145,26 @@ exports.createOrder = async (req, res) => {
     }
 
     // Create the order
-    const order = await Order.create({
+    const orderData = {
       buyerId,
       deliveryMethod,
       orderInfo
-    });
+    };
+
+    // If a specific traveler is assigned, add it to the order
+    let preAssignedTraveler = null;
+    if (assignedTravelerId) {
+      // Verify traveler exists
+      const Traveller = require('../models/Traveller');
+      const traveler = await Traveller.findById(assignedTravelerId);
+      if (traveler) {
+        orderData.assignedTravelerId = assignedTravelerId;
+        orderData.status = 'assigned'; // Set status to assigned since traveler is pre-selected
+        preAssignedTraveler = traveler; // Store for later use in response
+      }
+    }
+
+    const order = await Order.create(orderData);
 
     // Find ALL available matches (both travelers and delivery partners)
     // Match based on location, destination, and date
@@ -412,7 +427,8 @@ exports.createOrder = async (req, res) => {
             _id: traveler._id,
             name: traveler.name,
             email: traveler.email,
-            phone: traveler.phone
+            phone: traveler.phone,
+            priceOffer: traveler.priceOffer || null
           };
           autoMatched = true;
           
@@ -676,7 +692,13 @@ exports.createOrder = async (req, res) => {
         autoAssigned: autoAssigned,
         requiresSelection: !hasMatch && availableMatches.total > 0,
         assignedPartner: assignedPartner,
-        assignedTraveler: assignedTraveler
+        assignedTraveler: assignedTraveler || (preAssignedTraveler ? {
+          _id: preAssignedTraveler._id,
+          name: preAssignedTraveler.name,
+          email: preAssignedTraveler.email,
+          phone: preAssignedTraveler.phone,
+          priceOffer: preAssignedTraveler.priceOffer || null
+        } : null)
       }
     });
   } catch (error) {
@@ -1436,6 +1458,9 @@ exports.submitPartnerOffer = async (req, res) => {
       });
     }
 
+    // Populate buyer to get email for notification
+    await order.populate('buyerId', 'name email');
+
     // Add partner offer
     order.partnerOffers.push({
       partnerId,
@@ -1452,6 +1477,38 @@ exports.submitPartnerOffer = async (req, res) => {
     }
 
     await order.save();
+
+    // Send email notification to buyer about the new offer
+    try {
+      if (order.buyerId && order.buyerId.email) {
+        const { sendPartnerOfferNotificationEmail } = require('../utils/emailService');
+        await sendPartnerOfferNotificationEmail(
+          order.buyerId.email,
+          order.buyerId.name || 'Client',
+          {
+            orderId: order._id.toString(),
+            uniqueId: order.uniqueId,
+            productName: order.orderInfo?.productName,
+            productDescription: order.orderInfo?.productDescription,
+            deliveryDestination: order.orderInfo?.deliveryDestination || order.orderInfo?.countryOfOrigin
+          },
+          {
+            name: partner.name,
+            companyName: partner.companyName,
+            city: partner.city
+          },
+          {
+            offerPrice: offerPrice || null,
+            estimatedDeliveryTime: estimatedDeliveryTime || null,
+            message: message || ''
+          }
+        );
+        console.log(`Partner offer notification email sent to buyer: ${order.buyerId.email}`);
+      }
+    } catch (emailError) {
+      console.error('Error sending partner offer notification email:', emailError);
+      // Don't fail the offer submission if email fails
+    }
 
     res.status(201).json({
       status: 'success',

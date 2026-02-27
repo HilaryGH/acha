@@ -66,18 +66,20 @@ exports.getAllTravellers = async (req, res, next) => {
     
     console.log(`Found ${travellers.length} travellers`);
     
-    // Exclude name and other sensitive information for privacy before order is placed
+    // Exclude sensitive information for privacy before order is placed
     const sanitizedTravellers = travellers.map(traveller => {
       const travellerObj = traveller.toObject();
-      // Remove name and other personal info, keep only necessary matching info
-      delete travellerObj.name;
+      // Keep name for display in BrowseTrips, but remove other personal contact info
+      // Remove email, phone, and other contact info, keep only necessary matching info
       delete travellerObj.email;
       delete travellerObj.phone;
       delete travellerObj.whatsapp;
       delete travellerObj.telegram;
+      delete travellerObj.bankAccount; // Remove bank account for privacy
       return {
         _id: travellerObj._id,
         uniqueId: travellerObj.uniqueId,
+        name: travellerObj.name, // Keep name for display
         currentLocation: travellerObj.currentLocation,
         destinationCity: travellerObj.destinationCity,
         departureDate: travellerObj.departureDate,
@@ -85,8 +87,10 @@ exports.getAllTravellers = async (req, res, next) => {
         arrivalDate: travellerObj.arrivalDate,
         arrivalTime: travellerObj.arrivalTime,
         travellerType: travellerObj.travellerType,
-        status: travellerObj.status
-        // Note: name, email, phone, and other contact info will be revealed only after order is matched
+        status: travellerObj.status,
+        maximumKilograms: travellerObj.maximumKilograms || null,
+        priceOffer: travellerObj.priceOffer || null
+        // Note: email, phone, and other contact info will be revealed only after order is matched
       };
     });
     

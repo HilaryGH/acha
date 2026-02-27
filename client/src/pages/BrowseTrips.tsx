@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 
 function BrowseTrips() {
+  const navigate = useNavigate();
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +113,7 @@ function BrowseTrips() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Browse Trips</h1>
           <p className="text-lg text-gray-600">
-            Find available trips and connect with travellers
+            Find available trips and place orders with travellers
           </p>
         </div>
 
@@ -244,21 +246,32 @@ function BrowseTrips() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-2">
-                  <a
-                    href={`tel:${trip.phone}`}
-                    className="flex-1 text-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      // Navigate to PostOrder page with pre-filled trip data
+                      navigate('/post-order', {
+                        state: {
+                          selectedTrip: {
+                            travelerId: trip._id,
+                            travelerName: trip.name,
+                            currentLocation: trip.currentLocation,
+                            destinationCity: trip.destinationCity,
+                            departureDate: trip.departureDate,
+                            arrivalDate: trip.arrivalDate,
+                            departureTime: trip.departureTime,
+                            arrivalTime: trip.arrivalTime,
+                            travellerType: trip.travellerType,
+                            maximumKilograms: trip.maximumKilograms,
+                            priceOffer: trip.priceOffer
+                          }
+                        }
+                      });
+                    }}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
-                    Contact
-                  </a>
-                  {trip.email && (
-                    <a
-                      href={`mailto:${trip.email}`}
-                      className="flex-1 text-center py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                    >
-                      Email
-                    </a>
-                  )}
+                    Place Order
+                  </button>
                 </div>
               </div>
             ))}

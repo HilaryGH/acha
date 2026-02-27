@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FileUpload from '../components/FileUpload';
 import VideoUpload from '../components/VideoUpload';
 import PaymentForm from '../components/PaymentForm';
@@ -8,6 +8,7 @@ import MatchSelection from '../components/MatchSelection';
 
 function PostOrder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     // Buyer Information
     name: '',
@@ -58,6 +59,28 @@ function PostOrder() {
   const [createdBuyerId, setCreatedBuyerId] = useState<string>('');
   const [availableMatches, setAvailableMatches] = useState<any[]>([]);
   const [matchType, setMatchType] = useState<'traveler' | 'partner' | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+
+  // Pre-fill form data if trip was selected from BrowseTrips
+  useEffect(() => {
+    if (location.state?.selectedTrip) {
+      const trip = location.state.selectedTrip;
+      setSelectedTrip(trip);
+      console.log('Selected trip data:', trip);
+      console.log('Price offer from trip:', trip.priceOffer);
+      
+      // Pre-fill form with trip information
+      setFormData(prev => ({
+        ...prev,
+        deliveryMethod: 'traveler',
+        currentCity: trip.currentLocation || prev.currentCity,
+        deliveryDestination: trip.destinationCity || prev.deliveryDestination,
+        preferredDeliveryDate: trip.departureDate 
+          ? new Date(trip.departureDate).toISOString().split('T')[0] 
+          : prev.preferredDeliveryDate
+      }));
+    }
+  }, [location.state]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -159,11 +182,16 @@ function PostOrder() {
         }
       });
 
-      const orderData = {
+      const orderData: any = {
         buyerId,
         deliveryMethod: formData.deliveryMethod,
         orderInfo
       };
+
+      // If a specific trip was selected, include the traveler ID
+      if (selectedTrip?.travelerId) {
+        orderData.assignedTravelerId = selectedTrip.travelerId;
+      }
 
       const orderResponse = await api.orders.create(orderData) as { status?: string; data?: any; message?: string };
       
@@ -207,8 +235,30 @@ function PostOrder() {
         
         console.log(`Auto matched: ${autoMatched}, Auto assigned: ${autoAssigned}, Match found: ${matchFound}, Assigned match ID: ${assignedMatchId}`);
         
-        // Always show match results first before payment
-        if (matchFound && matches.length > 0 && matchTypeValue) {
+        // If a trip was pre-selected from BrowseTrips, skip match selection and go directly to payment
+        if (selectedTrip && assignedMatchId) {
+          // Store assigned match ID in createdOrder
+          responseData.assignedMatchId = assignedMatchId;
+          // Ensure the assignedTraveler includes priceOffer from selectedTrip
+          if (selectedTrip.priceOffer) {
+            if (!responseData.assignedTraveler) {
+              responseData.assignedTraveler = {};
+            }
+            responseData.assignedTraveler.priceOffer = typeof selectedTrip.priceOffer === 'number' 
+              ? selectedTrip.priceOffer 
+              : parseFloat(selectedTrip.priceOffer);
+          }
+          setCreatedOrder(responseData);
+          
+          // Go directly to payment
+          setShowPayment(true);
+          setMessage({ 
+            type: 'success', 
+            text: 'Order created successfully! Your selected traveler has been assigned. Please proceed with payment.'
+          });
+        }
+        // Always show match results first before payment (for orders without pre-selected trip)
+        else if (matchFound && matches.length > 0 && matchTypeValue) {
           // Matches found - show match selection/confirmation
           setAvailableMatches(matches);
           setMatchType(matchTypeValue);
@@ -327,11 +377,55 @@ function PostOrder() {
     });
   };
 
-  // Calculate fees (simplified - you can make this dynamic)
+  // Calculate fees - use actual price offer from traveler/partner if available
   const calculateFees = () => {
-    const deliveryFee = 50; // Base delivery fee
-    const serviceFee = 25; // Service fee
-    const platformFee = 15; // Platform fee
+    let deliveryFee = 50; // Default delivery fee
+    
+    // Priority 1: Check if we have a selected trip with price offer (from BrowseTrips)
+    if (selectedTrip?.priceOffer) {
+      deliveryFee = typeof selectedTrip.priceOffer === 'number' 
+        ? selectedTrip.priceOffer 
+        : parseFloat(selectedTrip.priceOffer) || 50;
+      console.log('Using price offer from selected trip:', deliveryFee);
+    }
+    // Priority 2: Check if the created order has an assigned traveler with price offer
+    else if (createdOrder?.assignedTraveler?.priceOffer) {
+      deliveryFee = typeof createdOrder.assignedTraveler.priceOffer === 'number'
+        ? createdOrder.assignedTraveler.priceOffer
+        : parseFloat(createdOrder.assignedTraveler.priceOffer) || 50;
+      console.log('Using price offer from assigned traveler:', deliveryFee);
+    }
+    // Priority 3: Check if the created order has an assigned partner with price offer
+    else if (createdOrder?.assignedPartner?.priceOffer) {
+      deliveryFee = typeof createdOrder.assignedPartner.priceOffer === 'number'
+        ? createdOrder.assignedPartner.priceOffer
+        : parseFloat(createdOrder.assignedPartner.priceOffer) || 50;
+      console.log('Using price offer from assigned partner:', deliveryFee);
+    }
+    // Priority 4: Check if the order has pricing information
+    else if (createdOrder?.pricing?.deliveryFee) {
+      deliveryFee = typeof createdOrder.pricing.deliveryFee === 'number'
+        ? createdOrder.pricing.deliveryFee
+        : parseFloat(createdOrder.pricing.deliveryFee) || 50;
+      console.log('Using delivery fee from order pricing:', deliveryFee);
+    }
+    // Priority 5: Check if there's a selected match with price offer
+    else if (createdOrder?.assignedMatchId && availableMatches.length > 0) {
+      // Try to find the match in availableMatches
+      const match = availableMatches.find((m: any) => 
+        m._id === createdOrder.assignedMatchId || 
+        m.userId === createdOrder.assignedMatchId
+      );
+      if (match?.priceOffer) {
+        deliveryFee = typeof match.priceOffer === 'number'
+          ? match.priceOffer
+          : parseFloat(match.priceOffer) || 50;
+        console.log('Using price offer from match:', deliveryFee);
+      }
+    }
+    
+    const serviceFee = 25; // Service fee (can be made configurable later)
+    const platformFee = 15; // Platform fee (can be made configurable later)
     return {
       deliveryFee,
       serviceFee,
@@ -348,6 +442,30 @@ function PostOrder() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Post Your Order</h1>
+          {selectedTrip && (
+            <div className="mt-4 mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg text-left max-w-2xl mx-auto">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">✈️</span>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Selected Trip
+                  </h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p><strong>Traveler:</strong> {selectedTrip.travelerName}</p>
+                    <p><strong>Route:</strong> {selectedTrip.currentLocation} → {selectedTrip.destinationCity}</p>
+                    {selectedTrip.departureDate && (
+                      <p><strong>Departure:</strong> {new Date(selectedTrip.departureDate).toISOString().split('T')[0]}</p>
+                    )}
+                    {selectedTrip.priceOffer && (
+                      <p><strong>Price Offer:</strong> ETB {selectedTrip.priceOffer.toLocaleString()}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Match Selection - Show if matches are available */}

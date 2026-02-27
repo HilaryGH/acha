@@ -19,6 +19,8 @@ function PostTrip() {
     arrivalTime: '',
     bankAccount: '',
     travellerType: 'international' as 'international' | 'domestic' | 'intra-city',
+    maximumKilograms: '',
+    priceOffer: '',
     internationalDocuments: {
       flightTicket: '',
       visa: '',
@@ -97,7 +99,13 @@ function PostTrip() {
       const baseData = {
         ...formData,
         departureDate: formData.departureDate ? new Date(formData.departureDate).toISOString() : null,
-        arrivalDate: formData.arrivalDate ? new Date(formData.arrivalDate).toISOString() : null
+        arrivalDate: formData.arrivalDate ? new Date(formData.arrivalDate).toISOString() : null,
+        maximumKilograms: formData.maximumKilograms && formData.maximumKilograms.trim() !== '' 
+          ? parseFloat(formData.maximumKilograms) 
+          : null,
+        priceOffer: formData.priceOffer && formData.priceOffer.trim() !== '' 
+          ? parseFloat(formData.priceOffer) 
+          : null
       };
 
       // Clean up document fields based on traveller type and remove empty values
@@ -157,6 +165,8 @@ function PostTrip() {
             arrivalTime: '',
             bankAccount: '',
             travellerType: 'international',
+            maximumKilograms: '',
+            priceOffer: '',
             internationalDocuments: { flightTicket: '', visa: '', passport: '' },
             domesticDocuments: { governmentID: '', flightTicket: '', photo: '' }
           });
@@ -403,6 +413,38 @@ function PostTrip() {
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maximum Kilograms (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="maximumKilograms"
+                    min="0"
+                    step="0.01"
+                    value={formData.maximumKilograms}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    placeholder="e.g., 50.5"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Maximum weight you can carry (in kilograms)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Price Offer (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    name="priceOffer"
+                    min="0"
+                    step="0.01"
+                    value={formData.priceOffer}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    placeholder="e.g., 500.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Your price offer for delivery service (in ETB)</p>
                 </div>
               </div>
             </div>

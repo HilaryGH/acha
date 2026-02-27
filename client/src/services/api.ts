@@ -591,6 +591,12 @@ export const api = {
         body: JSON.stringify({ status, paymentProof, notes }),
       });
     },
+    update: async (transactionId: string, updateData: { amount?: number; fees?: any; paymentDetails?: any; notes?: string }) => {
+      return request(`/transactions/${transactionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+    },
     getByOrder: async (orderId: string) => {
       return request(`/transactions/order/${orderId}`);
     },

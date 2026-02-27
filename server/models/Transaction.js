@@ -8,11 +8,11 @@ const transactionSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
-  // Order reference
+  // Order reference (optional for partner earnings)
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
-    required: [true, 'Order ID is required']
+    required: false // Made optional to support partner earnings without orders
   },
   // Buyer reference
   buyerId: {
@@ -23,7 +23,7 @@ const transactionSchema = new mongoose.Schema({
   // Transaction Type
   transactionType: {
     type: String,
-    enum: ['order_payment', 'delivery_fee', 'service_fee', 'refund'],
+    enum: ['order_payment', 'delivery_fee', 'service_fee', 'refund', 'partner_earning_record'],
     required: [true, 'Transaction type is required']
   },
   // Payment Method
@@ -37,7 +37,9 @@ const transactionSchema = new mongoose.Schema({
       // Legacy methods (for backward compatibility)
       'transfer', 'm_pesa', 'm_birr', 'cbe_birr', 'mpesa_ethiopia',
       'wise', 'skrill', 'payoneer', 'remitly', 'western_union', 'moneygram',
-      'cash', 'acha_pay'
+      'cash', 'acha_pay',
+      // Partner payment methods
+      'manual_partner_entry'
     ],
     required: [true, 'Payment method is required']
   },

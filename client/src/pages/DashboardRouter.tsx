@@ -75,6 +75,10 @@ function DashboardRouter() {
       return <DeliveryPartnerDashboard user={user} />;
     case 'acha_sisters_delivery_partner':
       return <DeliveryPartnerDashboard user={user} />;
+    case 'movers_packers':
+      return <DeliveryPartnerDashboard user={user} />;
+    case 'gift_delivery_partner':
+      return <DeliveryPartnerDashboard user={user} />;
     case 'individual':
     default:
       return <IndividualDashboard user={user} />;

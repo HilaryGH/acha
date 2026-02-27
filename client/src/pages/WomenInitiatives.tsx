@@ -7,22 +7,24 @@ function WomenInitiatives() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Women Initiatives</h1>
-          <p className="text-lg text-gray-600">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">
+            Women Initiatives
+          </h1>
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
             Join our women empowerment initiatives
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-lg mb-6">
+        <div className="bg-white rounded-xl shadow-lg mb-6 max-w-3xl mx-auto">
           <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+            <nav className="flex flex-col sm:flex-row -mb-px">
               <button
                 onClick={() => setActiveTab('application')}
-                className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-colors ${
+                className={`flex-1 py-3 sm:py-4 px-4 sm:px-6 text-center font-medium text-sm sm:text-base leading-snug whitespace-normal transition-colors ${
                   activeTab === 'application'
                     ? 'border-b-2 border-blue-600 text-blue-600'
                     : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -32,7 +34,7 @@ function WomenInitiatives() {
               </button>
               <button
                 onClick={() => setActiveTab('surveys')}
-                className={`flex-1 py-4 px-6 text-center font-medium text-sm transition-colors ${
+                className={`flex-1 py-3 sm:py-4 px-4 sm:px-6 text-center font-medium text-sm sm:text-base leading-snug whitespace-normal transition-colors ${
                   activeTab === 'surveys'
                     ? 'border-b-2 border-blue-600 text-blue-600'
                     : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'

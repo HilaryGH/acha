@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { logout } from '../../utils/auth';
+import PartnerPaymentRecordForm from '../../components/PartnerPaymentRecordForm';
 
 interface User {
   id: string;
@@ -398,9 +399,10 @@ function TravellerDashboard({ user }: TravellerDashboardProps) {
           )}
 
           {activeTab === 'profile' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Traveller Profile</h3>
-              <div className="space-y-6">
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Traveller Profile</h3>
+                <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -438,8 +440,12 @@ function TravellerDashboard({ user }: TravellerDashboardProps) {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 capitalize"
                     />
                   </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Manual payment record form for traveler delivery earnings */}
+              <PartnerPaymentRecordForm partnerId={user.id} role={user.role} />
             </div>
           )}
 

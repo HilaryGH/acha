@@ -3,8 +3,16 @@
     "home": "መነሻ",
     "postTrip": "ጉዞ ለጥፍ",
     "postOrder": "ትዕዛዝ ለጥፍ",
-    "searchPlaceholder": "ጉዞዎችን እና ትዕዛዞችን ይፈልጉ...",
-    "signUp": "ተመዝግብ"
+    "findDelivery": "ማድረስ ያግኙ",
+    "about": "ስለ እኛ",
+    "login": "መግባት",
+    "dashboard": "ዳሽቦርድ",
+    "logout": "መውጣት",
+    "searchPlaceholder": "ጉዞ የሚያደርጉ ሰዎችን በመድረሻ ወይም ቦታ ይፈልጉ...",
+    "signUp": "ተመዝግብ",
+    "mobileFast": "ፈጣን",
+    "mobileSecure": "ደህንነቱ የተጠበቀ",
+    "mobileGlobal": "ዓለም አቀፍ"
   },
   "home": {
     "hero": {

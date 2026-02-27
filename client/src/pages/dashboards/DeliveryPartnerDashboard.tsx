@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+import PartnerPaymentRecordForm from '../../components/PartnerPaymentRecordForm';
 import { logout } from '../../utils/auth';
 
 interface User {
@@ -50,7 +51,7 @@ interface DeliveryPartnerDashboardProps {
 
 function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'payment' | 'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings'>('payment');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     activeDeliveries: 0,
@@ -60,6 +61,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [processingOrder, setProcessingOrder] = useState<string | null>(null);
+  const [ordersNeedingPayment, setOrdersNeedingPayment] = useState<Order[]>([]);
+  const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<string>('');
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -68,16 +74,59 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      if (activeTab === 'overview' || activeTab === 'orders' || activeTab === 'earnings') {
+      if (activeTab === 'overview' || activeTab === 'orders' || activeTab === 'earnings' || activeTab === 'payment') {
         const loadedOrders = await loadOrders();
         if (loadedOrders) {
           await loadStats(loadedOrders);
+          await checkPaymentRecords(loadedOrders);
         }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkPaymentRecords = async (ordersToCheck?: Order[]) => {
+    try {
+      const ordersData = ordersToCheck || orders;
+      
+      // Get all payment records for this partner
+      const transactions = await api.transactions.getByBuyer(user.id) as { status?: string; data?: any[] };
+      const records = transactions.data || [];
+      setPaymentRecords(records);
+      
+      // Auto-load existing payment for editing if on payment tab and no order selected
+      if (activeTab === 'payment' && !selectedOrderForPayment && records.length > 0) {
+        // Check if there's a general payment record (no orderId)
+        const generalPayment = records.find(record => !record.orderId);
+        if (generalPayment && !editingTransactionId) {
+          setEditingTransactionId(generalPayment._id);
+        }
+      }
+      
+      // Find orders that are assigned/accepted but don't have payment records
+      const assignedOrders = ordersData.filter(o => 
+        (o.status === 'assigned' && o.partnerAcceptanceStatus === 'accepted') ||
+        ['picked_up', 'in_transit', 'delivered'].includes(o.status)
+      );
+      
+      // Check which orders don't have payment records
+      const ordersWithoutPayment = assignedOrders.filter(order => {
+        // Check if there's a payment record for this order
+        const hasPaymentRecord = records.some(record => 
+          record.orderId && (
+            record.orderId._id === order._id || 
+            record.orderId.toString() === order._id.toString()
+          )
+        );
+        return !hasPaymentRecord;
+      });
+      
+      setOrdersNeedingPayment(ordersWithoutPayment);
+    } catch (error) {
+      console.error('Error checking payment records:', error);
     }
   };
 
@@ -191,7 +240,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
-    if (!window.confirm('Are you sure you want to accept this delivery order?')) {
+    if (!window.confirm('Are you sure you want to accept this delivery order?\n\nRemember: You will need to fill out the payment form in the "Record Delivery Payment" tab after accepting.')) {
       return;
     }
 
@@ -201,8 +250,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
       const updatedOrders = await loadOrders();
       if (updatedOrders) {
         await loadStats(updatedOrders);
+        await checkPaymentRecords(updatedOrders);
       }
-      alert('Order accepted successfully! The client has been notified.');
+      alert('Order accepted successfully! The client has been notified.\n\n⚠️ IMPORTANT: Please go to the "Record Delivery Payment" tab to fill out the payment form for this delivery.');
+      // Switch to payment tab to remind them
+      setActiveTab('payment');
     } catch (error: any) {
       console.error('Error accepting order:', error);
       alert(error.message || 'Failed to accept order');
@@ -270,6 +322,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               {[
+                { id: 'payment', label: 'Record Delivery Payment', icon: '💳', badge: ordersNeedingPayment.length > 0 ? ordersNeedingPayment.length : undefined },
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'orders', label: 'My Orders', icon: '📦' },
                 { id: 'requests', label: 'Available Requests', icon: '🔔' },
@@ -280,7 +333,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors relative ${
                     activeTab === tab.id
                       ? 'border-green-600 text-green-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -288,6 +341,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                 >
                   <span className="mr-2">{tab.icon}</span>
                   {tab.label}
+                  {tab.badge && tab.badge > 0 && (
+                    <span className="ml-2 px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -295,6 +353,164 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
         </div>
 
         <div className="space-y-6">
+          {/* Notification Banner for Orders Needing Payment */}
+          {ordersNeedingPayment.length > 0 && activeTab !== 'payment' && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Action Required: Payment Forms Needed
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that need payment information recorded.
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('payment')}
+                      className="mt-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-semibold"
+                    >
+                      Fill Payment Forms Now →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'payment' && (
+            <div className="space-y-4">
+              {/* Header with notification */}
+              {ordersNeedingPayment.length > 0 && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow-sm">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <span className="text-2xl">🔔</span>
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <h3 className="text-sm font-medium text-red-800">
+                        Important: Payment Forms Required
+                      </h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <p>
+                          You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that require payment information to be recorded:
+                        </p>
+                        <ul className="mt-2 list-disc list-inside space-y-1">
+                          {ordersNeedingPayment.slice(0, 5).map((order) => (
+                            <li key={order._id}>
+                              Order #{order.uniqueId || order._id.slice(-8)} - {order.orderInfo?.productName || 'N/A'}
+                            </li>
+                          ))}
+                          {ordersNeedingPayment.length > 5 && (
+                            <li className="text-gray-600">...and {ordersNeedingPayment.length - 5} more</li>
+                          )}
+                        </ul>
+                        <p className="mt-2 font-semibold">
+                          Please fill out the payment form below for each delivery to ensure proper payment processing.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Selection for Payment */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Order (Optional)
+                </label>
+                <select
+                  value={selectedOrderForPayment}
+                  onChange={(e) => {
+                    const orderId = e.target.value;
+                    setSelectedOrderForPayment(orderId);
+                    // Find and set order details for auto-calculation
+                    const order = orders.find(o => o._id === orderId);
+                    setSelectedOrderDetails(order || null);
+                    
+                    // Check if there's an existing payment for this order
+                    if (orderId) {
+                      const existingPayment = paymentRecords.find(record => 
+                        record.orderId && (
+                          record.orderId._id === orderId || 
+                          record.orderId.toString() === orderId.toString()
+                        )
+                      );
+                      if (existingPayment) {
+                        setEditingTransactionId(existingPayment._id);
+                      } else {
+                        setEditingTransactionId(null);
+                      }
+                    } else {
+                      // For general payment, check if there's a general payment record
+                      const generalPayment = paymentRecords.find(record => !record.orderId);
+                      if (generalPayment) {
+                        setEditingTransactionId(generalPayment._id);
+                      } else {
+                        setEditingTransactionId(null);
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="">-- General Payment (No Order) --</option>
+                  {orders.filter(o => 
+                    (o.status === 'assigned' && o.partnerAcceptanceStatus === 'accepted') ||
+                    ['picked_up', 'in_transit', 'delivered'].includes(o.status)
+                  ).map((order) => (
+                      <option key={order._id} value={order._id}>
+                        Order #{order.uniqueId || order._id.slice(-8)} - {order.orderInfo?.productName || 'N/A'}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Show edit indicator if payment exists */}
+              {editingTransactionId && (() => {
+                const existingPayment = paymentRecords.find(r => r._id === editingTransactionId);
+                return existingPayment ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-blue-800">
+                      <strong>Editing existing payment:</strong> ETB {existingPayment.amount?.toLocaleString() || '0'} 
+                      ({existingPayment.paymentDetails?.paymentBasis || 'N/A'}) - 
+                      <button
+                        onClick={() => {
+                          setEditingTransactionId(null);
+                          setSelectedOrderForPayment('');
+                          setSelectedOrderDetails(null);
+                        }}
+                        className="ml-2 text-blue-600 underline hover:text-blue-800"
+                      >
+                        Create New Instead
+                      </button>
+                    </p>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Payment Form - Single form for recording payment */}
+              <PartnerPaymentRecordForm 
+                partnerId={user.id} 
+                role={user.role}
+                orderId={selectedOrderForPayment || undefined}
+                order={selectedOrderDetails || undefined}
+                existingTransactionId={editingTransactionId || undefined}
+                onPaymentRecorded={async () => {
+                  // Reload orders and check payment records after form submission
+                  const loadedOrders = await loadOrders();
+                  if (loadedOrders) {
+                    await checkPaymentRecords(loadedOrders);
+                    await loadStats(loadedOrders);
+                    // Keep edit mode if editing, so they can continue editing
+                  }
+                }}
+              />
+
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <>
               {loading ? (
@@ -374,8 +590,12 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredOrders.map((order) => (
-                    <div key={order._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  {filteredOrders.map((order) => {
+                    const needsPayment = ordersNeedingPayment.some(o => o._id === order._id);
+                    return (
+                    <div key={order._id} className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${
+                      needsPayment ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200'
+                    }`}>
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
@@ -389,7 +609,28 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                             }`}>
                               {order.status.replace('_', ' ')}
                             </span>
+                            {needsPayment && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 animate-pulse">
+                                ⚠️ Payment Form Required
+                              </span>
+                            )}
                           </div>
+                          {needsPayment && (
+                            <div className="mb-3 p-2 bg-yellow-100 border border-yellow-300 rounded-lg">
+                              <p className="text-xs text-yellow-800">
+                                <strong>Action Required:</strong> This order needs a payment form filled. 
+                                <button
+                                  onClick={() => {
+                                    setActiveTab('payment');
+                                    setSelectedOrderForPayment(order._id);
+                                  }}
+                                  className="ml-1 text-yellow-900 underline font-semibold hover:text-yellow-700"
+                                >
+                                  Fill Payment Form →
+                                </button>
+                              </p>
+                            </div>
+                          )}
                           <div className="text-sm text-gray-600 space-y-1">
                             <p><span className="font-medium">Product:</span> {order.orderInfo?.productName || 'N/A'}</p>
                             {order.orderInfo?.productDescription && (
@@ -508,7 +749,8 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -550,9 +792,9 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           )}
 
           {activeTab === 'earnings' && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Earnings & Payments</h3>
-              <div className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Earnings & Payments</h3>
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
                   <div className="flex items-center justify-between">
                     <div>

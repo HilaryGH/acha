@@ -1360,6 +1360,226 @@ async function sendGiftRecipientEmail(recipientEmail, recipientName, buyerName, 
   }
 }
 
+/**
+ * Sends an email to buyer when a delivery partner submits an offer
+ */
+async function sendPartnerOfferNotificationEmail(buyerEmail, buyerName, orderDetails, partnerDetails, offerDetails) {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('Email not sent - email service not configured');
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'Acha Platform'}" <${process.env.EMAIL_USER}>`,
+      to: buyerEmail,
+      subject: '🎉 New Delivery Partner Offer Received!',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background-color: #1E88E5;
+              color: white;
+              padding: 20px;
+              text-align: center;
+              border-radius: 5px 5px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 5px 5px;
+            }
+            .order-details {
+              background-color: #fff;
+              border: 2px solid #1E88E5;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .offer-details {
+              background-color: #E8F5E9;
+              border: 2px solid #4CAF50;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .partner-details {
+              background-color: #FFF3E0;
+              border: 2px solid #FF9800;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .detail-row {
+              margin: 10px 0;
+              padding: 8px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #666;
+            }
+            .button {
+              display: inline-block;
+              padding: 12px 30px;
+              background-color: #1E88E5;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+            }
+            .info-box {
+              background-color: #E3F2FD;
+              border-left: 4px solid #1E88E5;
+              padding: 15px;
+              margin: 20px 0;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>🎉 New Offer Received!</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${buyerName},</p>
+            
+            <p>Great news! A delivery partner has submitted an offer for your order.</p>
+            
+            <div class="order-details">
+              <h3 style="color: #1E88E5; margin-top: 0;">Your Order Details</h3>
+              <div class="detail-row">
+                <span class="detail-label">Order ID:</span> ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Product:</span> ${orderDetails.productName || 'N/A'}
+              </div>
+              ${orderDetails.productDescription ? `
+              <div class="detail-row">
+                <span class="detail-label">Description:</span> ${orderDetails.productDescription}
+              </div>
+              ` : ''}
+              ${orderDetails.deliveryDestination ? `
+              <div class="detail-row">
+                <span class="detail-label">Delivery Destination:</span> ${orderDetails.deliveryDestination}
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="partner-details">
+              <h3 style="color: #FF9800; margin-top: 0;">Delivery Partner Information</h3>
+              <div class="detail-row">
+                <span class="detail-label">Partner Name:</span> ${partnerDetails.name || partnerDetails.companyName || 'N/A'}
+              </div>
+              ${partnerDetails.companyName && partnerDetails.name !== partnerDetails.companyName ? `
+              <div class="detail-row">
+                <span class="detail-label">Company:</span> ${partnerDetails.companyName}
+              </div>
+              ` : ''}
+              ${partnerDetails.city ? `
+              <div class="detail-row">
+                <span class="detail-label">Location:</span> ${partnerDetails.city}
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="offer-details">
+              <h3 style="color: #4CAF50; margin-top: 0;">Offer Details</h3>
+              ${offerDetails.offerPrice ? `
+              <div class="detail-row">
+                <span class="detail-label">Offer Price:</span> ETB ${offerDetails.offerPrice.toLocaleString()}
+              </div>
+              ` : ''}
+              ${offerDetails.estimatedDeliveryTime ? `
+              <div class="detail-row">
+                <span class="detail-label">Estimated Delivery Time:</span> ${offerDetails.estimatedDeliveryTime}
+              </div>
+              ` : ''}
+              ${offerDetails.message ? `
+              <div class="detail-row">
+                <span class="detail-label">Message:</span> ${offerDetails.message}
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="info-box">
+              <p style="margin: 0;"><strong>Next Steps:</strong> Please log in to your dashboard to review this offer and other offers you may have received. You can select the best offer that suits your needs.</p>
+            </div>
+            
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/track/${orderDetails.orderId || orderDetails._id || ''}" class="button">View Order & Offers</a>
+            
+            <p>If you have any questions, please contact our support team.</p>
+            
+            <p>Best regards,<br>The Acha Platform Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        New Offer Received!
+        
+        Dear ${buyerName},
+        
+        Great news! A delivery partner has submitted an offer for your order.
+        
+        Your Order Details:
+        Order ID: ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+        Product: ${orderDetails.productName || 'N/A'}
+        ${orderDetails.productDescription ? `Description: ${orderDetails.productDescription}\n` : ''}
+        ${orderDetails.deliveryDestination ? `Delivery Destination: ${orderDetails.deliveryDestination}\n` : ''}
+        
+        Delivery Partner Information:
+        Partner Name: ${partnerDetails.name || partnerDetails.companyName || 'N/A'}
+        ${partnerDetails.companyName && partnerDetails.name !== partnerDetails.companyName ? `Company: ${partnerDetails.companyName}\n` : ''}
+        ${partnerDetails.city ? `Location: ${partnerDetails.city}\n` : ''}
+        
+        Offer Details:
+        ${offerDetails.offerPrice ? `Offer Price: ETB ${offerDetails.offerPrice.toLocaleString()}\n` : ''}
+        ${offerDetails.estimatedDeliveryTime ? `Estimated Delivery Time: ${offerDetails.estimatedDeliveryTime}\n` : ''}
+        ${offerDetails.message ? `Message: ${offerDetails.message}\n` : ''}
+        
+        Next Steps: Please log in to your dashboard to review this offer and other offers you may have received. You can select the best offer that suits your needs.
+        
+        View Order: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/track/${orderDetails.orderId || orderDetails._id || ''}
+        
+        If you have any questions, please contact our support team.
+        
+        Best regards,
+        The Acha Platform Team
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Partner offer notification email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending partner offer notification email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendRegistrationEmail,
   sendOrderAssignmentEmail,
@@ -1369,5 +1589,6 @@ module.exports = {
   sendMatchFoundEmail,
   sendMatchFoundEmailToBuyer,
   sendGiftRecipientEmail,
+  sendPartnerOfferNotificationEmail,
   createTransporter
 };
