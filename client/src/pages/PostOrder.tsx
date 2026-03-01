@@ -9,6 +9,7 @@ import {
   calculateDeliveryFeeFromPartnerRates, 
   extractPricingRatesFromTransaction
 } from '../utils/partnerPricing';
+import { getCurrentUser } from '../utils/auth';
 
 // Define type locally to avoid import issues
 type PartnerPricingRates = {
@@ -104,6 +105,21 @@ function PostOrder() {
   // Partner pricing rates state
   const [partnerPricingRates, setPartnerPricingRates] = useState<PartnerPricingRates | null>(null);
   const [orderDistance] = useState<number | undefined>(undefined);
+
+  // Auto-fill form with logged-in user information
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+        currentCity: prev.currentCity || user.city || '',
+        location: prev.location || user.location || user.primaryLocation || '',
+      }));
+    }
+  }, []);
 
   // Pre-fill form data if trip was selected from BrowseTrips
   useEffect(() => {

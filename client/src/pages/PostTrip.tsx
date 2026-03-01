@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '../components/FileUpload';
+import { getCurrentUser } from '../utils/auth';
 
 function PostTrip() {
   const navigate = useNavigate();
@@ -35,6 +36,20 @@ function PostTrip() {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Auto-fill form with logged-in user information
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        currentLocation: user.city || user.location || user.primaryLocation || prev.currentLocation,
+      }));
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

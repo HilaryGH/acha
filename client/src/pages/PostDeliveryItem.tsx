@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '../components/FileUpload';
 import VideoUpload from '../components/VideoUpload';
+import { getCurrentUser } from '../utils/auth';
 
 function PostDeliveryItem() {
   const navigate = useNavigate();
@@ -35,6 +36,21 @@ function PostDeliveryItem() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+
+  // Auto-fill form with logged-in user information
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+        currentCity: user.city || prev.currentCity,
+        location: user.location || user.primaryLocation || prev.location,
+      }));
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

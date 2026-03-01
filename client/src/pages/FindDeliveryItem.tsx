@@ -95,32 +95,52 @@ function FindDeliveryItem() {
       setLoading(true);
       setError(null);
       
-      // Fetch unmatched delivery requests (orders without assignedPartnerId or with pending status)
-      const params: any = {};
-      if (partnerId) {
-        params.partnerId = partnerId;
+      // Fetch all orders that are for partner delivery methods
+      let allRequests: DeliveryRequest[] = [];
+      
+      // Try to get available requests first (if API supports it)
+      try {
+        const params: any = {};
+        if (partnerId) {
+          params.partnerId = partnerId;
+        }
+        const availableRequestsResponse = await api.orders.getAvailableRequests(params) as { status?: string; data?: DeliveryRequest[]; message?: string; count?: number };
+        if (availableRequestsResponse.status === 'success') {
+          allRequests = availableRequestsResponse.data || [];
+        }
+      } catch (err) {
+        console.log('getAvailableRequests not available, fetching all orders instead');
       }
       
-      const response = await api.orders.getAvailableRequests(params) as { status?: string; data?: DeliveryRequest[]; message?: string; count?: number };
-      console.log('Delivery requests API response:', response);
-      
-      if (response.status === 'success') {
-        const allRequests = response.data || [];
-        console.log('Total delivery requests fetched:', allRequests.length);
+      // If no requests from getAvailableRequests, fetch all orders and filter
+      if (allRequests.length === 0) {
+        const ordersResponse = await api.orders.getAll() as { status?: string; data?: DeliveryRequest[] | { orders?: DeliveryRequest[] }; message?: string };
         
-        // Filter to show only unmatched requests (no assignedPartnerId or status is pending/offers_received)
-        const unmatchedRequests = allRequests.filter((request: DeliveryRequest) => {
-          // Show requests that are not assigned or are pending/offers_received
-          return !request.assignedPartnerId || 
-                 request.status === 'pending' || 
-                 request.status === 'offers_received';
-        });
-        
-        console.log('Unmatched delivery requests:', unmatchedRequests.length);
-        setRequests(unmatchedRequests);
-      } else {
-        setError(response.message || 'Failed to fetch delivery requests');
+        if (ordersResponse.status === 'success') {
+          const ordersData = ordersResponse.data;
+          allRequests = Array.isArray(ordersData) 
+            ? ordersData 
+            : (ordersData as any)?.orders || [];
+        }
       }
+      
+      console.log('Total delivery requests fetched:', allRequests.length);
+      
+      // Filter to show ONLY unassigned requests (no assignedPartnerId and status is pending/offers_received)
+      const unassignedRequests = allRequests.filter((request: DeliveryRequest) => {
+        // Only show requests that:
+        // 1. Have NO assignedPartnerId (truly unassigned)
+        // 2. Status is pending, offers_received, or active (not assigned, completed, cancelled, etc.)
+        // 3. Are for partner delivery methods (not traveler)
+        const isPartnerDelivery = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'].includes(request.deliveryMethod);
+        const isUnassigned = !request.assignedPartnerId;
+        const isPendingStatus = ['pending', 'offers_received', 'active'].includes(request.status?.toLowerCase() || '');
+        
+        return isPartnerDelivery && isUnassigned && isPendingStatus;
+      });
+      
+      console.log('Unassigned delivery requests:', unassignedRequests.length);
+      setRequests(unassignedRequests);
     } catch (err: any) {
       console.error('Error fetching delivery requests:', err);
       setError(err.message || 'An error occurred');
