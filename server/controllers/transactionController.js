@@ -19,10 +19,21 @@ exports.createTransaction = async (req, res) => {
     // For partner earnings, orderId is optional
     const isPartnerEarning = transactionType === 'partner_earning_record' || paymentMethod === 'manual_partner_entry';
     
-    if (!buyerId || !paymentMethod || !amount) {
+    // For pricing rate records (price lists), amount can be 0 or minimal
+    const isPricingRate = isPartnerEarning && paymentDetails && (paymentDetails.pieceRates || paymentDetails.weightRates || paymentDetails.distanceRates);
+    
+    if (!buyerId || !paymentMethod || (amount === undefined || amount === null)) {
       return res.status(400).json({
         status: 'error',
         message: 'Buyer ID, payment method, and amount are required'
+      });
+    }
+    
+    // Allow minimal amount (0.01) for pricing rate records
+    if (!isPricingRate && amount <= 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Amount must be greater than 0'
       });
     }
 
@@ -218,6 +229,70 @@ exports.updateTransactionStatus = async (req, res) => {
           } catch (giftCardError) {
             console.error('Error generating gift card:', giftCardError);
             // Don't fail transaction if gift card generation fails
+          }
+        }
+        
+        // Send confirmation emails for gift delivery orders when payment is completed
+        if (order.deliveryMethod === 'gift_delivery_partner' && buyer) {
+          try {
+            const { sendGiftSenderConfirmationEmail, sendGiftRecipientEmail } = require('../utils/emailService');
+            
+            // Get partner information if assigned
+            let partnerName = null;
+            if (order.assignedPartnerId) {
+              try {
+                const Partner = require('../models/Partner');
+                const partner = await Partner.findById(order.assignedPartnerId);
+                if (partner) {
+                  partnerName = partner.name || partner.companyName;
+                }
+              } catch (partnerError) {
+                console.error('Error fetching partner for email:', partnerError);
+              }
+            }
+            
+            // Send confirmation email to gift sender
+            if (buyer.email) {
+              await sendGiftSenderConfirmationEmail(
+                buyer.email,
+                buyer.name,
+                {
+                  orderId: order.uniqueId,
+                  uniqueId: order.uniqueId,
+                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+                },
+                {
+                  giftType: order.orderInfo?.giftType,
+                  giftDescription: order.orderInfo?.giftDescription,
+                  giftPrice: order.orderInfo?.giftPrice,
+                  partnerName: partnerName,
+                  recipientName: order.orderInfo?.recipientName,
+                  recipientEmail: order.orderInfo?.recipientEmail,
+                  recipientPhone: order.orderInfo?.recipientPhone,
+                  recipientAddress: order.orderInfo?.recipientAddress
+                }
+              );
+              console.log(`Gift sender confirmation email sent to: ${buyer.email}`);
+            }
+            
+            // Send confirmation email to gift recipient (to confirm payment and delivery)
+            if (order.orderInfo?.recipientEmail && order.orderInfo?.recipientName) {
+              await sendGiftRecipientEmail(
+                order.orderInfo.recipientEmail,
+                order.orderInfo.recipientName,
+                buyer.name,
+                {
+                  giftType: order.orderInfo.giftType,
+                  giftMessage: order.orderInfo.giftMessage,
+                  deliveryAddress: order.orderInfo.recipientAddress,
+                  preferredDeliveryDate: order.orderInfo.preferredDeliveryDate
+                }
+              );
+              console.log(`Gift recipient confirmation email sent to: ${order.orderInfo.recipientEmail}`);
+            }
+          } catch (emailError) {
+            console.error('Error sending gift confirmation emails:', emailError);
+            // Don't fail transaction if email fails
           }
         }
       } else if (status === 'failed') {

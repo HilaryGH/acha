@@ -5,6 +5,33 @@ import FileUpload from '../components/FileUpload';
 import VideoUpload from '../components/VideoUpload';
 import PaymentForm from '../components/PaymentForm';
 import MatchSelection from '../components/MatchSelection';
+import { 
+  calculateDeliveryFeeFromPartnerRates, 
+  extractPricingRatesFromTransaction
+} from '../utils/partnerPricing';
+
+// Define type locally to avoid import issues
+type PartnerPricingRates = {
+  pieceRates?: Array<{
+    quantity: string;
+    quantityRange?: { min: number; max: number } | null;
+    averageQuantity: number;
+    rate: number;
+  }>;
+  weightRates?: Array<{
+    quantity: string;
+    quantityRange?: { min: number; max: number } | null;
+    averageQuantity: number;
+    rate: number;
+  }>;
+  distanceRates?: Array<{
+    quantity: string;
+    quantityRange?: { min: number; max: number } | null;
+    averageQuantity: number;
+    rate: number;
+  }>;
+  extraFees?: number;
+};
 
 function PostOrder() {
   const navigate = useNavigate();
@@ -19,6 +46,10 @@ function PostOrder() {
     currentCity: '',
     location: '',
     deliveryDestination: '',
+    deliveryCity: '',
+    deliverySubcity: '',
+    deliveryStreetAddress: '',
+    deliveryAdditionalInfo: '',
     idDocument: '',
     // Delivery Method
     deliveryMethod: 'traveler' as 'traveler' | 'delivery_partner' | 'acha_sisters_delivery_partner' | 'movers_packers' | 'gift_delivery_partner',
@@ -42,6 +73,8 @@ function PostOrder() {
     recipientAddress: '',
     giftType: '',
     giftMessage: '',
+    partnerType: '',
+    selectedGiftTypeId: '',
     // Movers & Packers specific fields
     pickupAddress: '',
     numberOfItems: '',
@@ -60,6 +93,17 @@ function PostOrder() {
   const [availableMatches, setAvailableMatches] = useState<any[]>([]);
   const [matchType, setMatchType] = useState<'traveler' | 'partner' | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  
+  // Gift Delivery Partner specific state
+  const [giftPartners, setGiftPartners] = useState<any[]>([]);
+  const [selectedPartnerType, setSelectedPartnerType] = useState<string>('');
+  const [availableGiftTypes, setAvailableGiftTypes] = useState<any[]>([]);
+  const [selectedGiftType, setSelectedGiftType] = useState<any>(null);
+  const [loadingGiftPartners, setLoadingGiftPartners] = useState(false);
+  
+  // Partner pricing rates state
+  const [partnerPricingRates, setPartnerPricingRates] = useState<PartnerPricingRates | null>(null);
+  const [orderDistance] = useState<number | undefined>(undefined);
 
   // Pre-fill form data if trip was selected from BrowseTrips
   useEffect(() => {
@@ -81,6 +125,131 @@ function PostOrder() {
       }));
     }
   }, [location.state]);
+
+  // Load gift delivery partners when gift_delivery_partner is selected
+  useEffect(() => {
+    if (formData.deliveryMethod === 'gift_delivery_partner') {
+      loadGiftDeliveryPartners();
+    } else {
+      setGiftPartners([]);
+      setSelectedPartnerType('');
+      setAvailableGiftTypes([]);
+      setSelectedGiftType(null);
+    }
+  }, [formData.deliveryMethod]);
+
+  // Recalculate fees when partner pricing rates change
+  useEffect(() => {
+    if (partnerPricingRates && createdOrder && showPayment) {
+      // Fees will be recalculated when calculateFees is called
+      console.log('Partner pricing rates updated, fees will be recalculated');
+    }
+  }, [partnerPricingRates, createdOrder, showPayment]);
+
+  // Update available gift types when partner type is selected
+  useEffect(() => {
+    if (selectedPartnerType && giftPartners.length > 0) {
+      console.log('Filtering partners by type:', selectedPartnerType);
+      console.log('Available partners:', giftPartners.map((p: any) => ({ 
+        name: p.name, 
+        type: p.partnerType, 
+        giftCount: p.giftTypes?.length || 0,
+        giftTypes: p.giftTypes 
+      })));
+      
+      // Use case-insensitive and trimmed comparison
+      const partnersOfType = giftPartners.filter((p: any) => {
+        const partnerType = (p.partnerType || '').trim();
+        const selectedType = (selectedPartnerType || '').trim();
+        const match = partnerType.toLowerCase() === selectedType.toLowerCase();
+        console.log(`Partner ${p.name}: type="${partnerType}", selected="${selectedType}", match=${match}`);
+        return match;
+      });
+      
+      console.log('Partners of selected type:', partnersOfType.length);
+      
+      const allGiftTypes: any[] = [];
+      
+      partnersOfType.forEach((partner: any) => {
+        console.log(`Processing partner ${partner.name}, giftTypes:`, partner.giftTypes);
+        if (partner.giftTypes && Array.isArray(partner.giftTypes) && partner.giftTypes.length > 0) {
+          partner.giftTypes.forEach((gt: any, index: number) => {
+            if (gt && (gt.type || gt.description)) { // Only add if gift type has required fields
+              allGiftTypes.push({
+                ...gt,
+                _id: gt._id || `${partner._id}_${index}`, // Add unique ID if not present
+                partnerId: partner._id,
+                partnerName: partner.name,
+                partnerCity: partner.city,
+                partnerLocation: partner.primaryLocation
+              });
+            }
+          });
+        } else {
+          console.log(`Partner ${partner.name} has no valid gift types`);
+        }
+      });
+      
+      console.log('Available gift types after filtering:', allGiftTypes.length, allGiftTypes);
+      setAvailableGiftTypes(allGiftTypes);
+      setSelectedGiftType(null);
+      setFormData(prev => ({ ...prev, selectedGiftTypeId: '' }));
+    } else {
+      setAvailableGiftTypes([]);
+      setSelectedGiftType(null);
+    }
+  }, [selectedPartnerType, giftPartners]);
+
+  const loadGiftDeliveryPartners = async () => {
+    try {
+      setLoadingGiftPartners(true);
+      const response = await api.partners.getAll({ 
+        registrationType: 'Gift Delivery Partner'
+        // Removed status filter to get all partners - they can be pending, approved, etc.
+      }) as { status?: string; data?: any[] };
+      
+      if (response.status === 'success' && response.data) {
+        console.log('Raw partners response:', response.data);
+        
+        // Filter partners that have gift types
+        const partnersWithGifts = response.data.filter((p: any) => {
+          const hasGifts = p.giftTypes && Array.isArray(p.giftTypes) && p.giftTypes.length > 0;
+          console.log(`Partner ${p.name}: hasGifts=${hasGifts}, giftTypes=`, p.giftTypes);
+          return hasGifts;
+        });
+        
+        setGiftPartners(partnersWithGifts);
+        console.log('Loaded gift partners:', partnersWithGifts.length);
+        console.log('All partner types in database:', [...new Set(response.data.map((p: any) => p.partnerType))]);
+        console.log('Partner types with gifts:', [...new Set(partnersWithGifts.map((p: any) => p.partnerType))]);
+        
+        // Log each partner's details
+        partnersWithGifts.forEach((p: any) => {
+          console.log(`Partner: ${p.name}, Type: "${p.partnerType}", Gifts: ${p.giftTypes?.length || 0}`);
+        });
+      }
+    } catch (error) {
+      console.error('Error loading gift delivery partners:', error);
+      setMessage({ type: 'error', text: 'Failed to load gift delivery partners' });
+    } finally {
+      setLoadingGiftPartners(false);
+    }
+  };
+
+  const handlePartnerTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedPartnerType(value);
+    setFormData(prev => ({ ...prev, partnerType: value }));
+  };
+
+  const handleGiftTypeSelect = (giftType: any) => {
+    setSelectedGiftType(giftType);
+    setFormData(prev => ({ 
+      ...prev, 
+      selectedGiftTypeId: giftType._id || '',
+      giftType: giftType.type || ''
+    }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -114,6 +283,20 @@ function PostOrder() {
     setLoading(true);
     setMessage(null);
 
+    // Validate gift selection for gift_delivery_partner
+    if (formData.deliveryMethod === 'gift_delivery_partner') {
+      if (!selectedPartnerType) {
+        setMessage({ type: 'error', text: 'Please select a Partner Type' });
+        setLoading(false);
+        return;
+      }
+      if (!selectedGiftType) {
+        setMessage({ type: 'error', text: 'Please select a gift from the available options' });
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       // Step 1: Create buyer first
       const buyerData: any = {
@@ -137,6 +320,17 @@ function PostOrder() {
       const buyerId = buyerResponse.data._id;
 
       // Step 2: Create order
+      // Combine delivery address fields for non-traveler methods
+      let deliveryDestination = formData.deliveryDestination;
+      if (formData.deliveryMethod !== 'traveler') {
+        const addressParts = [];
+        if (formData.deliveryStreetAddress) addressParts.push(formData.deliveryStreetAddress);
+        if (formData.deliverySubcity) addressParts.push(formData.deliverySubcity);
+        if (formData.deliveryCity) addressParts.push(formData.deliveryCity);
+        if (formData.deliveryAdditionalInfo) addressParts.push(`Additional Info: ${formData.deliveryAdditionalInfo}`);
+        deliveryDestination = addressParts.length > 0 ? addressParts.join(', ') : '';
+      }
+
       const orderInfo: any = {
         productDescription: formData.productDescription || undefined,
         brand: formData.brand || undefined,
@@ -144,7 +338,7 @@ function PostOrder() {
         quantityDescription: formData.quantityDescription || undefined,
         manufacturingDate: formData.manufacturingDate ? new Date(formData.manufacturingDate).toISOString() : undefined,
         countryOfOrigin: formData.countryOfOrigin || undefined,
-        deliveryDestination: formData.deliveryDestination || undefined,
+        deliveryDestination: deliveryDestination || undefined,
         preferredDeliveryDate: formData.preferredDeliveryDate ? new Date(formData.preferredDeliveryDate + 'T00:00:00').toISOString() : undefined,
         photos: formData.photos.length > 0 ? formData.photos : undefined,
         video: formData.video || undefined,
@@ -162,8 +356,19 @@ function PostOrder() {
         orderInfo.recipientEmail = formData.recipientEmail || undefined;
         orderInfo.recipientPhone = formData.recipientPhone || undefined;
         orderInfo.recipientAddress = formData.recipientAddress || undefined;
-        orderInfo.giftType = formData.giftType || undefined;
         orderInfo.giftMessage = formData.giftMessage || undefined;
+        
+        // Use selected gift type data
+        if (selectedGiftType) {
+          orderInfo.giftType = selectedGiftType.type || undefined;
+          orderInfo.giftDescription = selectedGiftType.description || undefined;
+          orderInfo.giftPrice = selectedGiftType.price || undefined;
+          orderInfo.giftPhoto = selectedGiftType.photo || undefined;
+          orderInfo.partnerType = selectedPartnerType || undefined;
+          orderInfo.selectedGiftTypeId = formData.selectedGiftTypeId || undefined;
+          orderInfo.giftPartnerId = selectedGiftType.partnerId || undefined;
+          orderInfo.giftPartnerName = selectedGiftType.partnerName || undefined;
+        }
       }
 
       // Add movers & packers specific fields if delivery method is movers_packers
@@ -191,6 +396,12 @@ function PostOrder() {
       // If a specific trip was selected, include the traveler ID
       if (selectedTrip?.travelerId) {
         orderData.assignedTravelerId = selectedTrip.travelerId;
+      }
+
+      // For gift delivery partner orders, auto-assign the partner who owns the selected gift
+      if (formData.deliveryMethod === 'gift_delivery_partner' && selectedGiftType?.partnerId) {
+        orderData.assignedPartnerId = selectedGiftType.partnerId;
+        orderData.status = 'assigned'; // Set status to assigned since partner is pre-selected
       }
 
       const orderResponse = await api.orders.create(orderData) as { status?: string; data?: any; message?: string };
@@ -235,8 +446,32 @@ function PostOrder() {
         
         console.log(`Auto matched: ${autoMatched}, Auto assigned: ${autoAssigned}, Match found: ${matchFound}, Assigned match ID: ${assignedMatchId}`);
         
+        // For gift delivery partner orders with selected gift, skip match selection and go directly to payment
+        if (formData.deliveryMethod === 'gift_delivery_partner' && selectedGiftType?.partnerId) {
+          // Store assigned partner info in createdOrder
+          responseData.assignedMatchId = selectedGiftType.partnerId;
+          responseData.assignedPartner = {
+            _id: selectedGiftType.partnerId,
+            name: selectedGiftType.partnerName,
+            city: selectedGiftType.partnerCity,
+            location: selectedGiftType.partnerLocation
+          };
+          responseData.autoAssigned = true;
+          setCreatedOrder(responseData);
+          
+          // Fetch partner pricing rates if this is a delivery partner method
+          // Note: For gift delivery partners, pricing is handled via giftType.price, not partner rates
+          // So we skip fetching pricing rates for gift_delivery_partner
+          
+          // Go directly to payment
+          setShowPayment(true);
+          setMessage({ 
+            type: 'success', 
+            text: `Order created successfully! Your gift "${selectedGiftType.description}" has been assigned to ${selectedGiftType.partnerName}. Please proceed with payment.`
+          });
+        }
         // If a trip was pre-selected from BrowseTrips, skip match selection and go directly to payment
-        if (selectedTrip && assignedMatchId) {
+        else if (selectedTrip && assignedMatchId) {
           // Store assigned match ID in createdOrder
           responseData.assignedMatchId = assignedMatchId;
           // Ensure the assignedTraveler includes priceOffer from selectedTrip
@@ -268,6 +503,19 @@ function PostOrder() {
           if (assignedMatchId) {
             responseData.assignedMatchId = assignedMatchId;
             setCreatedOrder(responseData);
+            
+            // If a partner was auto-assigned, fetch their pricing rates
+            if (autoAssigned && assignedPartner && ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers'].includes(formData.deliveryMethod)) {
+              try {
+                const partnerUserId = assignedPartner.userId || assignedPartner._id;
+                if (partnerUserId) {
+                  await fetchPartnerPricingRates(partnerUserId);
+                }
+              } catch (error) {
+                console.error('Error fetching partner pricing rates during order creation:', error);
+                // Don't block order creation if pricing rates can't be fetched
+              }
+            }
           }
           
           if (autoMatched || autoAssigned) {
@@ -343,12 +591,32 @@ function PostOrder() {
           await api.orders.matchWithTraveler(createdOrder._id, matchId);
         } else if (matchType === 'partner') {
           await api.orders.assignToPartner(createdOrder._id, matchId);
+          
+          // Fetch partner pricing rates for delivery partner methods
+          if (['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers'].includes(formData.deliveryMethod)) {
+            try {
+              await fetchPartnerPricingRates(matchId);
+            } catch (error) {
+              console.error('Error fetching partner pricing rates:', error);
+              // Don't block match selection if pricing rates can't be fetched
+            }
+          }
         }
         
         // Refresh order data
         const updatedOrder = await api.orders.getById(createdOrder._id) as { status?: string; data?: any };
         if (updatedOrder.status === 'success') {
           setCreatedOrder(updatedOrder.data);
+        }
+      } else {
+        // If already assigned, still fetch pricing rates if it's a partner
+        if (matchType === 'partner' && ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers'].includes(formData.deliveryMethod)) {
+          try {
+            await fetchPartnerPricingRates(matchId);
+          } catch (error) {
+            console.error('Error fetching partner pricing rates:', error);
+            // Don't block match selection if pricing rates can't be fetched
+          }
         }
       }
       
@@ -377,64 +645,153 @@ function PostOrder() {
     });
   };
 
-  // Calculate fees - use actual price offer from traveler/partner if available
-  const calculateFees = () => {
-    let deliveryFee = 50; // Default delivery fee
-    
-    // Priority 1: Check if we have a selected trip with price offer (from BrowseTrips)
-    if (selectedTrip?.priceOffer) {
-      deliveryFee = typeof selectedTrip.priceOffer === 'number' 
-        ? selectedTrip.priceOffer 
-        : parseFloat(selectedTrip.priceOffer) || 50;
-      console.log('Using price offer from selected trip:', deliveryFee);
-    }
-    // Priority 2: Check if the created order has an assigned traveler with price offer
-    else if (createdOrder?.assignedTraveler?.priceOffer) {
-      deliveryFee = typeof createdOrder.assignedTraveler.priceOffer === 'number'
-        ? createdOrder.assignedTraveler.priceOffer
-        : parseFloat(createdOrder.assignedTraveler.priceOffer) || 50;
-      console.log('Using price offer from assigned traveler:', deliveryFee);
-    }
-    // Priority 3: Check if the created order has an assigned partner with price offer
-    else if (createdOrder?.assignedPartner?.priceOffer) {
-      deliveryFee = typeof createdOrder.assignedPartner.priceOffer === 'number'
-        ? createdOrder.assignedPartner.priceOffer
-        : parseFloat(createdOrder.assignedPartner.priceOffer) || 50;
-      console.log('Using price offer from assigned partner:', deliveryFee);
-    }
-    // Priority 4: Check if the order has pricing information
-    else if (createdOrder?.pricing?.deliveryFee) {
-      deliveryFee = typeof createdOrder.pricing.deliveryFee === 'number'
-        ? createdOrder.pricing.deliveryFee
-        : parseFloat(createdOrder.pricing.deliveryFee) || 50;
-      console.log('Using delivery fee from order pricing:', deliveryFee);
-    }
-    // Priority 5: Check if there's a selected match with price offer
-    else if (createdOrder?.assignedMatchId && availableMatches.length > 0) {
-      // Try to find the match in availableMatches
-      const match = availableMatches.find((m: any) => 
-        m._id === createdOrder.assignedMatchId || 
-        m.userId === createdOrder.assignedMatchId
-      );
-      if (match?.priceOffer) {
-        deliveryFee = typeof match.priceOffer === 'number'
-          ? match.priceOffer
-          : parseFloat(match.priceOffer) || 50;
-        console.log('Using price offer from match:', deliveryFee);
+  // Fetch partner pricing rates when a partner is matched
+  const fetchPartnerPricingRates = async (partnerIdOrUserId: string) => {
+    try {
+      // Get all transactions for this partner/user (they store pricing rates)
+      // The partnerIdOrUserId could be either a User ID or Partner document ID
+      // Try as User ID first (since transactions are stored with buyerId = user ID)
+      const transactions = await api.transactions.getByBuyer(partnerIdOrUserId) as { status?: string; data?: any[] };
+      if (transactions.status === 'success' && transactions.data) {
+        // Find the most recent pricing rate transaction
+        const pricingTransactions = transactions.data
+          .filter((t: any) => 
+            t.transactionType === 'partner_earning_record' && 
+            t.paymentMethod === 'manual_partner_entry' &&
+            t.paymentDetails &&
+            (t.paymentDetails.pieceRates || t.paymentDetails.weightRates || t.paymentDetails.distanceRates)
+          )
+          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        if (pricingTransactions.length > 0) {
+          const rates = extractPricingRatesFromTransaction(pricingTransactions[0]);
+          if (rates) {
+            setPartnerPricingRates(rates);
+            console.log('Loaded partner pricing rates:', rates);
+            return rates;
+          }
+        }
       }
+      setPartnerPricingRates(null);
+      return null;
+    } catch (error) {
+      console.error('Error fetching partner pricing rates:', error);
+      setPartnerPricingRates(null);
+      return null;
     }
-    
-    const serviceFee = 25; // Service fee (can be made configurable later)
-    const platformFee = 15; // Platform fee (can be made configurable later)
-    return {
-      deliveryFee,
-      serviceFee,
-      platformFee,
-      total: deliveryFee + serviceFee + platformFee
-    };
   };
 
-  const itemValue = 0; // You can add this as a form field if needed
+  // Calculate fees - use actual price offer from traveler/partner if available, or calculate from partner rates
+  const calculateFees = () => {
+    try {
+      let deliveryFee = 50; // Default delivery fee
+      
+      // Priority 1: Check if we have a selected trip with price offer (from BrowseTrips)
+      if (selectedTrip?.priceOffer) {
+        deliveryFee = typeof selectedTrip.priceOffer === 'number' 
+          ? selectedTrip.priceOffer 
+          : parseFloat(selectedTrip.priceOffer) || 50;
+        console.log('Using price offer from selected trip:', deliveryFee);
+      }
+      // Priority 2: Check if the created order has an assigned traveler with price offer
+      else if (createdOrder?.assignedTraveler?.priceOffer) {
+        deliveryFee = typeof createdOrder.assignedTraveler.priceOffer === 'number'
+          ? createdOrder.assignedTraveler.priceOffer
+          : parseFloat(createdOrder.assignedTraveler.priceOffer) || 50;
+        console.log('Using price offer from assigned traveler:', deliveryFee);
+      }
+      // Priority 3: Calculate from partner pricing rates if available
+      else if (partnerPricingRates && createdOrder?.orderInfo) {
+        try {
+          const calculatedFee = calculateDeliveryFeeFromPartnerRates(
+            partnerPricingRates,
+            {
+              quantityDescription: createdOrder.orderInfo.quantityDescription || formData.quantityDescription,
+              quantityType: createdOrder.orderInfo.quantityType || formData.quantityType
+            },
+            orderDistance
+          );
+          if (calculatedFee !== null && calculatedFee > 0) {
+            deliveryFee = calculatedFee;
+            console.log('Using calculated fee from partner pricing rates:', deliveryFee);
+          }
+        } catch (calcError) {
+          console.error('Error calculating fee from partner rates:', calcError);
+          // Fall back to default fee
+        }
+      }
+      // Priority 4: Check if the created order has an assigned partner with price offer
+      else if (createdOrder?.assignedPartner?.priceOffer) {
+        deliveryFee = typeof createdOrder.assignedPartner.priceOffer === 'number'
+          ? createdOrder.assignedPartner.priceOffer
+          : parseFloat(createdOrder.assignedPartner.priceOffer) || 50;
+        console.log('Using price offer from assigned partner:', deliveryFee);
+      }
+      // Priority 5: Check if the order has pricing information
+      else if (createdOrder?.pricing?.deliveryFee) {
+        deliveryFee = typeof createdOrder.pricing.deliveryFee === 'number'
+          ? createdOrder.pricing.deliveryFee
+          : parseFloat(createdOrder.pricing.deliveryFee) || 50;
+        console.log('Using delivery fee from order pricing:', deliveryFee);
+      }
+      // Priority 6: Check if there's a selected match with price offer
+      else if (createdOrder?.assignedMatchId && availableMatches.length > 0) {
+        // Try to find the match in availableMatches
+        const match = availableMatches.find((m: any) => 
+          m._id === createdOrder.assignedMatchId || 
+          m.userId === createdOrder.assignedMatchId
+        );
+        if (match?.priceOffer) {
+          deliveryFee = typeof match.priceOffer === 'number'
+            ? match.priceOffer
+            : parseFloat(match.priceOffer) || 50;
+          console.log('Using price offer from match:', deliveryFee);
+        }
+      }
+      
+      const serviceFee = 25; // Service fee (can be made configurable later)
+      const platformFee = 15; // Platform fee (can be made configurable later)
+      return {
+        deliveryFee: deliveryFee || 50,
+        serviceFee: serviceFee || 25,
+        platformFee: platformFee || 15,
+        total: (deliveryFee || 50) + (serviceFee || 25) + (platformFee || 15)
+      };
+    } catch (error) {
+      console.error('Error calculating fees:', error);
+      // Return default fees on error
+      return {
+        deliveryFee: 50,
+        serviceFee: 25,
+        platformFee: 15,
+        total: 90
+      };
+    }
+  };
+
+  // Calculate item value - prioritize gift price for gift delivery orders
+  const itemValue = (() => {
+    // For gift delivery orders, use the selected gift price
+    if (formData.deliveryMethod === 'gift_delivery_partner' && selectedGiftType?.price) {
+      return typeof selectedGiftType.price === 'number' 
+        ? selectedGiftType.price 
+        : parseFloat(selectedGiftType.price) || 0;
+    }
+    // If order is created, check orderInfo for gift price
+    if (createdOrder?.orderInfo?.giftPrice) {
+      return typeof createdOrder.orderInfo.giftPrice === 'number'
+        ? createdOrder.orderInfo.giftPrice
+        : parseFloat(createdOrder.orderInfo.giftPrice) || 0;
+    }
+    // Check order pricing if available
+    if (createdOrder?.pricing?.itemValue) {
+      return typeof createdOrder.pricing.itemValue === 'number'
+        ? createdOrder.pricing.itemValue
+        : parseFloat(createdOrder.pricing.itemValue) || 0;
+    }
+    // Default to 0
+    return 0;
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -675,21 +1032,81 @@ function PostOrder() {
                 Delivery Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Delivery Destination <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="deliveryDestination"
-                    required
-                    value={formData.deliveryDestination}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="e.g., Addis Ababa, New York, London"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Enter the city or location where you want this item to be delivered</p>
-                </div>
+                {formData.deliveryMethod === 'traveler' ? (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Destination <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="deliveryDestination"
+                      required
+                      value={formData.deliveryDestination}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., Addis Ababa, New York, London"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Enter the city or location where you want this item to be delivered</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="deliveryCity"
+                        required
+                        value={formData.deliveryCity}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        placeholder="e.g., Addis Ababa"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Subcity <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="deliverySubcity"
+                        required
+                        value={formData.deliverySubcity}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        placeholder="e.g., Bole, Kirkos, etc."
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Street Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="deliveryStreetAddress"
+                        required
+                        value={formData.deliveryStreetAddress}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        placeholder="e.g., Street name, building number, landmark"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Additional Details (Optional)
+                      </label>
+                      <textarea
+                        name="deliveryAdditionalInfo"
+                        value={formData.deliveryAdditionalInfo}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        placeholder="Any additional information that helps locate the delivery location (landmarks, directions, etc.)"
+                      />
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Preferred Delivery Date <span className="text-red-500">*</span>
@@ -771,22 +1188,51 @@ function PostOrder() {
                       placeholder="Full delivery address for the recipient"
                     />
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gift Type <span className="text-red-500">*</span>
+                      Partner Type <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      name="giftType"
-                      required
-                      value={formData.giftType}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    >
-                      <option value="">-- Select Gift Type --</option>
-                      <option value="Gift Products">Gift Products</option>
-                      <option value="Gift Packages">Gift Packages</option>
-                      <option value="Gift Bundles">Gift Bundles</option>
-                    </select>
+                    {loadingGiftPartners ? (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <span className="text-sm">Loading partner types...</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <select
+                          name="partnerType"
+                          required
+                          value={selectedPartnerType}
+                          onChange={handlePartnerTypeChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        >
+                          <option value="">-- Select Partner Type --</option>
+                          {/* Show partner types that actually have gifts available */}
+                          {giftPartners.length > 0 ? (
+                            [...new Set(giftPartners.map((p: any) => p.partnerType).filter(Boolean))].map((type: string) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))
+                          ) : (
+                            // Fallback to default options if no partners loaded yet
+                            <>
+                              <option value="Flower Seller">Flower Seller</option>
+                              <option value="Event & Wedding Organisers">Event & Wedding Organisers</option>
+                              <option value="Gift Articles Seller">Gift Articles Seller</option>
+                              <option value="Bakery">Bakery</option>
+                              <option value="Supermarkets">Supermarkets</option>
+                              <option value="Catering">Catering</option>
+                              <option value="Others">Others</option>
+                              <option value="Cafeteria & Others">Cafeteria & Others</option>
+                            </>
+                          )}
+                        </select>
+                        {giftPartners.length > 0 && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            {giftPartners.length} partner(s) with gifts available
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -889,119 +1335,223 @@ function PostOrder() {
               </div>
             )}
 
-            {/* Order Information Section */}
-            <div className="border-b border-gray-200 pb-6">
-              <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                <span className="text-2xl">📦</span>
-                Order Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {formData.deliveryMethod !== 'movers_packers' && formData.deliveryMethod !== 'gift_delivery_partner' && (
+            {/* Gift Selection Section (for gift_delivery_partner) */}
+            {formData.deliveryMethod === 'gift_delivery_partner' ? (
+              <div className="border-b border-gray-200 pb-6">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="text-2xl">🎁</span>
+                  Select Gift
+                </h2>
+                {loadingGiftPartners ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-600">Loading partners...</span>
+                  </div>
+                ) : !selectedPartnerType ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      Please select a Partner Type above to see available gifts.
+                    </p>
+                    {giftPartners.length > 0 && (
+                      <p className="text-xs text-yellow-700 mt-2">
+                        Found {giftPartners.length} partner(s) with gifts available.
+                      </p>
+                    )}
+                  </div>
+                ) : availableGiftTypes.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      No gifts available for the selected partner type "{selectedPartnerType}".
+                    </p>
+                    {giftPartners.length > 0 && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        <p>Available partner types with gifts:</p>
+                        <ul className="list-disc list-inside mt-1">
+                          {[...new Set(giftPartners.map((p: any) => p.partnerType))].map((type: string) => (
+                            <li key={type}>{type}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Select a gift from the available options below:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableGiftTypes.map((giftType, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleGiftTypeSelect(giftType)}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                            selectedGiftType?._id === giftType._id || 
+                            (selectedGiftType && selectedGiftType.partnerId === giftType.partnerId && selectedGiftType.type === giftType.type)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {giftType.photo && (
+                            <div className="mb-3">
+                              <img
+                                src={giftType.photo.startsWith('http') ? giftType.photo : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${giftType.photo}`}
+                                alt={giftType.type}
+                                className="w-full h-32 object-cover rounded-lg"
+                              />
+                            </div>
+                          )}
+                          <div className="mb-2">
+                            <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                              {giftType.type}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-gray-900 mb-2">{giftType.description}</h3>
+                          <div className="flex items-center justify-between">
+                            <span className="text-lg font-bold text-green-600">
+                              ETB {giftType.price?.toLocaleString() || '0'}
+                            </span>
+                            {selectedGiftType?._id === giftType._id || 
+                             (selectedGiftType && selectedGiftType.partnerId === giftType.partnerId && selectedGiftType.type === giftType.type) ? (
+                              <span className="text-blue-600 text-sm font-medium">✓ Selected</span>
+                            ) : null}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-500">
+                            <p>Partner: {giftType.partnerName}</p>
+                            {giftType.partnerCity && <p>Location: {giftType.partnerCity}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedGiftType && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm font-medium text-green-800 mb-2">
+                          ✓ Gift Selected: {selectedGiftType.description}
+                        </p>
+                        <p className="text-sm text-green-700">
+                          Price: ETB {selectedGiftType.price?.toLocaleString() || '0'} | 
+                          Partner: {selectedGiftType.partnerName}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Order Information Section (for other delivery methods) */
+              <div className="border-b border-gray-200 pb-6">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="text-2xl">📦</span>
+                  Order Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {formData.deliveryMethod !== 'movers_packers' && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Product Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="productName"
+                        required
+                        value={formData.productName}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                        placeholder="e.g., Smartphone, Laptop, etc."
+                      />
+                    </div>
+                  )}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Name <span className="text-red-500">*</span>
+                      Product Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="productDescription"
+                      required
+                      value={formData.productDescription}
+                      onChange={handleChange}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="Describe your product in detail..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Brand
                     </label>
                     <input
                       type="text"
-                      name="productName"
-                      required
-                      value={formData.productName}
+                      name="brand"
+                      value={formData.brand}
                       onChange={handleChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                      placeholder="e.g., Smartphone, Laptop, etc."
+                      placeholder="e.g., Apple, Samsung, etc."
                     />
                   </div>
-                )}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    name="productDescription"
-                    required
-                    value={formData.productDescription}
-                    onChange={handleChange}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="Describe your product in detail..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Brand
-                  </label>
-                  <input
-                    type="text"
-                    name="brand"
-                    value={formData.brand}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="e.g., Apple, Samsung, etc."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pieces/Weight <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="quantityType"
-                    required
-                    value={formData.quantityType}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                  >
-                    <option value="pieces">Pieces</option>
-                    <option value="weight">Weight</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantity Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    name="quantityDescription"
-                    required
-                    value={formData.quantityDescription}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="e.g., 2 pieces, 5kg, etc."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Manufacturing Date
-                  </label>
-                  <input
-                    type="date"
-                    name="manufacturingDate"
-                    value={formData.manufacturingDate}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country of Origination
-                  </label>
-                  <input
-                    type="text"
-                    name="countryOfOrigin"
-                    value={formData.countryOfOrigin}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="e.g., USA, China, etc."
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pieces/Weight <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="quantityType"
+                      required
+                      value={formData.quantityType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    >
+                      <option value="pieces">Pieces</option>
+                      <option value="weight">Weight</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantity Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="quantityDescription"
+                      required
+                      value={formData.quantityDescription}
+                      onChange={handleChange}
+                      rows={2}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., 2 pieces, 5kg, etc."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Manufacturing Date
+                    </label>
+                    <input
+                      type="date"
+                      name="manufacturingDate"
+                      value={formData.manufacturingDate}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country of Origination
+                    </label>
+                    <input
+                      type="text"
+                      name="countryOfOrigin"
+                      value={formData.countryOfOrigin}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., USA, China, etc."
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Attachments Section */}
-            <div className="pb-6">
-              <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
-                <span className="text-2xl">📎</span>
-                Attachments
-              </h2>
+            {/* Attachments Section (not shown for gift_delivery_partner) */}
+            {formData.deliveryMethod !== 'gift_delivery_partner' && (
+              <div className="pb-6">
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                  <span className="text-2xl">📎</span>
+                  Attachments
+                </h2>
               <div className="space-y-6">
                 {/* Photos */}
                 <div>
@@ -1052,6 +1602,7 @@ function PostOrder() {
                 />
               </div>
             </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-4">

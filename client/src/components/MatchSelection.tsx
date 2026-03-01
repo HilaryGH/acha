@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 
+interface DistancePricing {
+  minDistance: number;
+  maxDistance: number;
+  price: number;
+}
+
 interface Match {
   _id: string;
   uniqueId?: string;
@@ -14,6 +20,7 @@ interface Match {
   city?: string;
   primaryLocation?: string;
   companyName?: string;
+  distancePricing?: DistancePricing[];
 }
 
 interface MatchSelectionProps {
@@ -61,7 +68,15 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
         // Calculate distance for each match
         for (const match of matches) {
           try {
-            const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destination)}&key=${GOOGLE_MAPS_API_KEY}&units=metric`;
+            // For partners, calculate from their location to destination
+            // For travelers, calculate from origin to destination
+            let fromLocation = origin;
+            if (matchType === 'partner') {
+              // Use partner's location (city or primaryLocation) as starting point
+              fromLocation = match.primaryLocation || match.city || origin;
+            }
+            
+            const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(fromLocation)}&destinations=${encodeURIComponent(destination)}&key=${GOOGLE_MAPS_API_KEY}&units=metric`;
             const response = await fetch(url);
             const data = await response.json();
 
@@ -71,7 +86,8 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
                 distance: element.distance.value / 1000, // km
                 distanceText: element.distance.text,
                 duration: element.duration.value / 60, // minutes
-                durationText: element.duration.text
+                durationText: element.duration.text,
+                fromLocation: fromLocation
               };
             }
           } catch (error) {
@@ -79,13 +95,21 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
           }
         }
       } else {
-        // Fallback: estimate distances (you can improve this)
+        // Fallback: estimate distances based on partner location
         matches.forEach((match, index) => {
+          // For partners, estimate based on their location vs destination
+          // For travelers, use origin to destination
+          let estimatedDistance = 5 + (index * 2);
+          if (matchType === 'partner' && (match.primaryLocation || match.city)) {
+            // Rough estimate: if partner location is mentioned, assume varying distances
+            estimatedDistance = 3 + (index * 2); // Start from 3km for first partner
+          }
+          
           distanceMap[match._id] = {
-            distance: 5 + (index * 2), // Rough estimate
-            distanceText: `${5 + (index * 2)} km`,
-            duration: 15 + (index * 5),
-            durationText: `${15 + (index * 5)} mins`,
+            distance: estimatedDistance,
+            distanceText: `${estimatedDistance} km`,
+            duration: 10 + (index * 5),
+            durationText: `${10 + (index * 5)} mins`,
             isEstimated: true
           };
         });
@@ -98,11 +122,43 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
     }
   };
 
-  const calculateDeliveryFee = (distanceKm: number) => {
-    // Base fee structure for local deliveries
+  const calculateDeliveryFee = (distanceKm: number, match?: Match) => {
+    /**
+     * Delivery Fee Calculation:
+     * 
+     * Priority 1: Use partner-specific distance-based pricing if available
+     * Priority 2: Fallback to default formula: Base Fee + (Per Km Fee × Distance)
+     */
+    
+    // Check if partner has distance-based pricing
+    if (match?.distancePricing && match.distancePricing.length > 0) {
+      // Find the matching distance range
+      for (const range of match.distancePricing) {
+        if (distanceKm >= range.minDistance && distanceKm <= range.maxDistance) {
+          return range.price;
+        }
+      }
+      
+      // If distance exceeds all ranges, use the highest range price
+      const sortedRanges = [...match.distancePricing].sort((a, b) => b.maxDistance - a.maxDistance);
+      if (distanceKm > sortedRanges[0].maxDistance) {
+        return sortedRanges[0].price;
+      }
+      
+      // If distance is less than all ranges, use the lowest range price
+      const sortedRangesAsc = [...match.distancePricing].sort((a, b) => a.minDistance - b.minDistance);
+      if (distanceKm < sortedRangesAsc[0].minDistance) {
+        return sortedRangesAsc[0].price;
+      }
+    }
+    
+    // Fallback: Default formula
     const baseFee = 50;
     const perKmFee = 10;
-    return baseFee + (perKmFee * distanceKm);
+    const calculatedFee = baseFee + (perKmFee * distanceKm);
+    
+    // Round to 2 decimal places
+    return Math.round(calculatedFee * 100) / 100;
   };
 
   const handleSelect = () => {
@@ -159,7 +215,7 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
       <div className="space-y-4 mb-6">
         {matches.map((match) => {
           const distance = distances[match._id];
-          const deliveryFee = distance ? calculateDeliveryFee(distance.distance) : null;
+          const deliveryFee = distance ? calculateDeliveryFee(distance.distance, match) : null;
 
           return (
             <div
@@ -213,9 +269,20 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
                         <p><strong>Distance:</strong> {distance.distanceText}</p>
                         <p><strong>Estimated Duration:</strong> {distance.durationText}</p>
                         {deliveryFee && (
-                          <p className="text-blue-600 font-semibold">
-                            <strong>Delivery Fee:</strong> {deliveryFee.toFixed(2)} ETB
-                          </p>
+                          <div className="mt-2">
+                            <p className="text-blue-600 font-semibold">
+                              <strong>Delivery Fee:</strong> {deliveryFee.toFixed(2)} ETB
+                            </p>
+                            {match.distancePricing && match.distancePricing.length > 0 ? (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Partner pricing: {distance.distance.toFixed(1)} km falls in partner's pricing range
+                              </p>
+                            ) : distance.isEstimated !== true ? (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Fee calculation: Base fee (50 ETB) + Per km (10 ETB × {distance.distance.toFixed(1)} km) = {deliveryFee.toFixed(2)} ETB
+                              </p>
+                            ) : null}
+                          </div>
                         )}
                       </div>
                     )}

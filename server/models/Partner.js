@@ -198,6 +198,24 @@ const partnerSchema = new mongoose.Schema({
       trim: true
     }
   },
+  // Distance-based pricing for delivery partners
+  distancePricing: [{
+    minDistance: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    maxDistance: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+  }],
   // Status
   status: {
     type: String,

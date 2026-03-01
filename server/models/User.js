@@ -75,6 +75,24 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Distance-based pricing for delivery partners
+  distancePricing: [{
+    minDistance: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    maxDistance: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+  }],
   lastLogin: {
     type: Date
   },

@@ -233,6 +233,13 @@ function OrderTracking() {
               <p className="text-sm font-medium text-blue-900 mb-2">Assigned Traveler</p>
               <p className="text-blue-800">{order.assignedTravelerId.name}</p>
               <p className="text-sm text-blue-600">{order.assignedTravelerId.email}</p>
+              {order.assignedTravelerId.phone && (
+                <p className="text-sm text-blue-600">
+                  <a href={`tel:${order.assignedTravelerId.phone}`} className="hover:underline">
+                    📞 {order.assignedTravelerId.phone}
+                  </a>
+                </p>
+              )}
             </div>
           )}
 

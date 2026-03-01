@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import PartnerPaymentRecordForm from '../../components/PartnerPaymentRecordForm';
 import { logout } from '../../utils/auth';
+import FileUpload from '../../components/FileUpload';
 
 interface User {
   id: string;
@@ -49,9 +50,16 @@ interface DeliveryPartnerDashboardProps {
   user: User;
 }
 
+interface GiftType {
+  type: 'Gift Products' | 'Gift Packages' | 'Gift Bundles' | '';
+  description: string;
+  photo: string;
+  price: string;
+}
+
 function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'payment' | 'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings'>('payment');
+  const [activeTab, setActiveTab] = useState<'payment' | 'overview' | 'orders' | 'requests' | 'earnings' | 'profile' | 'settings' | 'giftTypes'>('payment');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     activeDeliveries: 0,
@@ -66,9 +74,60 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<string>('');
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
+  
+  // Gift Types Management (for gift_delivery_partner only)
+  const [giftTypes, setGiftTypes] = useState<GiftType[]>([]);
+  const [partnerData, setPartnerData] = useState<any>(null);
+  const [savingGiftTypes, setSavingGiftTypes] = useState(false);
+  const [loadingGiftTypes, setLoadingGiftTypes] = useState(false);
+  const [giftTypesMessage, setGiftTypesMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Get role-specific information
+  const getRoleInfo = () => {
+    switch (user.role) {
+      case 'gift_delivery_partner':
+        return {
+          title: 'Gift Delivery Partner Dashboard',
+          subtitle: 'Welcome, {name}! 🎁',
+          badge: 'Gift Delivery',
+          badgeColor: 'bg-pink-100 text-pink-800',
+          icon: '🎁'
+        };
+      case 'acha_sisters_delivery_partner':
+        return {
+          title: 'Acha Sisters Delivery Partner Dashboard',
+          subtitle: 'Welcome, {name}! 👭',
+          badge: 'Acha Sisters',
+          badgeColor: 'bg-purple-100 text-purple-800',
+          icon: '👭'
+        };
+      case 'movers_packers':
+        return {
+          title: 'Movers & Packers Dashboard',
+          subtitle: 'Welcome, {name}! 📦',
+          badge: 'Movers & Packers',
+          badgeColor: 'bg-orange-100 text-orange-800',
+          icon: '📦'
+        };
+      case 'delivery_partner':
+      default:
+        return {
+          title: 'Delivery Partner Dashboard',
+          subtitle: 'Welcome, {name}! 🚚',
+          badge: 'Delivery Partner',
+          badgeColor: 'bg-blue-100 text-blue-800',
+          icon: '🚚'
+        };
+    }
+  };
+
+  const roleInfo = getRoleInfo();
 
   useEffect(() => {
     loadDashboardData();
+    if (activeTab === 'giftTypes' && user.role === 'gift_delivery_partner') {
+      loadPartnerData();
+    }
   }, [activeTab]);
 
   const loadDashboardData = async () => {
@@ -288,6 +347,122 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
     logout(navigate);
   };
 
+  // Load partner data for gift delivery partners
+  const loadPartnerData = async () => {
+    try {
+      setLoadingGiftTypes(true);
+      setGiftTypesMessage(null);
+      
+      // First try to get all partners and filter by email
+      const response = await api.partners.getAll({ 
+        registrationType: 'Gift Delivery Partner'
+      }) as { status?: string; data?: any[] };
+      
+      if (response.status === 'success' && response.data) {
+        // Find partner by email match (case-insensitive)
+        const partner = response.data.find((p: any) => 
+          p.email?.toLowerCase() === user.email?.toLowerCase()
+        );
+        
+        if (partner) {
+          setPartnerData(partner);
+          // Convert gift types from backend format to form format
+          if (partner.giftTypes && Array.isArray(partner.giftTypes) && partner.giftTypes.length > 0) {
+            setGiftTypes(partner.giftTypes.map((gt: any) => ({
+              type: gt.type || '',
+              description: gt.description || '',
+              photo: gt.photo || '',
+              price: gt.price?.toString() || ''
+            })));
+          } else {
+            setGiftTypes([]);
+          }
+        } else {
+          // Partner not found - might be a new registration
+          setGiftTypes([]);
+          setGiftTypesMessage({ 
+            type: 'error', 
+            text: 'Partner profile not found. Please complete your registration first.' 
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading partner data:', error);
+      setGiftTypesMessage({ type: 'error', text: 'Failed to load gift types. Please try again later.' });
+    } finally {
+      setLoadingGiftTypes(false);
+    }
+  };
+
+  // Gift Types Management Functions
+  const addGiftType = () => {
+    setGiftTypes(prev => [...prev, {
+      type: '',
+      description: '',
+      photo: '',
+      price: ''
+    }]);
+  };
+
+  const removeGiftType = (index: number) => {
+    setGiftTypes(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateGiftType = (index: number, field: keyof GiftType, value: string) => {
+    setGiftTypes(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleSaveGiftTypes = async () => {
+    if (!partnerData || !partnerData._id) {
+      setGiftTypesMessage({ type: 'error', text: 'Partner data not found. Please contact support.' });
+      return;
+    }
+
+    // Validate gift types
+    if (giftTypes.length === 0) {
+      setGiftTypesMessage({ type: 'error', text: 'Please add at least one gift type' });
+      return;
+    }
+
+    // Validate each gift type
+    for (const giftType of giftTypes) {
+      if (!giftType.type || !giftType.description || !giftType.price) {
+        setGiftTypesMessage({ type: 'error', text: 'Please fill all required fields for gift types' });
+        return;
+      }
+    }
+
+    try {
+      setSavingGiftTypes(true);
+      setGiftTypesMessage(null);
+
+      const updatedGiftTypes = giftTypes.map(gt => ({
+        type: gt.type,
+        description: gt.description,
+        photo: gt.photo,
+        price: parseFloat(gt.price)
+      }));
+
+      const response = await api.partners.update(partnerData._id, {
+        giftTypes: updatedGiftTypes
+      }) as { status?: string; message?: string };
+
+      if (response.status === 'success') {
+        setGiftTypesMessage({ type: 'success', text: 'Gift types updated successfully!' });
+        // Reload partner data to get updated version
+        await loadPartnerData();
+      } else {
+        setGiftTypesMessage({ type: 'error', text: response.message || 'Failed to update gift types' });
+      }
+    } catch (error: any) {
+      setGiftTypesMessage({ type: 'error', text: error.message || 'An error occurred while saving' });
+    } finally {
+      setSavingGiftTypes(false);
+    }
+  };
+
   const filteredOrders = orders.filter(o => 
     filterStatus === 'all' || o.status === filterStatus
   );
@@ -303,9 +478,18 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
       <div className="bg-gradient-to-r from-green-600 to-emerald-600 shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Delivery Partner Dashboard</h1>
-              <p className="text-sm text-green-100 mt-1">Welcome, {user?.name || 'Partner'}! 🚚</p>
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-white">{roleInfo.title}</h1>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${roleInfo.badgeColor}`}>
+                    {roleInfo.badge}
+                  </span>
+                </div>
+                <p className="text-sm text-green-100 mt-1">
+                  {roleInfo.subtitle.replace('{name}', user?.name || 'Partner')}
+                </p>
+              </div>
             </div>
             <button
               onClick={handleLogout}
@@ -327,6 +511,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                 { id: 'orders', label: 'My Orders', icon: '📦' },
                 { id: 'requests', label: 'Available Requests', icon: '🔔' },
                 { id: 'earnings', label: 'Earnings', icon: '💰' },
+                ...(user.role === 'gift_delivery_partner' ? [{ id: 'giftTypes', label: 'Gift Types', icon: '🎁' }] : []),
                 { id: 'profile', label: 'Profile', icon: '👤' },
                 { id: 'settings', label: 'Settings', icon: '⚙️' },
               ].map((tab) => (
@@ -497,13 +682,18 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                 orderId={selectedOrderForPayment || undefined}
                 order={selectedOrderDetails || undefined}
                 existingTransactionId={editingTransactionId || undefined}
+                ordersNeedingPayment={ordersNeedingPayment}
                 onPaymentRecorded={async () => {
                   // Reload orders and check payment records after form submission
                   const loadedOrders = await loadOrders();
                   if (loadedOrders) {
                     await checkPaymentRecords(loadedOrders);
                     await loadStats(loadedOrders);
-                    // Keep edit mode if editing, so they can continue editing
+                    // Reset selection after bulk calculation
+                    if (!editingTransactionId) {
+                      setSelectedOrderForPayment('');
+                      setSelectedOrderDetails(null);
+                    }
                   }
                 }}
               />
@@ -527,7 +717,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                         <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeDeliveries}</p>
                       </div>
                       <div className="p-3 bg-green-100 rounded-lg">
-                        <span className="text-2xl">🚚</span>
+                        <span className="text-2xl">{roleInfo.icon}</span>
                       </div>
                     </div>
                   </div>
@@ -960,6 +1150,139 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'giftTypes' && user.role === 'gift_delivery_partner' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Manage Gift Types</h3>
+                <button
+                  type="button"
+                  onClick={addGiftType}
+                  className="px-4 py-2 text-sm text-white rounded-lg hover:shadow-md transition-all"
+                  style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
+                >
+                  + Add Gift Type
+                </button>
+              </div>
+
+              {giftTypesMessage && (
+                <div className={`mb-5 p-3 rounded-lg text-sm ${giftTypesMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {giftTypesMessage.text}
+                </div>
+              )}
+
+              {loadingGiftTypes && !partnerData ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading gift types...</p>
+                </div>
+              ) : giftTypes.length === 0 && !loadingGiftTypes ? (
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                  <p className="text-gray-600 mb-4">No gift types added yet</p>
+                  <p className="text-sm text-gray-500 mb-4">Click "Add Gift Type" to add your first gift type</p>
+                  <button
+                    type="button"
+                    onClick={addGiftType}
+                    className="px-6 py-2 text-sm text-white rounded-lg hover:shadow-md transition-all"
+                    style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
+                  >
+                    + Add Your First Gift Type
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {giftTypes.map((giftType, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-sm font-semibold text-gray-700">Gift Type #{index + 1}</h4>
+                        <button
+                          type="button"
+                          onClick={() => removeGiftType(index)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">Gift Type *</label>
+                          <select
+                            value={giftType.type}
+                            onChange={(e) => updateGiftType(index, 'type', e.target.value)}
+                            required
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                          >
+                            <option value="">-- Select Type --</option>
+                            <option value="Gift Products">Gift Products</option>
+                            <option value="Gift Packages">Gift Packages</option>
+                            <option value="Gift Bundles">Gift Bundles</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1.5">Price *</label>
+                          <input
+                            type="number"
+                            value={giftType.price}
+                            onChange={(e) => updateGiftType(index, 'price', e.target.value)}
+                            required
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1.5">Description *</label>
+                        <textarea
+                          value={giftType.description}
+                          onChange={(e) => updateGiftType(index, 'description', e.target.value)}
+                          required
+                          rows={3}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                          placeholder="Describe this gift type..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <FileUpload
+                          label="Photo"
+                          value={giftType.photo}
+                          onChange={(filePath) => updateGiftType(index, 'photo', filePath)}
+                          accept="image/*"
+                        />
+                        {giftType.photo && (
+                          <div className="mt-2">
+                            <img
+                              src={getImageUrl(giftType.photo)}
+                              alt={`Gift type ${index + 1}`}
+                              className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {giftTypes.length > 0 && (
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveGiftTypes}
+                    disabled={savingGiftTypes}
+                    className="px-6 py-2.5 rounded-lg text-sm text-white font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
+                  >
+                    {savingGiftTypes ? 'Saving...' : 'Save Gift Types'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

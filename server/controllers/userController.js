@@ -14,7 +14,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const register = async (req, res) => {
   try {
     console.log('Register endpoint called with body:', { ...req.body, password: '***' });
-    const { name, email, password, phone, role, department, city, location, primaryLocation } = req.body;
+    const { name, email, password, phone, role, department, city, location, primaryLocation, distancePricing } = req.body;
     const creatorRole = req.user?.role;
     const creatorId = req.user?.id;
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
@@ -102,6 +102,15 @@ const register = async (req, res) => {
     }
     if (primaryLocation && primaryLocation.trim()) {
       userData.primaryLocation = primaryLocation.trim();
+    }
+    
+    // Include distance-based pricing for delivery partners
+    if (distancePricing && Array.isArray(distancePricing) && distancePricing.length > 0) {
+      userData.distancePricing = distancePricing.map(dp => ({
+        minDistance: parseFloat(dp.minDistance) || 0,
+        maxDistance: parseFloat(dp.maxDistance) || 0,
+        price: parseFloat(dp.price) || 0
+      }));
     }
     
     const user = new User(userData);

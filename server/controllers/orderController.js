@@ -298,11 +298,24 @@ exports.createOrder = async (req, res) => {
 
       console.log(`Found ${matchingUsers.length} potential delivery partners (users) in ${buyerCity}`);
 
-      // Filter by location match and date availability (if partner has availability info)
+      // Filter by location match, date availability, and distancePricing requirement
       const suitableUsers = matchingUsers.filter(user => {
         const locationMatch = locationsMatch(user.city, buyerCity) || 
                              locationsMatch(user.primaryLocation, buyerCity) ||
                              locationsMatch(user.location, buyerCity);
+        
+        // For delivery_partner methods, only include partners with distancePricing
+        // Gift delivery partners don't require distancePricing (they have giftTypes pricing)
+        const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
+                                       deliveryMethod === 'acha_sisters_delivery_partner' ||
+                                       deliveryMethod === 'movers_packers';
+        
+        if (requiresDistancePricing) {
+          const hasDistancePricing = user.distancePricing && 
+                                     Array.isArray(user.distancePricing) && 
+                                     user.distancePricing.length > 0;
+          return locationMatch && hasDistancePricing;
+        }
         
         // For partners, we can check if they have availability settings
         // If preferredDate is set, check if partner is available around that time
@@ -321,6 +334,7 @@ exports.createOrder = async (req, res) => {
         primaryLocation: u.primaryLocation,
         location: u.location,
         role: u.role,
+        distancePricing: u.distancePricing || [],
         matchType: 'partner',
         isPartnerModel: false,
         matchScore: calculatePartnerMatchScore(u, buyerCity, orderDestination, preferredDate)
@@ -344,8 +358,23 @@ exports.createOrder = async (req, res) => {
       console.log(`Found ${legacyPartners.length} potential legacy partners in ${buyerCity}`);
 
       const suitableLegacyPartners = legacyPartners.filter(partner => {
-        return locationsMatch(partner.city, buyerCity) || 
-               locationsMatch(partner.primaryLocation, buyerCity);
+        const locationMatch = locationsMatch(partner.city, buyerCity) || 
+                             locationsMatch(partner.primaryLocation, buyerCity);
+        
+        // For delivery_partner methods, only include partners with distancePricing
+        // Gift delivery partners don't require distancePricing (they have giftTypes pricing)
+        const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
+                                       deliveryMethod === 'acha_sisters_delivery_partner' ||
+                                       deliveryMethod === 'movers_packers';
+        
+        if (requiresDistancePricing) {
+          const hasDistancePricing = partner.distancePricing && 
+                                     Array.isArray(partner.distancePricing) && 
+                                     partner.distancePricing.length > 0;
+          return locationMatch && hasDistancePricing;
+        }
+        
+        return locationMatch;
       });
 
       const legacyMatches = suitableLegacyPartners.map(p => ({
@@ -358,6 +387,7 @@ exports.createOrder = async (req, res) => {
         city: p.city,
         primaryLocation: p.primaryLocation,
         registrationType: p.registrationType,
+        distancePricing: p.distancePricing || [],
         matchType: 'partner',
         isPartnerModel: true,
         matchScore: calculatePartnerMatchScore(p, buyerCity, orderDestination, preferredDate)
@@ -544,7 +574,16 @@ exports.createOrder = async (req, res) => {
           } else {
             // Assign to User model
             const partner = await User.findById(partnerId);
-            if (partner && partner.role === deliveryMethod && partner.status === 'active') {
+            // For delivery_partner methods, ensure partner has distancePricing
+            const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
+                                           deliveryMethod === 'acha_sisters_delivery_partner' ||
+                                           deliveryMethod === 'movers_packers';
+            const hasDistancePricing = !requiresDistancePricing || 
+                                       (partner.distancePricing && 
+                                        Array.isArray(partner.distancePricing) && 
+                                        partner.distancePricing.length > 0);
+            
+            if (partner && partner.role === deliveryMethod && partner.status === 'active' && hasDistancePricing) {
               order.assignedPartnerId = partnerId;
               order.status = 'assigned';
               order.partnerAcceptanceStatus = 'pending';
@@ -600,7 +639,16 @@ exports.createOrder = async (req, res) => {
         } else {
           // For legacy partner delivery, assign to Partner model
           const partner = await Partner.findById(partnerId);
-          if (partner && partner.status === 'approved') {
+          // For delivery_partner methods, ensure partner has distancePricing
+          const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
+                                         deliveryMethod === 'acha_sisters_delivery_partner' ||
+                                         deliveryMethod === 'movers_packers';
+          const hasDistancePricing = !requiresDistancePricing || 
+                                     (partner.distancePricing && 
+                                      Array.isArray(partner.distancePricing) && 
+                                      partner.distancePricing.length > 0);
+          
+          if (partner && partner.status === 'approved' && hasDistancePricing) {
             order.assignedPartnerId = partnerId;
             order.status = 'assigned';
             order.partnerAcceptanceStatus = 'pending';

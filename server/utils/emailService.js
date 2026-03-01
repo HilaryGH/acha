@@ -1289,6 +1289,10 @@ async function sendGiftRecipientEmail(recipientEmail, recipientName, buyerName, 
             
             <p>Great news! <strong>${buyerName}</strong> has sent you a special gift through Acha Delivery!</p>
             
+            <div style="background-color: #E3F2FD; border-left: 4px solid #1E88E5; padding: 15px; margin: 20px 0; border-radius: 5px;">
+              <p style="margin: 0; font-size: 16px;"><strong>🎁 Gift From:</strong> <span style="color: #1E88E5; font-size: 18px;">${buyerName}</span></p>
+            </div>
+            
             <div class="gift-box">
               <div class="gift-icon">🎁</div>
               <h2 style="color: #f5576c; margin: 10px 0;">A Gift is Coming Your Way!</h2>
@@ -1580,6 +1584,236 @@ async function sendPartnerOfferNotificationEmail(buyerEmail, buyerName, orderDet
   }
 }
 
+/**
+ * Sends a confirmation email to gift sender when their gift order is successful
+ */
+async function sendGiftSenderConfirmationEmail(senderEmail, senderName, orderDetails, giftDetails) {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('Email not sent - email service not configured');
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'Acha Platform'}" <${process.env.EMAIL_USER}>`,
+      to: senderEmail,
+      subject: '✅ Your Gift Order Has Been Confirmed!',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #43A047 0%, #1E88E5 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .success-box {
+              background-color: #E8F5E9;
+              border: 3px solid #43A047;
+              padding: 25px;
+              text-align: center;
+              margin: 20px 0;
+              border-radius: 10px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .order-details {
+              background-color: #fff;
+              border-left: 4px solid #1E88E5;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .gift-details {
+              background-color: #FFF9E6;
+              border-left: 4px solid #FFD700;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .detail-row {
+              margin: 10px 0;
+              padding: 8px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #666;
+            }
+            .recipient-info {
+              background-color: #E3F2FD;
+              border-left: 4px solid #1E88E5;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>✅ Gift Order Confirmed!</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${senderName},</p>
+            
+            <div class="success-box">
+              <h2 style="color: #43A047; margin: 10px 0;">🎁 Your Gift Order Has Been Successfully Processed!</h2>
+              <p style="margin: 0;">Thank you for choosing Acha Delivery to send your gift.</p>
+            </div>
+            
+            <div class="order-details">
+              <h3 style="color: #1E88E5; margin-top: 0;">Order Details</h3>
+              <div class="detail-row">
+                <span class="detail-label">Order ID:</span> ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Order Status:</span> <strong style="color: #43A047;">Confirmed & Paid</strong>
+              </div>
+              ${orderDetails.preferredDeliveryDate ? `
+              <div class="detail-row">
+                <span class="detail-label">Expected Delivery Date:</span> ${new Date(orderDetails.preferredDeliveryDate).toLocaleDateString()}
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="gift-details">
+              <h3 style="color: #FFD700; margin-top: 0;">Gift Information</h3>
+              <div class="detail-row">
+                <span class="detail-label">Gift Type:</span> ${giftDetails.giftType || 'Special Gift'}
+              </div>
+              ${giftDetails.giftDescription ? `
+              <div class="detail-row">
+                <span class="detail-label">Description:</span> ${giftDetails.giftDescription}
+              </div>
+              ` : ''}
+              ${giftDetails.giftPrice ? `
+              <div class="detail-row">
+                <span class="detail-label">Price:</span> ETB ${giftDetails.giftPrice.toLocaleString()}
+              </div>
+              ` : ''}
+              ${giftDetails.partnerName ? `
+              <div class="detail-row">
+                <span class="detail-label">Gift Provider:</span> ${giftDetails.partnerName}
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="recipient-info">
+              <h3 style="color: #1E88E5; margin-top: 0;">Recipient Information</h3>
+              <div class="detail-row">
+                <span class="detail-label">Recipient Name:</span> ${giftDetails.recipientName || 'N/A'}
+              </div>
+              ${giftDetails.recipientEmail ? `
+              <div class="detail-row">
+                <span class="detail-label">Recipient Email:</span> ${giftDetails.recipientEmail}
+              </div>
+              ` : ''}
+              ${giftDetails.recipientPhone ? `
+              <div class="detail-row">
+                <span class="detail-label">Recipient Phone:</span> ${giftDetails.recipientPhone}
+              </div>
+              ` : ''}
+              ${giftDetails.recipientAddress ? `
+              <div class="detail-row">
+                <span class="detail-label">Delivery Address:</span> ${giftDetails.recipientAddress}
+              </div>
+              ` : ''}
+            </div>
+            
+            <p><strong>What happens next?</strong></p>
+            <ul style="line-height: 1.8;">
+              <li>Your gift has been assigned to a delivery partner</li>
+              <li>The recipient has been notified about the incoming gift</li>
+              <li>You'll receive updates as the delivery progresses</li>
+              <li>The recipient will receive the gift on the expected delivery date</li>
+            </ul>
+            
+            <p>You can track your order status at any time through your dashboard.</p>
+            
+            <p>Thank you for using Acha Delivery!</p>
+            
+            <p>Best regards,<br>The Acha Platform Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Gift Order Confirmed!
+        
+        Dear ${senderName},
+        
+        Your Gift Order Has Been Successfully Processed!
+        Thank you for choosing Acha Delivery to send your gift.
+        
+        Order Details:
+        Order ID: ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+        Order Status: Confirmed & Paid
+        ${orderDetails.preferredDeliveryDate ? `Expected Delivery Date: ${new Date(orderDetails.preferredDeliveryDate).toLocaleDateString()}\n` : ''}
+        
+        Gift Information:
+        Gift Type: ${giftDetails.giftType || 'Special Gift'}
+        ${giftDetails.giftDescription ? `Description: ${giftDetails.giftDescription}\n` : ''}
+        ${giftDetails.giftPrice ? `Price: ETB ${giftDetails.giftPrice.toLocaleString()}\n` : ''}
+        ${giftDetails.partnerName ? `Gift Provider: ${giftDetails.partnerName}\n` : ''}
+        
+        Recipient Information:
+        Recipient Name: ${giftDetails.recipientName || 'N/A'}
+        ${giftDetails.recipientEmail ? `Recipient Email: ${giftDetails.recipientEmail}\n` : ''}
+        ${giftDetails.recipientPhone ? `Recipient Phone: ${giftDetails.recipientPhone}\n` : ''}
+        ${giftDetails.recipientAddress ? `Delivery Address: ${giftDetails.recipientAddress}\n` : ''}
+        
+        What happens next?
+        - Your gift has been assigned to a delivery partner
+        - The recipient has been notified about the incoming gift
+        - You'll receive updates as the delivery progresses
+        - The recipient will receive the gift on the expected delivery date
+        
+        You can track your order status at any time through your dashboard.
+        
+        Thank you for using Acha Delivery!
+        
+        Best regards,
+        The Acha Platform Team
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Gift sender confirmation email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending gift sender confirmation email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendRegistrationEmail,
   sendOrderAssignmentEmail,
@@ -1589,6 +1823,7 @@ module.exports = {
   sendMatchFoundEmail,
   sendMatchFoundEmailToBuyer,
   sendGiftRecipientEmail,
+  sendGiftSenderConfirmationEmail,
   sendPartnerOfferNotificationEmail,
   createTransporter
 };
