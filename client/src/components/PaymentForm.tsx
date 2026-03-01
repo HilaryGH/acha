@@ -100,10 +100,12 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
       {/* Amount Summary */}
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
         <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Item Value:</span>
-            <span className="font-semibold">{amount.toFixed(2)} {currency}</span>
-          </div>
+          {amount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Item Value:</span>
+              <span className="font-semibold">{amount.toFixed(2)} {currency}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-600">Delivery Fee:</span>
             <span className="font-semibold">{fees.deliveryFee.toFixed(2)} {currency}</span>

@@ -3,6 +3,12 @@ import { api } from '../../services/api';
 import FileUpload from '../FileUpload';
 import DeliveryFeeDisplay from '../DeliveryFeeDisplay';
 
+interface DistancePricing {
+  minDistance: string;
+  maxDistance: string;
+  price: string;
+}
+
 function AchaSistersDeliveryPartnerForm() {
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +25,10 @@ function AchaSistersDeliveryPartnerForm() {
     drivingLicense: '',
     photos: [] as string[],
   });
+
+  const [distancePricing, setDistancePricing] = useState<DistancePricing[]>([
+    { minDistance: '', maxDistance: '', price: '' }
+  ]);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -51,6 +61,22 @@ function AchaSistersDeliveryPartnerForm() {
     }));
   };
 
+  const addDistancePricing = () => {
+    setDistancePricing(prev => [...prev, { minDistance: '', maxDistance: '', price: '' }]);
+  };
+
+  const removeDistancePricing = (index: number) => {
+    if (distancePricing.length > 1) {
+      setDistancePricing(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateDistancePricing = (index: number, field: keyof DistancePricing, value: string) => {
+    setDistancePricing(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,6 +103,39 @@ function AchaSistersDeliveryPartnerForm() {
       return;
     }
 
+    // Validate distance pricing
+    if (distancePricing.length === 0 || distancePricing.some(dp => !dp.minDistance || !dp.maxDistance || !dp.price)) {
+      setMessage({ type: 'error', text: 'Please fill all distance pricing ranges' });
+      setLoading(false);
+      return;
+    }
+
+    // Validate distance ranges don't overlap and are in order
+    const sortedPricing = [...distancePricing].sort((a, b) => 
+      parseFloat(a.minDistance || '0') - parseFloat(b.minDistance || '0')
+    );
+    
+    for (let i = 0; i < sortedPricing.length; i++) {
+      const current = sortedPricing[i];
+      const minDist = parseFloat(current.minDistance || '0');
+      const maxDist = parseFloat(current.maxDistance || '0');
+      
+      if (minDist >= maxDist) {
+        setMessage({ type: 'error', text: `Distance range ${i + 1}: Minimum distance must be less than maximum distance` });
+        setLoading(false);
+        return;
+      }
+      
+      if (i > 0) {
+        const prevMax = parseFloat(sortedPricing[i - 1].maxDistance || '0');
+        if (minDist <= prevMax) {
+          setMessage({ type: 'error', text: 'Distance ranges cannot overlap. Each range must start after the previous range ends.' });
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     try {
       // Register user first
       const registrationData: any = {
@@ -99,6 +158,15 @@ function AchaSistersDeliveryPartnerForm() {
         registrationData.primaryLocation = formData.primaryLocation.trim();
         // Also set location field to primaryLocation for broader search
         registrationData.location = formData.primaryLocation.trim();
+      }
+
+      // Include distance-based pricing (required for order matching)
+      if (distancePricing.length > 0) {
+        registrationData.distancePricing = distancePricing.map(dp => ({
+          minDistance: parseFloat(dp.minDistance),
+          maxDistance: parseFloat(dp.maxDistance),
+          price: parseFloat(dp.price)
+        }));
       }
       
       const userResponse = await api.users.register(registrationData) as { status?: string; message?: string; data?: { user?: { id: string } } };
@@ -139,6 +207,7 @@ function AchaSistersDeliveryPartnerForm() {
           drivingLicense: '',
           photos: [],
         });
+        setDistancePricing([{ minDistance: '', maxDistance: '', price: '' }]);
       } else {
         setMessage({ type: 'error', text: userResponse.message || 'Failed to register' });
       }
@@ -323,6 +392,89 @@ function AchaSistersDeliveryPartnerForm() {
                   <DeliveryFeeDisplay mechanism={formData.deliveryMechanism as any} />
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Distance-Based Pricing */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">Distance-Based Pricing</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Set your delivery fees based on distance ranges. This is required for order matching. Customers will see your pricing when they place orders.
+              Make sure ranges don't overlap and are in ascending order.
+            </p>
+            <div className="space-y-4">
+              {distancePricing.map((pricing, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Min Distance (km) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      required
+                      value={pricing.minDistance}
+                      onChange={(e) => updateDistancePricing(index, 'minDistance', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Distance (km) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      required
+                      value={pricing.maxDistance}
+                      onChange={(e) => updateDistancePricing(index, 'maxDistance', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Price (ETB) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={pricing.price}
+                      onChange={(e) => updateDistancePricing(index, 'price', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="100"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    {distancePricing.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeDistancePricing(index)}
+                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addDistancePricing}
+                className="w-full md:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                + Add Distance Range
+              </button>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Example:</strong> 0-5 km = 100 ETB, 5-10 km = 150 ETB, 10-15 km = 200 ETB
+                </p>
+              </div>
             </div>
           </div>
 

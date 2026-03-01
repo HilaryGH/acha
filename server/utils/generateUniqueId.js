@@ -1,38 +1,36 @@
 /**
- * Generates a unique 4-digit ID for a given model
+ * Generates a unique random 4-digit ID for a given model
  * @param {Object} Model - Mongoose model constructor
- * @returns {Promise<string>} - Unique 4-digit ID (0001-9999)
+ * @returns {Promise<string>} - Unique random 4-digit ID (1000-9999)
  */
 async function generateUniqueId(Model) {
   try {
-    // Find the document with the highest uniqueId (exclude null/undefined)
-    const lastDoc = await Model.findOne({
-      uniqueId: { $exists: true, $ne: null }
-    })
-      .sort({ uniqueId: -1 })
-      .select('uniqueId')
-      .lean()
-      .exec();
+    const maxAttempts = 100; // Maximum attempts to find a unique ID
+    let attempts = 0;
 
-    let newId;
-    if (lastDoc && lastDoc.uniqueId) {
-      // Parse the existing ID (remove leading zeros if any) and increment
-      const lastId = parseInt(lastDoc.uniqueId, 10);
-      newId = lastId + 1;
-    } else {
-      // Start from 0001 if no documents with uniqueId exist
-      newId = 1;
+    while (attempts < maxAttempts) {
+      // Generate a random 4-digit number between 1000 and 9999
+      const randomId = Math.floor(Math.random() * 9000) + 1000; // 1000 to 9999
+      const uniqueId = randomId.toString();
+
+      // Check if this ID already exists
+      const existingDoc = await Model.findOne({
+        uniqueId: uniqueId
+      })
+        .select('uniqueId')
+        .lean()
+        .exec();
+
+      // If ID doesn't exist, return it
+      if (!existingDoc) {
+        return uniqueId;
+      }
+
+      attempts++;
     }
 
-    // Ensure it's 4 digits with leading zeros
-    const uniqueId = newId.toString().padStart(4, '0');
-
-    // If we've reached 9999, throw an error (unlikely but good to handle)
-    if (parseInt(uniqueId, 10) > 9999) {
-      throw new Error('Maximum unique ID limit reached (9999)');
-    }
-
-    return uniqueId;
+    // If we couldn't find a unique ID after max attempts, throw an error
+    throw new Error(`Unable to generate unique ID after ${maxAttempts} attempts. Please try again.`);
   } catch (error) {
     throw new Error(`Error generating unique ID: ${error.message}`);
   }

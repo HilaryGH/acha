@@ -111,6 +111,52 @@ const calculatePartnerMatchScore = (partner, buyerCity, orderDestination, prefer
   return score;
 };
 
+// Helper function to calculate delivery fee from partner's distance pricing
+const calculateDeliveryFeeFromDistancePricing = async (partner, pickupLocation, deliveryLocation) => {
+  if (!partner.distancePricing || !Array.isArray(partner.distancePricing) || partner.distancePricing.length === 0) {
+    return null; // No distance pricing configured
+  }
+
+  try {
+    // Calculate distance from pickup location to delivery location
+    // For delivery partners, they pick up from buyer's location and deliver to destination
+    const distanceResult = await calculateDistance(pickupLocation, deliveryLocation);
+    const distanceKm = distanceResult.distance || 0;
+
+    if (distanceKm <= 0) {
+      console.log(`Could not calculate distance for partner ${partner.name || partner.email}`);
+      return null;
+    }
+
+    // Find matching distance range
+    for (const range of partner.distancePricing) {
+      if (distanceKm >= range.minDistance && distanceKm <= range.maxDistance) {
+        console.log(`Found matching distance range for partner ${partner.name || partner.email}: ${distanceKm}km falls in ${range.minDistance}-${range.maxDistance}km range, price: ${range.price}`);
+        return range.price;
+      }
+    }
+
+    // If distance exceeds all ranges, use the highest range price
+    const sortedRanges = [...partner.distancePricing].sort((a, b) => b.maxDistance - a.maxDistance);
+    if (distanceKm > sortedRanges[0].maxDistance) {
+      console.log(`Distance ${distanceKm}km exceeds all ranges, using highest range price: ${sortedRanges[0].price}`);
+      return sortedRanges[0].price;
+    }
+
+    // If distance is less than all ranges, use the lowest range price
+    const sortedRangesAsc = [...partner.distancePricing].sort((a, b) => a.minDistance - b.minDistance);
+    if (distanceKm < sortedRangesAsc[0].minDistance) {
+      console.log(`Distance ${distanceKm}km is less than all ranges, using lowest range price: ${sortedRangesAsc[0].price}`);
+      return sortedRangesAsc[0].price;
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Error calculating delivery fee from distance pricing for partner ${partner.name || partner.email}:`, error);
+    return null;
+  }
+};
+
 // Create new order from buyer
 exports.createOrder = async (req, res) => {
   try {
@@ -145,11 +191,32 @@ exports.createOrder = async (req, res) => {
     }
 
     // Create the order
+    const { pickupLocation, deliveryLocation } = req.body;
+    
     const orderData = {
       buyerId,
       deliveryMethod,
       orderInfo
     };
+
+    // Add pickup and delivery locations if provided
+    if (pickupLocation) {
+      orderData.pickupLocation = {
+        address: pickupLocation.address || '',
+        city: pickupLocation.city || '',
+        latitude: pickupLocation.latitude || null,
+        longitude: pickupLocation.longitude || null
+      };
+    }
+
+    if (deliveryLocation) {
+      orderData.deliveryLocation = {
+        address: deliveryLocation.address || '',
+        city: deliveryLocation.city || '',
+        latitude: deliveryLocation.latitude || null,
+        longitude: deliveryLocation.longitude || null
+      };
+    }
 
     // If a specific traveler is assigned, add it to the order
     let preAssignedTraveler = null;
@@ -282,12 +349,18 @@ exports.createOrder = async (req, res) => {
 
     // ========== FIND MATCHING DELIVERY PARTNERS ==========
     try {
-      // Find all delivery partner types
-      const partnerRoles = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
+      // Find partners matching the specific delivery method
+      // Map delivery method to the corresponding role
+      let partnerRole = deliveryMethod;
+      if (deliveryMethod === 'partner') {
+        // Legacy 'partner' method can match any partner type
+        partnerRole = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
+      }
       
       // Find users with delivery partner roles matching location
+      const roleQuery = Array.isArray(partnerRole) ? { $in: partnerRole } : partnerRole;
       let matchingUsers = await User.find({
-        role: { $in: partnerRoles },
+        role: roleQuery,
         status: 'active',
         $or: [
           { city: { $regex: new RegExp(buyerCity, 'i') } },
@@ -296,7 +369,17 @@ exports.createOrder = async (req, res) => {
         ]
       }).limit(50);
 
-      console.log(`Found ${matchingUsers.length} potential delivery partners (users) in ${buyerCity}`);
+      console.log(`Found ${matchingUsers.length} potential delivery partners (users) with role matching ${deliveryMethod} in ${buyerCity}`);
+      if (matchingUsers.length > 0) {
+        console.log(`Partner details:`, matchingUsers.map(u => ({
+          name: u.name,
+          role: u.role,
+          city: u.city,
+          primaryLocation: u.primaryLocation,
+          hasDistancePricing: !!(u.distancePricing && Array.isArray(u.distancePricing) && u.distancePricing.length > 0),
+          distancePricingCount: u.distancePricing?.length || 0
+        })));
+      }
 
       // Filter by location match, date availability, and distancePricing requirement
       const suitableUsers = matchingUsers.filter(user => {
@@ -314,12 +397,21 @@ exports.createOrder = async (req, res) => {
           const hasDistancePricing = user.distancePricing && 
                                      Array.isArray(user.distancePricing) && 
                                      user.distancePricing.length > 0;
+          if (!hasDistancePricing) {
+            console.log(`Partner ${user.name} (${user.email}) filtered out: missing distancePricing`);
+          }
+          if (!locationMatch) {
+            console.log(`Partner ${user.name} (${user.email}) filtered out: location mismatch (partner: ${user.city || user.primaryLocation || user.location}, buyer: ${buyerCity})`);
+          }
           return locationMatch && hasDistancePricing;
         }
         
         // For partners, we can check if they have availability settings
         // If preferredDate is set, check if partner is available around that time
         // (This is a basic check - you can enhance this with actual availability data)
+        if (!locationMatch) {
+          console.log(`Partner ${user.name} (${user.email}) filtered out: location mismatch (partner: ${user.city || user.primaryLocation || user.location}, buyer: ${buyerCity})`);
+        }
         return locationMatch;
       });
 
@@ -477,27 +569,7 @@ exports.createOrder = async (req, res) => {
             console.error('Error sending match email to traveler:', emailError);
           }
           
-          // Send email notification to buyer about match found
-          try {
-            const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
-            await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
-              orderId: order.uniqueId,
-              uniqueId: order.uniqueId,
-              productName: order.orderInfo?.productName,
-              deliveryDestination: order.orderInfo?.deliveryDestination,
-              preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
-            }, {
-              name: traveler.name,
-              email: traveler.email,
-              phone: traveler.phone,
-              currentLocation: traveler.currentLocation,
-              destinationCity: traveler.destinationCity,
-              departureDate: traveler.departureDate
-            });
-          } catch (emailError) {
-            console.error('Error sending match email to buyer:', emailError);
-          }
-          
+          // Match found email will be sent after payment is successful
           console.log(`Order ${order.uniqueId} automatically matched with traveler: ${traveler.name}`);
         }
       } catch (matchError) {
@@ -550,25 +622,7 @@ exports.createOrder = async (req, res) => {
                 console.error('Error sending assignment email:', emailError);
               }
               
-              // Send email notification to buyer about match found
-              try {
-                const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
-                await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
-                  orderId: order.uniqueId,
-                  uniqueId: order.uniqueId,
-                  productName: order.orderInfo?.productName,
-                  deliveryDestination: order.orderInfo?.deliveryDestination,
-                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
-                }, {
-                  name: partnerName,
-                  email: partner.email,
-                  phone: partner.phone,
-                  city: partner.city || partner.primaryLocation
-                });
-              } catch (emailError) {
-                console.error('Error sending match email to buyer:', emailError);
-              }
-              
+              // Match found email will be sent after payment is successful
               console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
             }
           } else {
@@ -588,6 +642,31 @@ exports.createOrder = async (req, res) => {
               order.status = 'assigned';
               order.partnerAcceptanceStatus = 'pending';
               const partnerName = partner.name || partner.companyName || 'Partner';
+              
+              // Calculate delivery fee from partner's distance pricing
+              // Use pickup location (where item is picked up from) and delivery location (where item is delivered to)
+              const pickupLocation = order.pickupLocation?.address 
+                ? `${order.pickupLocation.address}, ${order.pickupLocation.city || order.pickupLocation.address}`
+                : (order.pickupLocation?.city || buyer.city || buyerCity);
+              
+              const deliveryDestination = order.deliveryLocation?.address 
+                ? `${order.deliveryLocation.address}, ${order.deliveryLocation.city || order.deliveryLocation.address}`
+                : (order.deliveryLocation?.city || order.orderInfo?.deliveryDestination || buyerCity);
+              
+              if (pickupLocation && deliveryDestination) {
+                // Calculate distance from partner location to pickup location, then from pickup to delivery
+                // For delivery partners, distance is from pickup to delivery (they pick up from buyer and deliver)
+                const calculatedFee = await calculateDeliveryFeeFromDistancePricing(partner, pickupLocation, deliveryDestination);
+                if (calculatedFee !== null && calculatedFee > 0) {
+                  // Initialize pricing if not exists
+                  if (!order.pricing) {
+                    order.pricing = {};
+                  }
+                  order.pricing.deliveryFee = calculatedFee;
+                  console.log(`Calculated delivery fee ${calculatedFee} ETB for order ${order.uniqueId} from partner ${partnerName}'s distance pricing`);
+                }
+              }
+              
               await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
               await order.save();
               
@@ -614,25 +693,7 @@ exports.createOrder = async (req, res) => {
                 console.error('Error sending assignment email:', emailError);
               }
               
-              // Send email notification to buyer about match found
-              try {
-                const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
-                await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
-                  orderId: order.uniqueId,
-                  uniqueId: order.uniqueId,
-                  productName: order.orderInfo?.productName,
-                  deliveryDestination: order.orderInfo?.deliveryDestination,
-                  preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
-                }, {
-                  name: partnerName,
-                  email: partner.email,
-                  phone: partner.phone,
-                  city: partner.city || partner.primaryLocation
-                });
-              } catch (emailError) {
-                console.error('Error sending match email to buyer:', emailError);
-              }
-              
+              // Match found email will be sent after payment is successful
               console.log(`Order ${order.uniqueId} automatically assigned to ${deliveryMethod}: ${partnerName}`);
             }
           }
@@ -679,25 +740,7 @@ exports.createOrder = async (req, res) => {
               console.error('Error sending assignment email:', emailError);
             }
             
-            // Send email notification to buyer about match found
-            try {
-              const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
-              await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
-                orderId: order.uniqueId,
-                uniqueId: order.uniqueId,
-                productName: order.orderInfo?.productName,
-                deliveryDestination: order.orderInfo?.deliveryDestination,
-                preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
-              }, {
-                name: partnerName,
-                email: partner.email,
-                phone: partner.phone,
-                city: partner.city || partner.primaryLocation
-              });
-            } catch (emailError) {
-              console.error('Error sending match email to buyer:', emailError);
-            }
-            
+            // Match found email will be sent after payment is successful
             console.log(`Order ${order.uniqueId} automatically assigned to partner: ${partnerName}`);
           }
         }
@@ -958,12 +1001,34 @@ exports.assignToPartner = async (req, res) => {
       });
     }
 
-    // Calculate transaction amount from selected offer or order pricing
+    // Calculate delivery fee from partner's distance pricing if not provided in offer
+    const offerPrice = selectedOffer?.offerPrice || null;
+    let deliveryFee = offerPrice || order.pricing?.deliveryFee || 0;
+    
+    if (!offerPrice && partner.distancePricing && Array.isArray(partner.distancePricing) && partner.distancePricing.length > 0) {
+      // Use pickup location (where item is picked up from) and delivery location (where item is delivered to)
+      const pickupLocation = order.pickupLocation?.address 
+        ? `${order.pickupLocation.address}, ${order.pickupLocation.city || order.pickupLocation.address}`
+        : (order.pickupLocation?.city || '');
+      
+      const deliveryDestination = order.deliveryLocation?.address 
+        ? `${order.deliveryLocation.address}, ${order.deliveryLocation.city || order.deliveryLocation.address}`
+        : (order.deliveryLocation?.city || order.orderInfo?.deliveryDestination || '');
+      
+      if (pickupLocation && deliveryDestination) {
+        // For delivery partners, distance is from pickup location to delivery location
+        const calculatedFee = await calculateDeliveryFeeFromDistancePricing(partner, pickupLocation, deliveryDestination);
+        if (calculatedFee !== null && calculatedFee > 0) {
+          deliveryFee = calculatedFee;
+          console.log(`Calculated delivery fee ${calculatedFee} ETB for order ${order.uniqueId} from partner ${partner.name || partner.email}'s distance pricing (pickup: ${pickupLocation}, delivery: ${deliveryDestination})`);
+        }
+      }
+    }
+    
+    // Calculate transaction amount
     const itemValue = order.pricing?.itemValue || 0;
-    const offerPrice = selectedOffer?.offerPrice || order.pricing?.deliveryFee || 0;
-    const deliveryFee = offerPrice;
-    const serviceFee = order.pricing?.serviceFee || 0;
-    const platformFee = order.pricing?.platformFee || 0;
+    const serviceFee = order.pricing?.serviceFee || 25;
+    const platformFee = order.pricing?.platformFee || 15;
     const totalAmount = itemValue + deliveryFee + serviceFee + platformFee;
 
     // Create transaction if one doesn't exist
@@ -1668,11 +1733,32 @@ exports.partnerAcceptRequest = async (req, res) => {
       });
     }
 
+    // Calculate delivery fee from partner's distance pricing if not provided in offer
+    let deliveryFee = offerPrice || order.pricing?.deliveryFee || 0;
+    if (!offerPrice && partner.distancePricing && Array.isArray(partner.distancePricing) && partner.distancePricing.length > 0) {
+      // Use pickup location (where item is picked up from) and delivery location (where item is delivered to)
+      const pickupLocation = order.pickupLocation?.address 
+        ? `${order.pickupLocation.address}, ${order.pickupLocation.city || order.pickupLocation.address}`
+        : (order.pickupLocation?.city || '');
+      
+      const deliveryDestination = order.deliveryLocation?.address 
+        ? `${order.deliveryLocation.address}, ${order.deliveryLocation.city || order.deliveryLocation.address}`
+        : (order.deliveryLocation?.city || order.orderInfo?.deliveryDestination || '');
+      
+      if (pickupLocation && deliveryDestination) {
+        // For delivery partners, distance is from pickup location to delivery location
+        const calculatedFee = await calculateDeliveryFeeFromDistancePricing(partner, pickupLocation, deliveryDestination);
+        if (calculatedFee !== null && calculatedFee > 0) {
+          deliveryFee = calculatedFee;
+          console.log(`Calculated delivery fee ${calculatedFee} ETB for order ${order.uniqueId} from partner ${partner.name || partner.email}'s distance pricing (pickup: ${pickupLocation}, delivery: ${deliveryDestination})`);
+        }
+      }
+    }
+    
     // Calculate transaction amount
     const itemValue = order.pricing?.itemValue || 0;
-    const deliveryFee = offerPrice || order.pricing?.deliveryFee || 0;
-    const serviceFee = order.pricing?.serviceFee || 0;
-    const platformFee = order.pricing?.platformFee || 0;
+    const serviceFee = order.pricing?.serviceFee || 25;
+    const platformFee = order.pricing?.platformFee || 15;
     const totalAmount = itemValue + deliveryFee + serviceFee + platformFee;
 
     // Create transaction
@@ -1707,7 +1793,7 @@ exports.partnerAcceptRequest = async (req, res) => {
     // Assign order to partner
     order.assignedPartnerId = partnerId;
     order.status = 'assigned';
-    order.partnerAcceptanceStatus = 'pending';
+    order.partnerAcceptanceStatus = 'accepted';
     const partnerName = partner.name || partner.companyName || 'Partner';
     const partnerEmail = partner.email;
     await order.addTrackingUpdate('assigned', `Order accepted and assigned to partner: ${partnerName}`, '');
@@ -1728,6 +1814,39 @@ exports.partnerAcceptRequest = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Failed to send assignment email:', emailError);
+      // Don't fail the assignment if email fails
+    }
+
+    // Send email notification to buyer with final price
+    try {
+      const { sendOrderPriceConfirmationEmail } = require('../utils/emailService');
+      const buyer = order.buyerId;
+      if (buyer && buyer.email) {
+        await sendOrderPriceConfirmationEmail(
+          buyer.email,
+          buyer.name || 'Valued Customer',
+          partnerName,
+          {
+            orderId: order.uniqueId,
+            uniqueId: order.uniqueId,
+            productName: order.orderInfo?.productName,
+            deliveryDestination: order.deliveryLocation?.address 
+              ? `${order.deliveryLocation.address}, ${order.deliveryLocation.city || ''}`
+              : (order.deliveryLocation?.city || order.orderInfo?.deliveryDestination || '')
+          },
+          {
+            itemValue: itemValue,
+            deliveryFee: deliveryFee,
+            serviceFee: serviceFee,
+            platformFee: platformFee,
+            totalAmount: totalAmount,
+            currency: order.pricing?.currency || 'ETB'
+          }
+        );
+        console.log(`Price confirmation email sent to buyer: ${buyer.email}`);
+      }
+    } catch (emailError) {
+      console.error('Failed to send price confirmation email to buyer:', emailError);
       // Don't fail the assignment if email fails
     }
 

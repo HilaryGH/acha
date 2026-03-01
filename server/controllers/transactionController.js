@@ -232,6 +232,75 @@ exports.updateTransactionStatus = async (req, res) => {
           }
         }
         
+        // Send "Match Found" email to buyer after payment is successful
+        if (buyer && buyer.email && (order.assignedTravelerId || order.assignedPartnerId)) {
+          try {
+            const { sendMatchFoundEmailToBuyer } = require('../utils/emailService');
+            const Traveller = require('../models/Traveller');
+            const User = require('../models/User');
+            const Partner = require('../models/Partner');
+            
+            let matchDetails = null;
+            
+            // Get traveler details if assigned
+            if (order.assignedTravelerId) {
+              try {
+                const traveler = await Traveller.findById(order.assignedTravelerId);
+                if (traveler) {
+                  matchDetails = {
+                    name: traveler.name,
+                    email: traveler.email,
+                    phone: traveler.phone,
+                    currentLocation: traveler.currentLocation,
+                    destinationCity: traveler.destinationCity,
+                    departureDate: traveler.departureDate
+                  };
+                }
+              } catch (travelerError) {
+                console.error('Error fetching traveler for match found email:', travelerError);
+              }
+            }
+            
+            // Get partner details if assigned
+            if (!matchDetails && order.assignedPartnerId) {
+              try {
+                // Try User model first (for role-based partners)
+                let partner = await User.findById(order.assignedPartnerId);
+                if (!partner) {
+                  // Try Partner model (for legacy partners)
+                  partner = await Partner.findById(order.assignedPartnerId);
+                }
+                
+                if (partner) {
+                  matchDetails = {
+                    name: partner.name || partner.companyName,
+                    email: partner.email,
+                    phone: partner.phone,
+                    city: partner.city || partner.primaryLocation || partner.location
+                  };
+                }
+              } catch (partnerError) {
+                console.error('Error fetching partner for match found email:', partnerError);
+              }
+            }
+            
+            // Send match found email if we have match details
+            if (matchDetails) {
+              await sendMatchFoundEmailToBuyer(buyer.email, buyer.name, {
+                orderId: order.uniqueId,
+                uniqueId: order.uniqueId,
+                productName: order.orderInfo?.productName,
+                deliveryDestination: order.orderInfo?.deliveryDestination,
+                preferredDeliveryDate: order.orderInfo?.preferredDeliveryDate
+              }, matchDetails);
+              console.log(`Match found email sent to buyer ${buyer.email} after payment success`);
+            }
+          } catch (emailError) {
+            console.error('Error sending match found email to buyer:', emailError);
+            // Don't fail transaction if email fails
+          }
+        }
+        
         // Send confirmation emails for gift delivery orders when payment is completed
         if (order.deliveryMethod === 'gift_delivery_partner' && buyer) {
           try {

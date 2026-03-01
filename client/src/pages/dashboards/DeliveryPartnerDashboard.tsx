@@ -27,6 +27,19 @@ interface Order {
     preferredDeliveryDate?: string;
     photos?: string[];
     video?: string;
+    deliveryDestination?: string;
+  };
+  pickupLocation?: {
+    address?: string;
+    city?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+  deliveryLocation?: {
+    address?: string;
+    city?: string;
+    latitude?: number;
+    longitude?: number;
   };
   pricing?: {
     deliveryFee?: number;
@@ -831,6 +844,51 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                             )}
                             {order.buyerId && (
                               <p><span className="font-medium">Buyer:</span> {order.buyerId.name} ({order.buyerId.email})</p>
+                            )}
+                            {/* Pickup Location */}
+                            {(order.pickupLocation?.address || order.pickupLocation?.city || order.buyerId?.location || order.buyerId?.currentCity) && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <p className="font-medium text-gray-700 mb-1">📍 Pickup Location:</p>
+                                <p className="text-gray-600">
+                                  {order.pickupLocation?.address ? (
+                                    <>
+                                      {order.pickupLocation.address}
+                                      {order.pickupLocation.city && `, ${order.pickupLocation.city}`}
+                                    </>
+                                  ) : order.pickupLocation?.city ? (
+                                    order.pickupLocation.city
+                                  ) : order.buyerId?.location ? (
+                                    <>
+                                      {order.buyerId.location}
+                                      {order.buyerId.currentCity && `, ${order.buyerId.currentCity}`}
+                                    </>
+                                  ) : order.buyerId?.currentCity ? (
+                                    order.buyerId.currentCity
+                                  ) : (
+                                    'Not specified'
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                            {/* Delivery Location */}
+                            {(order.deliveryLocation?.address || order.deliveryLocation?.city || order.orderInfo?.deliveryDestination) && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <p className="font-medium text-gray-700 mb-1">🎯 Delivery Location:</p>
+                                <p className="text-gray-600">
+                                  {order.deliveryLocation?.address ? (
+                                    <>
+                                      {order.deliveryLocation.address}
+                                      {order.deliveryLocation.city && `, ${order.deliveryLocation.city}`}
+                                    </>
+                                  ) : order.deliveryLocation?.city ? (
+                                    order.deliveryLocation.city
+                                  ) : order.orderInfo?.deliveryDestination ? (
+                                    order.orderInfo.deliveryDestination
+                                  ) : (
+                                    'Not specified'
+                                  )}
+                                </p>
+                              </div>
                             )}
                           </div>
                         </div>

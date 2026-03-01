@@ -374,6 +374,231 @@ async function sendOrderAssignmentEmail(partnerEmail, partnerName, orderDetails)
 }
 
 /**
+ * Sends an email to buyer when partner accepts order with final price
+ */
+async function sendOrderPriceConfirmationEmail(buyerEmail, buyerName, partnerName, orderDetails, pricingDetails) {
+  try {
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      console.log('Email not sent - email service not configured');
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'Acha Platform'}" <${process.env.EMAIL_USER}>`,
+      to: buyerEmail,
+      subject: `💰 Final Price Confirmed - Order #${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background-color: #1E88E5;
+              color: white;
+              padding: 20px;
+              text-align: center;
+              border-radius: 5px 5px 0 0;
+            }
+            .content {
+              background-color: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 5px 5px;
+            }
+            .price-box {
+              background-color: #fff;
+              border: 3px solid #1E88E5;
+              padding: 25px;
+              margin: 20px 0;
+              border-radius: 5px;
+              text-align: center;
+            }
+            .total-amount {
+              font-size: 32px;
+              font-weight: bold;
+              color: #1E88E5;
+              margin: 15px 0;
+            }
+            .price-breakdown {
+              background-color: #f5f5f5;
+              padding: 15px;
+              margin: 15px 0;
+              border-radius: 5px;
+              text-align: left;
+            }
+            .price-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #ddd;
+            }
+            .price-row:last-child {
+              border-bottom: none;
+              font-weight: bold;
+              font-size: 18px;
+              margin-top: 10px;
+              padding-top: 15px;
+              border-top: 2px solid #1E88E5;
+            }
+            .order-details {
+              background-color: #fff;
+              border: 2px solid #1E88E5;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .detail-row {
+              margin: 10px 0;
+              padding: 8px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #666;
+            }
+            .cta-button {
+              display: inline-block;
+              background-color: #1E88E5;
+              color: white;
+              padding: 15px 30px;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 20px 0;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>💰 Final Price Confirmed</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${buyerName},</p>
+            
+            <p>Great news! <strong>${partnerName}</strong> has accepted your delivery order and confirmed the final price.</p>
+            
+            <div class="order-details">
+              <div style="font-size: 18px; font-weight: bold; color: #1E88E5; margin-bottom: 15px;">
+                Order ID: ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+              </div>
+              
+              ${orderDetails.productName ? `
+              <div class="detail-row">
+                <span class="detail-label">Product:</span> ${orderDetails.productName}
+              </div>
+              ` : ''}
+              
+              ${orderDetails.deliveryDestination ? `
+              <div class="detail-row">
+                <span class="detail-label">Delivery Destination:</span> ${orderDetails.deliveryDestination}
+              </div>
+              ` : ''}
+              
+              <div class="detail-row">
+                <span class="detail-label">Delivery Partner:</span> ${partnerName}
+              </div>
+            </div>
+            
+            <div class="price-box">
+              <div style="font-size: 18px; color: #666; margin-bottom: 10px;">Total Amount</div>
+              <div class="total-amount">${pricingDetails.totalAmount?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</div>
+              
+              <div class="price-breakdown">
+                ${pricingDetails.itemValue > 0 ? `
+                <div class="price-row">
+                  <span>Item Value:</span>
+                  <span>${pricingDetails.itemValue?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</span>
+                </div>
+                ` : ''}
+                <div class="price-row">
+                  <span>Delivery Fee:</span>
+                  <span>${pricingDetails.deliveryFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</span>
+                </div>
+                <div class="price-row">
+                  <span>Service Fee:</span>
+                  <span>${pricingDetails.serviceFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</span>
+                </div>
+                <div class="price-row">
+                  <span>Platform Fee:</span>
+                  <span>${pricingDetails.platformFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</span>
+                </div>
+                <div class="price-row">
+                  <span>Total:</span>
+                  <span>${pricingDetails.totalAmount?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <p style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'https://acha.com'}/orders/${orderDetails.orderId || orderDetails.uniqueId}" class="cta-button">
+                Complete Payment Now
+              </a>
+            </p>
+            
+            <p>Please proceed with payment to confirm your order. Your delivery partner is ready to process your order once payment is completed.</p>
+            
+            <p>If you have any questions, please contact our support team.</p>
+            
+            <p>Best regards,<br>The Acha Platform Team</p>
+          </div>
+          <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Final Price Confirmed
+        
+        Dear ${buyerName},
+        
+        Great news! ${partnerName} has accepted your delivery order and confirmed the final price.
+        
+        Order ID: ${orderDetails.orderId || orderDetails.uniqueId || 'N/A'}
+        Product: ${orderDetails.productName || 'N/A'}
+        Delivery Partner: ${partnerName}
+        
+        Price Breakdown:
+        ${pricingDetails.itemValue > 0 ? `Item Value: ${pricingDetails.itemValue?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}\n` : ''}
+        Delivery Fee: ${pricingDetails.deliveryFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}
+        Service Fee: ${pricingDetails.serviceFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}
+        Platform Fee: ${pricingDetails.platformFee?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}
+        Total: ${pricingDetails.totalAmount?.toFixed(2) || '0.00'} ${pricingDetails.currency || 'ETB'}
+        
+        Please proceed with payment to confirm your order.
+        
+        Best regards,
+        The Acha Platform Team
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Order price confirmation email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending order price confirmation email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Sends an email to client when delivery partner accepts an order
  */
 async function sendOrderAcceptedEmail(clientEmail, clientName, orderDetails, partnerName) {
@@ -1825,5 +2050,6 @@ module.exports = {
   sendGiftRecipientEmail,
   sendGiftSenderConfirmationEmail,
   sendPartnerOfferNotificationEmail,
+  sendOrderPriceConfirmationEmail,
   createTransporter
 };

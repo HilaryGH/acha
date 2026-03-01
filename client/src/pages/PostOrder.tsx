@@ -146,6 +146,52 @@ function PostOrder() {
     }
   }, [partnerPricingRates, createdOrder, showPayment]);
 
+  // Refresh order when partner is matched to get updated pricing from backend
+  useEffect(() => {
+    if (createdOrder?._id && createdOrder?.assignedPartnerId && showPayment && !createdOrder.pricing?.deliveryFee) {
+      // Order has assigned partner but no pricing yet - refresh to get backend-calculated fee
+      const refreshOrder = async () => {
+        try {
+          const updatedOrder = await api.orders.getById(createdOrder._id) as { status?: string; data?: any };
+          if (updatedOrder.status === 'success' && updatedOrder.data?.pricing?.deliveryFee) {
+            setCreatedOrder(updatedOrder.data);
+            console.log('Order refreshed with backend-calculated delivery fee:', updatedOrder.data.pricing.deliveryFee);
+          }
+        } catch (error) {
+          console.error('Error refreshing order for pricing:', error);
+        }
+      };
+      refreshOrder();
+    }
+  }, [createdOrder?._id, createdOrder?.assignedPartnerId, showPayment]);
+
+  // Poll for partner acceptance when partner is assigned but not yet accepted
+  useEffect(() => {
+    if (createdOrder?._id && createdOrder?.assignedPartnerId && createdOrder?.partnerAcceptanceStatus !== 'accepted' && showPayment) {
+      const pollInterval = setInterval(async () => {
+        try {
+          const updatedOrder = await api.orders.getById(createdOrder._id) as { status?: string; data?: any };
+          if (updatedOrder.status === 'success' && updatedOrder.data) {
+            // Check if partner has accepted
+            if (updatedOrder.data.partnerAcceptanceStatus === 'accepted') {
+              setCreatedOrder(updatedOrder.data);
+              setMessage({ 
+                type: 'success', 
+                text: 'Great news! The delivery partner has accepted your order and confirmed the final price. Please proceed with payment.'
+              });
+              clearInterval(pollInterval);
+            }
+          }
+        } catch (error) {
+          console.error('Error polling for partner acceptance:', error);
+        }
+      }, 5000); // Poll every 5 seconds
+
+      // Cleanup interval on unmount or when partner accepts
+      return () => clearInterval(pollInterval);
+    }
+  }, [createdOrder?._id, createdOrder?.assignedPartnerId, createdOrder?.partnerAcceptanceStatus, showPayment]);
+
   // Update available gift types when partner type is selected
   useEffect(() => {
     if (selectedPartnerType && giftPartners.length > 0) {
@@ -387,10 +433,37 @@ function PostOrder() {
         }
       });
 
+      // Prepare pickup location (current location - where item will be picked up from)
+      const pickupAddress = formData.location || formData.currentCity;
+      const pickupCity = formData.currentCity;
+
+      // Prepare delivery location (where item will be delivered to)
+      let deliveryAddress = '';
+      let deliveryCity = '';
+      if (formData.deliveryMethod === 'traveler') {
+        deliveryAddress = formData.deliveryDestination;
+        deliveryCity = formData.deliveryDestination;
+      } else {
+        const deliveryParts = [];
+        if (formData.deliveryStreetAddress) deliveryParts.push(formData.deliveryStreetAddress);
+        if (formData.deliverySubcity) deliveryParts.push(formData.deliverySubcity);
+        deliveryAddress = deliveryParts.join(', ');
+        deliveryCity = formData.deliveryCity;
+      }
+
       const orderData: any = {
         buyerId,
         deliveryMethod: formData.deliveryMethod,
-        orderInfo
+        orderInfo,
+        // Add pickup and delivery locations for distance calculation
+        pickupLocation: {
+          address: pickupAddress,
+          city: pickupCity
+        },
+        deliveryLocation: {
+          address: deliveryAddress || deliveryCity,
+          city: deliveryCity
+        }
       };
 
       // If a specific trip was selected, include the traveler ID
@@ -532,11 +605,10 @@ function PostOrder() {
             });
           }
         } else {
-          // No matches found at this moment - show message and allow payment
-          setShowPayment(true);
+          // No matches found at this moment - show message but don't proceed to payment
           setMessage({ 
-            type: 'info', 
-            text: 'Order created successfully! No match found at this moment. We will email you when a match becomes available. You can proceed with payment now.'
+            type: 'success', 
+            text: 'Order created successfully! No match found at this moment. We will email you when a match becomes available.'
           });
         }
       } else {
@@ -622,13 +694,24 @@ function PostOrder() {
       
       // Proceed to payment after match confirmation
       setShowMatchSelection(false);
-      setShowPayment(true);
-      setMessage({ 
-        type: 'success', 
-        text: autoMatched || autoAssigned 
-          ? 'Match confirmed! Please proceed with payment.'
-          : 'Match selected successfully! Please proceed with payment.'
-      });
+      
+      // For delivery partners, show estimated payment and wait for partner acceptance
+      if (matchType === 'partner') {
+        setShowPayment(true);
+        setMessage({ 
+          type: 'info', 
+          text: 'Match confirmed! The delivery partner will review your order and confirm the final price. You\'ll receive an email with the confirmed price once the partner accepts your order.'
+        });
+      } else {
+        // For travelers, proceed directly to payment
+        setShowPayment(true);
+        setMessage({ 
+          type: 'success', 
+          text: autoMatched || autoAssigned 
+            ? 'Match confirmed! Please proceed with payment.'
+            : 'Match selected successfully! Please proceed with payment.'
+        });
+      }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to select match. Please try again.' });
     } finally {
@@ -682,6 +765,7 @@ function PostOrder() {
   };
 
   // Calculate fees - use actual price offer from traveler/partner if available, or calculate from partner rates
+
   const calculateFees = () => {
     try {
       let deliveryFee = 50; // Default delivery fee
@@ -700,7 +784,44 @@ function PostOrder() {
           : parseFloat(createdOrder.assignedTraveler.priceOffer) || 50;
         console.log('Using price offer from assigned traveler:', deliveryFee);
       }
-      // Priority 3: Calculate from partner pricing rates if available
+      // Priority 3: Check if the order has pricing information (from backend calculation - this should be the most accurate)
+      else if (createdOrder?.pricing?.deliveryFee && createdOrder.pricing.deliveryFee > 0) {
+        deliveryFee = typeof createdOrder.pricing.deliveryFee === 'number'
+          ? createdOrder.pricing.deliveryFee
+          : parseFloat(createdOrder.pricing.deliveryFee) || 50;
+        console.log('Using delivery fee from order pricing (backend calculated):', deliveryFee);
+      }
+      // Priority 4: Calculate from matched partner's distance pricing (if backend hasn't calculated it yet)
+      else if (createdOrder?.assignedMatchId && availableMatches.length > 0 && matchType === 'partner') {
+        // Try to find the matched partner in availableMatches
+        const matchedPartner = availableMatches.find((m: any) => 
+          m._id === createdOrder.assignedMatchId || 
+          m.userId === createdOrder.assignedMatchId ||
+          m._id === createdOrder.assignedPartnerId
+        );
+        
+        if (matchedPartner?.distancePricing && Array.isArray(matchedPartner.distancePricing) && matchedPartner.distancePricing.length > 0) {
+          // Use the first range price as initial estimate (will be recalculated by backend)
+          // For under 3km, find the range that includes 3km or less
+          const sortedRanges = [...matchedPartner.distancePricing].sort((a, b) => a.minDistance - b.minDistance);
+          
+          // Find range that covers 3km or less
+          for (const range of sortedRanges) {
+            if (3 >= range.minDistance && 3 <= range.maxDistance) {
+              deliveryFee = range.price;
+              console.log(`Using matched partner distance pricing for ~3km: range ${range.minDistance}-${range.maxDistance}km = ${range.price} ETB`);
+              break;
+            }
+          }
+          
+          // If no range covers 3km, use the first (lowest) range
+          if (deliveryFee === 50 && sortedRanges.length > 0) {
+            deliveryFee = sortedRanges[0].price;
+            console.log(`Using first range price from matched partner: ${deliveryFee} ETB`);
+          }
+        }
+      }
+      // Priority 5: Calculate from partner pricing rates if available
       else if (partnerPricingRates && createdOrder?.orderInfo) {
         try {
           const calculatedFee = calculateDeliveryFeeFromPartnerRates(
@@ -720,21 +841,14 @@ function PostOrder() {
           // Fall back to default fee
         }
       }
-      // Priority 4: Check if the created order has an assigned partner with price offer
+      // Priority 6: Check if the created order has an assigned partner with price offer
       else if (createdOrder?.assignedPartner?.priceOffer) {
         deliveryFee = typeof createdOrder.assignedPartner.priceOffer === 'number'
           ? createdOrder.assignedPartner.priceOffer
           : parseFloat(createdOrder.assignedPartner.priceOffer) || 50;
         console.log('Using price offer from assigned partner:', deliveryFee);
       }
-      // Priority 5: Check if the order has pricing information
-      else if (createdOrder?.pricing?.deliveryFee) {
-        deliveryFee = typeof createdOrder.pricing.deliveryFee === 'number'
-          ? createdOrder.pricing.deliveryFee
-          : parseFloat(createdOrder.pricing.deliveryFee) || 50;
-        console.log('Using delivery fee from order pricing:', deliveryFee);
-      }
-      // Priority 6: Check if there's a selected match with price offer
+      // Priority 7: Check if there's a selected match with price offer
       else if (createdOrder?.assignedMatchId && availableMatches.length > 0) {
         // Try to find the match in availableMatches
         const match = availableMatches.find((m: any) => 
@@ -845,14 +959,74 @@ function PostOrder() {
         {/* Payment Form - Show after order creation (or after match selection) */}
         {showPayment && createdOrder && !showMatchSelection && (
           <div className="mb-8">
-            <PaymentForm
-              orderId={createdOrder._id}
-              buyerId={createdBuyerId}
-              amount={itemValue}
-              fees={calculateFees()}
-              onSuccess={handlePaymentSuccess}
-              onCancel={handlePaymentCancel}
-            />
+            {/* Show estimated payment if partner hasn't accepted yet */}
+            {createdOrder.assignedPartnerId && createdOrder.partnerAcceptanceStatus !== 'accepted' && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 mb-6 rounded-lg">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-lg font-medium text-yellow-800 mb-2">
+                      Estimated Payment (Waiting for Partner Confirmation)
+                    </h3>
+                    <p className="text-sm text-yellow-700 mb-4">
+                      Your order has been matched with a delivery partner. The partner is reviewing your order and will confirm the final price shortly. 
+                      You will receive an email with the confirmed price once the partner accepts your order.
+                    </p>
+                    <div className="bg-white p-4 rounded-lg border border-yellow-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Estimated Payment Breakdown:</h4>
+                      <div className="space-y-2 text-sm">
+                        {itemValue > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Item Value:</span>
+                            <span className="font-semibold">{itemValue.toFixed(2)} ETB</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Delivery Fee (Estimated):</span>
+                          <span className="font-semibold">{calculateFees().deliveryFee.toFixed(2)} ETB</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Service Fee:</span>
+                          <span className="font-semibold">{calculateFees().serviceFee.toFixed(2)} ETB</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Platform Fee:</span>
+                          <span className="font-semibold">{calculateFees().platformFee.toFixed(2)} ETB</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-gray-200 font-bold text-lg">
+                          <span>Estimated Total:</span>
+                          <span className="text-yellow-600">{(itemValue + calculateFees().total).toFixed(2)} ETB</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3 italic">
+                        * Final price will be confirmed by the delivery partner
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Show actual payment form when partner has accepted */}
+            {(!createdOrder.assignedPartnerId || createdOrder.partnerAcceptanceStatus === 'accepted') && (
+              <PaymentForm
+                orderId={createdOrder._id}
+                buyerId={createdBuyerId}
+                amount={itemValue}
+                fees={createdOrder.pricing ? {
+                  deliveryFee: createdOrder.pricing.deliveryFee || calculateFees().deliveryFee,
+                  serviceFee: createdOrder.pricing.serviceFee || calculateFees().serviceFee,
+                  platformFee: createdOrder.pricing.platformFee || calculateFees().platformFee,
+                  total: createdOrder.pricing.totalAmount || (itemValue + calculateFees().total)
+                } : calculateFees()}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            )}
           </div>
         )}
 
@@ -989,7 +1163,7 @@ function PostOrder() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current City <span className="text-red-500">*</span>
+                    Pickup City <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1000,19 +1174,22 @@ function PostOrder() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                     placeholder="New York"
                   />
+                  <p className="mt-1 text-xs text-gray-500">City where the item will be picked up</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location (Optional)
+                    Pickup Location (Address) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="location"
+                    required
                     value={formData.location}
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                    placeholder="Street address"
+                    placeholder="Street address, building, landmark"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Full address where the item will be picked up from</p>
                 </div>
                 <div className="md:col-span-2">
                   <FileUpload
@@ -1052,7 +1229,7 @@ function PostOrder() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City <span className="text-red-500">*</span>
+                        Delivery City <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -1063,6 +1240,7 @@ function PostOrder() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                         placeholder="e.g., Addis Ababa"
                       />
+                      <p className="mt-1 text-xs text-gray-500">City where the item will be delivered</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1080,7 +1258,7 @@ function PostOrder() {
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Street Address <span className="text-red-500">*</span>
+                        Delivery Location (Street Address) <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -1091,6 +1269,7 @@ function PostOrder() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
                         placeholder="e.g., Street name, building number, landmark"
                       />
+                      <p className="mt-1 text-xs text-gray-500">Full address where the item will be delivered to</p>
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
