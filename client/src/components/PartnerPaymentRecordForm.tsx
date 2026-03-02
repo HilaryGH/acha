@@ -35,7 +35,7 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
   
   const [loading, setLoading] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Helper functions to add/remove entries
@@ -435,7 +435,21 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
 
     const filledBases = [hasPieces, hasWeight, hasDistance].filter(Boolean).length;
 
-    if (filledBases === 0) {
+    // If order has confirmed pricing, payment basis is optional
+    const hasConfirmedPricing = order && order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0;
+    
+    // If no payment basis filled and order has confirmed pricing, that's okay - it's optional
+    // But if they're trying to submit, they need to fill at least one basis to save something
+    if (filledBases === 0 && hasConfirmedPricing) {
+      setMessage({ 
+        type: 'info', 
+        text: 'Payment basis is optional for orders with confirmed pricing. If you want to save or update your general price list for future estimations, please fill at least one payment basis. Otherwise, use the "Skip" button.' 
+      });
+      return;
+    }
+    
+    // If no payment basis filled and order doesn't have confirmed pricing, it's required
+    if (filledBases === 0 && !hasConfirmedPricing) {
       setMessage({ type: 'error', text: 'Please fill at least one payment basis (Piece, Weight, or Distance) with valid values.' });
       return;
     }
@@ -693,7 +707,11 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
       <div className="mb-6">
         <h4 className="text-lg font-semibold text-gray-900 mb-2">
           {mode === 'bulkCalculate' ? 'Calculate Payments for All Orders' : (isEditMode ? 'Edit Pricing Rates' : 'Set Pricing Rates')}
-          <span className="text-red-500">*Required</span>
+          {order && order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0 ? (
+            <span className="text-blue-600 text-sm font-normal ml-2">(Optional - Order already has confirmed price)</span>
+          ) : (
+            <span className="text-red-500">*Required</span>
+          )}
         </h4>
         
         {/* Mode Selector */}
@@ -748,14 +766,28 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-600">
-            {isEditMode 
-              ? 'Update your pricing rates below. Set rates for Piece, Weight, and/or Distance. When orders are assigned to you, payment will be calculated based on the order\'s actual values using these rates.'
-              : orderId 
-                ? 'Set your pricing rates for this order. Payment will be calculated based on the order\'s actual pieces, weight, or distance using these rates.'
-                : 'Set your pricing rates (price list). You can configure rates for Piece, Weight, and/or Distance. When orders are assigned to you, payment will be calculated automatically based on the order\'s actual values using these rates.'
-            }
-            {order && !isEditMode && (
+          <div>
+            {order && order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0 ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800 font-medium mb-2">
+                  ℹ️ This order already has a confirmed delivery fee: <strong>ETB {order.pricing.deliveryFee.toFixed(2)}</strong>
+                </p>
+                <p className="text-sm text-blue-700">
+                  Payment basis form is <strong>optional</strong> for this order. You can fill it out to update your general price list for future order estimations, but it's not required since the price is already confirmed.
+                </p>
+              </div>
+            ) : null}
+            <p className="text-sm text-gray-600">
+              {isEditMode 
+                ? 'Update your pricing rates below. Set rates for Piece, Weight, and/or Distance. When orders are assigned to you, payment will be calculated based on the order\'s actual values using these rates.'
+                : orderId 
+                  ? order && order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0
+                    ? 'Payment basis is optional for this order since it already has a confirmed price. Fill this out only if you want to update your general price list.'
+                    : 'Set your pricing rates for this order. Payment will be calculated based on the order\'s actual pieces, weight, or distance using these rates.'
+                  : 'Set your pricing rates (price list). You can configure rates for Piece, Weight, and/or Distance. When orders are assigned to you, payment will be calculated automatically based on the order\'s actual values using these rates.'
+              }
+            </p>
+            {order && !isEditMode && !(order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0) && (
               <span className="block mt-1 text-green-700 font-medium">
                 💡 Order selected: Payment will be calculated based on this order's actual pieces/weight/distance using your rates.
               </span>
@@ -765,7 +797,7 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
                 💡 This is your price list. When orders are assigned to you, payment will be calculated automatically using these rates.
               </span>
             )}
-          </p>
+          </div>
         )}
       </div>
 
@@ -778,6 +810,8 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
           className={`mb-4 text-sm px-4 py-3 rounded-lg ${
             message.type === 'success' 
               ? 'bg-green-50 text-green-800 border border-green-200' 
+              : message.type === 'info'
+              ? 'bg-blue-50 text-blue-800 border border-blue-200'
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}
         >
@@ -1049,6 +1083,23 @@ function PartnerPaymentRecordForm({ partnerId, role, orderId, order, existingTra
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          {order && order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (onPaymentRecorded) {
+                  onPaymentRecorded();
+                }
+                setMessage({ 
+                  type: 'success', 
+                  text: 'Payment basis form skipped. Order already has confirmed pricing, so payment basis is optional and only needed for updating your general price list.' 
+                });
+              }}
+              className="px-6 py-2.5 rounded-lg border-2 border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Skip (Optional)
+            </button>
+          )}
           <button
             type="submit"
             disabled={loading}

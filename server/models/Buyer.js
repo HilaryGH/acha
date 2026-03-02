@@ -8,6 +8,12 @@ const buyerSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
+  // User reference (to link buyer to user account)
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   // Basic Information
   name: {
     type: String,

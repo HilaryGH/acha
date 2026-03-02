@@ -94,6 +94,11 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   const [savingGiftTypes, setSavingGiftTypes] = useState(false);
   const [loadingGiftTypes, setLoadingGiftTypes] = useState(false);
   const [giftTypesMessage, setGiftTypesMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Price input modal state
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [orderToAccept, setOrderToAccept] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<string>('');
 
   // Get role-specific information
   const getRoleInfo = () => {
@@ -185,15 +190,26 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
       );
       
       // Check which orders don't have payment records
+      // IMPORTANT: If order already has confirmed pricing (delivery fee set when partner accepted), 
+      // payment basis is NOT needed - partner already set the price, so no "Action Required" notification
       const ordersWithoutPayment = assignedOrders.filter(order => {
-        // Check if there's a payment record for this order
+        // Check if there's a payment record (payment basis form) for this order
         const hasPaymentRecord = records.some(record => 
           record.orderId && (
             record.orderId._id === order._id || 
             record.orderId.toString() === order._id.toString()
           )
         );
-        return !hasPaymentRecord;
+        
+        // If order has confirmed pricing (delivery fee) from acceptance, payment basis is NOT required
+        // Partner MUST set delivery fee when accepting, so if it exists, no action needed
+        const hasConfirmedPricing = order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0;
+        
+        // Only show in "needs payment" list if:
+        // 1. No payment basis record exists AND
+        // 2. No confirmed pricing exists (delivery fee was NOT set when accepting)
+        // This means orders where partner set delivery fee on acceptance will NOT appear here
+        return !hasPaymentRecord && !hasConfirmedPricing;
       });
       
       setOrdersNeedingPayment(ordersWithoutPayment);
@@ -312,27 +328,66 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
-    if (!window.confirm('Are you sure you want to accept this delivery order?\n\nRemember: You will need to fill out the payment form in the "Record Delivery Payment" tab after accepting.')) {
-      return;
-    }
+    // Find the order to check if it requires price input
+    const order = orders.find(o => o._id === orderId);
+    const requiresPrice = order && (
+      order.deliveryMethod === 'delivery_partner' || 
+      order.deliveryMethod === 'acha_sisters_delivery_partner' ||
+      order.deliveryMethod === 'movers_packers'
+    );
 
+    if (requiresPrice) {
+      // Show price input modal
+      setOrderToAccept(orderId);
+      setDeliveryFee('');
+      setShowPriceModal(true);
+    } else {
+      // For other delivery methods, proceed without price
+      if (!window.confirm('Are you sure you want to accept this delivery order?')) {
+        return;
+      }
+      await submitAcceptOrder(orderId);
+    }
+  };
+
+  const submitAcceptOrder = async (orderId: string, price?: number) => {
     try {
       setProcessingOrder(orderId);
-      await api.orders.partnerAcceptOrder({ orderId });
+      const acceptData: any = { orderId };
+      if (price && price > 0) {
+        acceptData.deliveryFee = price;
+      }
+      
+      await api.orders.partnerAcceptOrder(acceptData);
       const updatedOrders = await loadOrders();
       if (updatedOrders) {
         await loadStats(updatedOrders);
         await checkPaymentRecords(updatedOrders);
       }
-      alert('Order accepted successfully! The client has been notified.\n\n⚠️ IMPORTANT: Please go to the "Record Delivery Payment" tab to fill out the payment form for this delivery.');
-      // Switch to payment tab to remind them
-      setActiveTab('payment');
+      
+      setShowPriceModal(false);
+      setOrderToAccept(null);
+      setDeliveryFee('');
+      
+      alert('Order accepted successfully! The client has been notified with the confirmed delivery fee of ETB ' + (price || 0).toFixed(2) + '.\n\n✅ No further action required. The payment basis form is optional and only needed if you want to update your general price list for future order estimations.');
     } catch (error: any) {
       console.error('Error accepting order:', error);
       alert(error.message || 'Failed to accept order');
     } finally {
       setProcessingOrder(null);
     }
+  };
+
+  const handlePriceModalSubmit = () => {
+    const price = parseFloat(deliveryFee);
+    if (!orderToAccept) return;
+    
+    if (isNaN(price) || price <= 0) {
+      alert('Please enter a valid delivery fee/price (must be greater than 0)');
+      return;
+    }
+
+    submitAcceptOrder(orderToAccept, price);
   };
 
   const handleRejectOrder = async (orderId: string) => {
@@ -552,25 +607,29 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
 
         <div className="space-y-6">
           {/* Notification Banner for Orders Needing Payment */}
+          {/* Only show if there are orders without confirmed pricing that need payment basis */}
           {ordersNeedingPayment.length > 0 && activeTab !== 'payment' && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg shadow-sm">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <span className="text-2xl">⚠️</span>
+                  <span className="text-2xl">ℹ️</span>
                 </div>
                 <div className="ml-3 flex-1">
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Action Required: Payment Forms Needed
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Payment Basis Forms Available
                   </h3>
-                  <div className="mt-2 text-sm text-yellow-700">
+                  <div className="mt-2 text-sm text-blue-700">
                     <p>
-                      You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that need payment information recorded.
+                      You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that can use payment basis forms for price estimation.
+                    </p>
+                    <p className="mt-1 text-xs text-blue-600">
+                      Note: Orders where you've already set a delivery fee upon acceptance don't require payment basis forms.
                     </p>
                     <button
                       onClick={() => setActiveTab('payment')}
-                      className="mt-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-semibold"
+                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
                     >
-                      Fill Payment Forms Now →
+                      View Payment Basis Forms →
                     </button>
                   </div>
                 </div>
@@ -582,31 +641,34 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
             <div className="space-y-4">
               {/* Header with notification */}
               {ordersNeedingPayment.length > 0 && (
-                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow-sm">
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg shadow-sm">
                   <div className="flex items-start">
                     <div className="flex-shrink-0">
-                      <span className="text-2xl">🔔</span>
+                      <span className="text-2xl">ℹ️</span>
                     </div>
                     <div className="ml-3 flex-1">
-                      <h3 className="text-sm font-medium text-red-800">
-                        Important: Payment Forms Required
+                      <h3 className="text-sm font-medium text-blue-800">
+                        Payment Basis Forms Available
                       </h3>
-                      <div className="mt-2 text-sm text-red-700">
+                      <div className="mt-2 text-sm text-blue-700">
                         <p>
-                          You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that require payment information to be recorded:
+                          You have <strong>{ordersNeedingPayment.length}</strong> assigned delivery{ordersNeedingPayment.length !== 1 ? 'ies' : ''} that can use payment basis forms for price estimation:
                         </p>
                         <ul className="mt-2 list-disc list-inside space-y-1">
                           {ordersNeedingPayment.slice(0, 5).map((order) => (
                             <li key={order._id}>
                               Order #{order.uniqueId || order._id.slice(-8)} - {order.orderInfo?.productName || 'N/A'}
+                              {order.pricing && order.pricing.deliveryFee && order.pricing.deliveryFee > 0 && (
+                                <span className="text-green-600 ml-2">✓ Price already set</span>
+                              )}
                             </li>
                           ))}
                           {ordersNeedingPayment.length > 5 && (
                             <li className="text-gray-600">...and {ordersNeedingPayment.length - 5} more</li>
                           )}
                         </ul>
-                        <p className="mt-2 font-semibold">
-                          Please fill out the payment form below for each delivery to ensure proper payment processing.
+                        <p className="mt-2 text-xs text-blue-600">
+                          <strong>Note:</strong> Payment basis forms are optional. If you've already set a delivery fee when accepting an order, you don't need to fill this form. It's only for updating your general price list for future estimations.
                         </p>
                       </div>
                     </div>
@@ -1377,6 +1439,56 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
           )}
         </div>
       </div>
+
+      {/* Price Input Modal */}
+      {showPriceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Set Delivery Price</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Please enter the specific delivery fee/price for this order. This price will be sent to the buyer in the acceptance email.
+            </p>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Delivery Fee/Price (ETB) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={deliveryFee}
+                onChange={(e) => setDeliveryFee(e.target.value)}
+                min="0"
+                step="0.01"
+                placeholder="Enter delivery fee"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">Enter the exact price you want to charge for this delivery</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handlePriceModalSubmit}
+                disabled={!deliveryFee || parseFloat(deliveryFee) <= 0 || processingOrder === orderToAccept}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processingOrder === orderToAccept ? 'Accepting...' : 'Accept Order'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowPriceModal(false);
+                  setOrderToAccept(null);
+                  setDeliveryFee('');
+                }}
+                disabled={processingOrder === orderToAccept}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

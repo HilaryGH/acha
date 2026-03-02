@@ -704,7 +704,30 @@ async function sendOrderAcceptedEmail(clientEmail, clientName, orderDetails, par
               </div>
             </div>
             
-            <p>Your order is now being processed. You will receive updates as the delivery progresses.</p>
+            ${orderDetails.pricing && orderDetails.pricing.totalAmount > 0 ? `
+            <div class="order-details" style="background-color: #e8f5e9; border-color: #43A047;">
+              <h3 style="color: #43A047; margin-top: 0; margin-bottom: 15px;">💰 Confirmed Price</h3>
+              ${orderDetails.pricing.itemValue > 0 ? `
+              <div class="detail-row">
+                <span class="detail-label">Item Value:</span> ${orderDetails.pricing.itemValue.toFixed(2)} ${orderDetails.pricing.currency}
+              </div>
+              ` : ''}
+              <div class="detail-row">
+                <span class="detail-label">Delivery Fee:</span> ${orderDetails.pricing.deliveryFee.toFixed(2)} ${orderDetails.pricing.currency}
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Service Fee:</span> ${orderDetails.pricing.serviceFee.toFixed(2)} ${orderDetails.pricing.currency}
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Platform Fee:</span> ${orderDetails.pricing.platformFee.toFixed(2)} ${orderDetails.pricing.currency}
+              </div>
+              <div class="detail-row" style="border-top: 2px solid #43A047; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 16px;">
+                <span class="detail-label">Total Amount:</span> <span style="color: #43A047; font-size: 18px;">${orderDetails.pricing.totalAmount.toFixed(2)} ${orderDetails.pricing.currency}</span>
+              </div>
+            </div>
+            ` : ''}
+            
+            <p>Your order is now being processed. ${orderDetails.pricing && orderDetails.pricing.totalAmount > 0 ? 'Please proceed with payment to complete your order.' : 'You will receive updates as the delivery progresses.'}</p>
             
             <p>If you have any questions, please contact our support team.</p>
             
@@ -729,7 +752,15 @@ async function sendOrderAcceptedEmail(clientEmail, clientName, orderDetails, par
         ${orderDetails.deliveryDestination ? `Delivery Destination: ${orderDetails.deliveryDestination}\n` : ''}
         Delivery Partner: ${partnerName}
         
-        Your order is now being processed. You will receive updates as the delivery progresses.
+        ${orderDetails.pricing && orderDetails.pricing.totalAmount > 0 ? `
+        CONFIRMED PRICE:
+        ${orderDetails.pricing.itemValue > 0 ? `Item Value: ${orderDetails.pricing.itemValue.toFixed(2)} ${orderDetails.pricing.currency}\n` : ''}Delivery Fee: ${orderDetails.pricing.deliveryFee.toFixed(2)} ${orderDetails.pricing.currency}
+        Service Fee: ${orderDetails.pricing.serviceFee.toFixed(2)} ${orderDetails.pricing.currency}
+        Platform Fee: ${orderDetails.pricing.platformFee.toFixed(2)} ${orderDetails.pricing.currency}
+        TOTAL AMOUNT: ${orderDetails.pricing.totalAmount.toFixed(2)} ${orderDetails.pricing.currency}
+        
+        ` : ''}
+        Your order is now being processed. ${orderDetails.pricing && orderDetails.pricing.totalAmount > 0 ? 'Please proceed with payment to complete your order.' : 'You will receive updates as the delivery progresses.'}
         
         If you have any questions, please contact our support team.
         

@@ -485,6 +485,18 @@ export const api = {
         body: JSON.stringify({ status, message, location }),
       });
     },
+    update: async (orderId: string, updateData: any) => {
+      return request(`/orders/${orderId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+    },
+    cancel: async (orderId: string, reason?: string) => {
+      return request(`/orders/${orderId}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+    },
     confirmDelivery: async (orderId: string) => {
       return request(`/orders/${orderId}/confirm`, {
         method: 'POST',
@@ -546,7 +558,7 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
-    partnerAcceptOrder: async (data: { orderId: string }) => {
+    partnerAcceptOrder: async (data: { orderId: string; deliveryFee?: number; price?: number }) => {
       return request('/orders/accept-assigned', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -557,6 +569,38 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       });
+    },
+    downloadGiftCard: async (orderId: string) => {
+      const token = getAuthToken();
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/gift-card`, {
+        method: 'GET',
+        headers,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          message: `Failed to download gift card! status: ${response.status}`,
+        }));
+        throw new Error(error.message || 'Failed to download gift card');
+      }
+      
+      // Get the blob and create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `gift-card-${orderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      return { status: 'success', message: 'Gift card downloaded successfully' };
     },
   },
 

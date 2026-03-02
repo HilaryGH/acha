@@ -361,6 +361,7 @@ function PostOrder() {
 
     try {
       // Step 1: Create buyer first
+      const user = getCurrentUser();
       const buyerData: any = {
         name: formData.name,
         phone: formData.phone,
@@ -370,7 +371,8 @@ function PostOrder() {
         currentCity: formData.currentCity,
         location: formData.location || undefined,
         idDocument: formData.idDocument || undefined,
-        deliveryMethod: formData.deliveryMethod
+        deliveryMethod: formData.deliveryMethod,
+        userId: user?.id || undefined // Link buyer to user account
       };
 
       const buyerResponse = await api.buyers.create(buyerData) as { status?: string; data?: any; message?: string };
@@ -546,17 +548,39 @@ function PostOrder() {
             location: selectedGiftType.partnerLocation
           };
           responseData.autoAssigned = true;
+          
+          // Set pricing for gift order - use gift price as item value
+          if (selectedGiftType.price) {
+            if (!responseData.pricing) {
+              responseData.pricing = {};
+            }
+            responseData.pricing.itemValue = typeof selectedGiftType.price === 'number' 
+              ? selectedGiftType.price 
+              : parseFloat(selectedGiftType.price) || 0;
+            
+            // Calculate fees (delivery fee is typically included in gift price, but we can add service/platform fees)
+            const giftPrice = responseData.pricing.itemValue;
+            const serviceFee = 25; // Service fee
+            const platformFee = 15; // Platform fee
+            const deliveryFee = 0; // Delivery fee is typically included in gift price
+            responseData.pricing.deliveryFee = deliveryFee;
+            responseData.pricing.serviceFee = serviceFee;
+            responseData.pricing.platformFee = platformFee;
+            responseData.pricing.totalAmount = giftPrice + serviceFee + platformFee;
+            responseData.pricing.currency = 'ETB';
+          }
+          
           setCreatedOrder(responseData);
           
           // Fetch partner pricing rates if this is a delivery partner method
           // Note: For gift delivery partners, pricing is handled via giftType.price, not partner rates
           // So we skip fetching pricing rates for gift_delivery_partner
           
-          // Go directly to payment
+          // Go directly to payment (no price confirmation needed for gift orders)
           setShowPayment(true);
           setMessage({ 
             type: 'success', 
-            text: `Order created successfully! Your gift "${selectedGiftType.description}" has been assigned to ${selectedGiftType.partnerName}. Please proceed with payment.`
+            text: `Order created successfully! Your gift "${selectedGiftType.description}" (ETB ${selectedGiftType.price?.toLocaleString() || '0'}) has been assigned to ${selectedGiftType.partnerName}. Please proceed with payment.`
           });
         }
         // If a trip was pre-selected from BrowseTrips, skip match selection and go directly to payment
@@ -711,15 +735,15 @@ function PostOrder() {
       // Proceed to payment after match confirmation
       setShowMatchSelection(false);
       
-      // For delivery partners, show estimated payment and wait for partner acceptance
-      if (matchType === 'partner') {
+      // For delivery partners (except gift_delivery_partner), show estimated payment and wait for partner acceptance
+      if (matchType === 'partner' && ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers'].includes(formData.deliveryMethod)) {
         setShowPayment(true);
         setMessage({ 
           type: 'info', 
           text: 'Match confirmed! The delivery partner will review your order and confirm the final price. You\'ll receive an email with the confirmed price once the partner accepts your order.'
         });
       } else {
-        // For travelers, proceed directly to payment
+        // For travelers and gift_delivery_partner, proceed directly to payment (no price confirmation needed)
         setShowPayment(true);
         setMessage({ 
           type: 'success', 
@@ -975,8 +999,10 @@ function PostOrder() {
         {/* Payment Form - Show after order creation (or after match selection) */}
         {showPayment && createdOrder && !showMatchSelection && (
           <div className="mb-8">
-            {/* Show estimated payment if partner hasn't accepted yet */}
-            {createdOrder.assignedPartnerId && createdOrder.partnerAcceptanceStatus !== 'accepted' && (
+            {/* Show estimated payment if partner hasn't accepted yet - ONLY for delivery_partner, acha_sisters_delivery_partner, and movers_packers */}
+            {createdOrder.assignedPartnerId && 
+             createdOrder.partnerAcceptanceStatus !== 'accepted' && 
+             ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers'].includes(formData.deliveryMethod) && (
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 mb-6 rounded-lg">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -1027,8 +1053,10 @@ function PostOrder() {
               </div>
             )}
             
-            {/* Show actual payment form when partner has accepted */}
-            {(!createdOrder.assignedPartnerId || createdOrder.partnerAcceptanceStatus === 'accepted') && (
+            {/* Show actual payment form when partner has accepted OR for gift_delivery_partner (no price confirmation needed) */}
+            {(!createdOrder.assignedPartnerId || 
+              createdOrder.partnerAcceptanceStatus === 'accepted' || 
+              formData.deliveryMethod === 'gift_delivery_partner') && (
               <PaymentForm
                 orderId={createdOrder._id}
                 buyerId={createdBuyerId}

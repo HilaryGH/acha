@@ -1869,7 +1869,7 @@ exports.partnerAcceptRequest = async (req, res) => {
 // Partner accepts an assigned order
 exports.partnerAcceptOrder = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { orderId, deliveryFee, price } = req.body; // Accept specific price from partner
     const userId = req.user?.id;
 
     if (!orderId) {
@@ -1930,13 +1930,100 @@ exports.partnerAcceptOrder = async (req, res) => {
       });
     }
 
+    // Priority 1: Use the specific price provided by partner when accepting (highest priority)
+    let finalDeliveryFee = deliveryFee || price || null;
+    
+    if (finalDeliveryFee && finalDeliveryFee > 0) {
+      console.log(`Using partner-provided price ${finalDeliveryFee} ETB for order ${order.uniqueId}`);
+    } else {
+      // Priority 2: Check if there's an accepted partner offer with a specific price
+      if (order.partnerOffers && Array.isArray(order.partnerOffers) && order.partnerOffers.length > 0) {
+        const acceptedOffer = order.partnerOffers.find(offer => 
+          offer.partnerId && offer.partnerId.toString() === userId.toString() && 
+          (offer.status === 'accepted' || offer.offerPrice)
+        );
+        if (acceptedOffer && acceptedOffer.offerPrice) {
+          finalDeliveryFee = acceptedOffer.offerPrice;
+          console.log(`Using offer price ${finalDeliveryFee} ETB from partner offer for order ${order.uniqueId}`);
+        }
+      }
+      
+      // Priority 3: Check if pricing is already set
+      if (!finalDeliveryFee && order.pricing && order.pricing.deliveryFee) {
+        finalDeliveryFee = order.pricing.deliveryFee;
+      }
+      
+      // Priority 4: Calculate from distance pricing (fallback)
+      if (!finalDeliveryFee || finalDeliveryFee === 0) {
+        const requiresDistancePricing = order.deliveryMethod === 'delivery_partner' || 
+                                         order.deliveryMethod === 'acha_sisters_delivery_partner' ||
+                                         order.deliveryMethod === 'movers_packers';
+        
+        if (requiresDistancePricing && partner.distancePricing && Array.isArray(partner.distancePricing) && partner.distancePricing.length > 0) {
+          try {
+            const pickupLocation = order.pickupLocation?.address || order.pickupLocation?.city || '';
+            const deliveryLocation = order.deliveryLocation?.address || order.deliveryLocation?.city || '';
+            
+            if (pickupLocation && deliveryLocation) {
+              const calculatedFee = await calculateDeliveryFeeFromDistancePricing(
+                partner, 
+                { address: pickupLocation, city: order.pickupLocation?.city },
+                { address: deliveryLocation, city: order.deliveryLocation?.city }
+              );
+              
+              if (calculatedFee !== null && calculatedFee > 0) {
+                finalDeliveryFee = calculatedFee;
+                console.log(`Calculated delivery fee ${finalDeliveryFee} ETB from distance pricing for order ${order.uniqueId} when partner accepted`);
+              }
+            }
+          } catch (pricingError) {
+            console.error('Error calculating pricing when partner accepted:', pricingError);
+            // Continue even if pricing calculation fails
+          }
+        }
+      }
+    }
+    
+    // Validate that we have a price for delivery_partner, acha_sisters_delivery_partner, and movers_packers
+    const requiresPrice = order.deliveryMethod === 'delivery_partner' || 
+                          order.deliveryMethod === 'acha_sisters_delivery_partner' ||
+                          order.deliveryMethod === 'movers_packers';
+    
+    if (requiresPrice && (!finalDeliveryFee || finalDeliveryFee <= 0)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a delivery fee/price when accepting this order. Price is required for delivery partners, acha sisters delivery partners, and packers & movers.'
+      });
+    }
+    
+    // Update order pricing with the confirmed price
+    if (finalDeliveryFee && finalDeliveryFee > 0) {
+      // Initialize pricing if not exists
+      if (!order.pricing) {
+        order.pricing = {};
+      }
+      
+      const itemValue = order.pricing.itemValue || 0;
+      const serviceFee = order.pricing.serviceFee || 25;
+      const platformFee = order.pricing.platformFee || 15;
+      const totalAmount = itemValue + finalDeliveryFee + serviceFee + platformFee;
+      
+      order.pricing.deliveryFee = finalDeliveryFee;
+      order.pricing.serviceFee = serviceFee;
+      order.pricing.platformFee = platformFee;
+      order.pricing.totalAmount = totalAmount;
+      order.pricing.currency = order.pricing.currency || 'ETB';
+      
+      console.log(`Set confirmed pricing for order ${order.uniqueId}: Delivery Fee = ${finalDeliveryFee} ETB (partner-provided: ${!!(deliveryFee || price)}), Total = ${totalAmount} ETB`);
+    }
+
     // Update order acceptance status
     order.partnerAcceptanceStatus = 'accepted';
     const partnerName = partner.name || partner.companyName || 'Delivery Partner';
     await order.addTrackingUpdate('assigned', `Order accepted by delivery partner: ${partnerName}`, '');
     await order.save();
 
-    // Send email to client
+    // Send email to client with pricing information
     try {
       const buyer = order.buyerId;
       if (buyer && buyer.email) {
@@ -1946,7 +2033,16 @@ exports.partnerAcceptOrder = async (req, res) => {
           uniqueId: order.uniqueId,
           productName: order.orderInfo?.productName,
           productDescription: order.orderInfo?.productDescription,
-          deliveryDestination: order.orderInfo?.deliveryDestination
+          deliveryDestination: order.orderInfo?.deliveryDestination,
+          // Include pricing information
+          pricing: order.pricing ? {
+            itemValue: order.pricing.itemValue || 0,
+            deliveryFee: order.pricing.deliveryFee || 0,
+            serviceFee: order.pricing.serviceFee || 0,
+            platformFee: order.pricing.platformFee || 0,
+            totalAmount: order.pricing.totalAmount || 0,
+            currency: order.pricing.currency || 'ETB'
+          } : null
         }, partnerName);
       }
     } catch (emailError) {
@@ -2296,6 +2392,129 @@ exports.downloadGiftCard = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error.message || 'Failed to download gift card'
+    });
+  }
+};
+
+// Update order details (only within 8 hours of creation)
+exports.updateOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const updateData = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Check if order can be edited (within 8 hours)
+    const orderCreatedAt = new Date(order.createdAt);
+    const now = new Date();
+    const hoursSinceCreation = (now - orderCreatedAt) / (1000 * 60 * 60);
+
+    if (hoursSinceCreation > 8) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order can only be edited within 8 hours of creation'
+      });
+    }
+
+    // Prevent editing if order is already assigned, picked up, in transit, delivered, completed, or cancelled
+    const nonEditableStatuses = ['assigned', 'picked_up', 'in_transit', 'delivered', 'completed', 'cancelled'];
+    if (nonEditableStatuses.includes(order.status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order cannot be edited in its current status'
+      });
+    }
+
+    // Update order info
+    if (updateData.orderInfo) {
+      if (order.orderInfo) {
+        Object.assign(order.orderInfo, updateData.orderInfo);
+      } else {
+        order.orderInfo = updateData.orderInfo;
+      }
+    }
+
+    // Update locations if provided
+    if (updateData.pickupLocation) {
+      Object.assign(order.pickupLocation, updateData.pickupLocation);
+    }
+    if (updateData.deliveryLocation) {
+      Object.assign(order.deliveryLocation, updateData.deliveryLocation);
+    }
+
+    // Add tracking update
+    await order.addTrackingUpdate('pending', 'Order details updated by buyer', '');
+
+    await order.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order updated successfully',
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// Cancel order (only within 8 hours of creation)
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Check if order can be cancelled (within 8 hours)
+    const orderCreatedAt = new Date(order.createdAt);
+    const now = new Date();
+    const hoursSinceCreation = (now - orderCreatedAt) / (1000 * 60 * 60);
+
+    if (hoursSinceCreation > 8) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order can only be cancelled within 8 hours of creation'
+      });
+    }
+
+    // Prevent cancelling if order is already delivered, completed, or cancelled
+    if (['delivered', 'completed', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Order cannot be cancelled in its current status'
+      });
+    }
+
+    // Update order status
+    order.status = 'cancelled';
+    await order.addTrackingUpdate('cancelled', reason || 'Order cancelled by buyer', '');
+
+    await order.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order cancelled successfully',
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
     });
   }
 };

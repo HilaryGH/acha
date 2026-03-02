@@ -11,6 +11,8 @@ const {
   matchWithTraveler,
   assignToPartner,
   updateOrderStatus,
+  updateOrder,
+  cancelOrder,
   confirmDelivery,
   getAvailableTravelers,
   getAvailablePartners,
@@ -92,6 +94,9 @@ router.route('/traveller')
 router.route('/:orderId/status')
   .put(updateOrderStatus);
 
+router.route('/:orderId/cancel')
+  .post(cancelOrder);
+
 router.route('/:orderId/confirm')
   .post(confirmDelivery);
 
@@ -107,7 +112,8 @@ router.route('/:orderId/offers')
 router.route('/:orderId/gift-card')
   .get(downloadGiftCard);
 
-router.route('/:id')
+router.route('/:orderId')
+  .put(updateOrder)
   .get(getOrderById);
 
 module.exports = router;
