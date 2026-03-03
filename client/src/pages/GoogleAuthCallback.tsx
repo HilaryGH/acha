@@ -11,15 +11,29 @@ function GoogleAuthCallback() {
     const error = searchParams.get('error');
 
     if (error) {
-      // Handle error - redirect to login with error message
+      // Handle error - redirect to home with error message
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      navigate('/?error=' + encodeURIComponent(error));
+      // Show error message to user
+      alert(decodeURIComponent(error));
+      navigate('/home');
       return;
     }
 
     if (token && userParam) {
       try {
+        // Parse user data to verify role
+        const userData = JSON.parse(decodeURIComponent(userParam));
+        
+        // Additional check: Ensure user has individual role
+        if (userData.role !== 'individual') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          alert('Google login is only available for individual users. Please use email/password login instead.');
+          navigate('/home');
+          return;
+        }
+
         // Store token and user data
         localStorage.setItem('token', token);
         localStorage.setItem('user', userParam);
@@ -30,11 +44,17 @@ function GoogleAuthCallback() {
         window.location.reload();
       } catch (err) {
         console.error('Error processing Google auth callback:', err);
-        navigate('/?error=' + encodeURIComponent('Failed to process authentication'));
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert('Failed to process authentication. Please try again.');
+        navigate('/home');
       }
     } else {
       // Missing parameters
-      navigate('/?error=' + encodeURIComponent('Authentication failed. Missing parameters.'));
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      alert('Authentication failed. Missing parameters.');
+      navigate('/home');
     }
   }, [navigate, searchParams]);
 

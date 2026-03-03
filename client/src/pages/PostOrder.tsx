@@ -396,12 +396,6 @@ function PostOrder() {
       }
 
       const orderInfo: any = {
-        productDescription: formData.productDescription || undefined,
-        brand: formData.brand || undefined,
-        quantityType: formData.quantityType || undefined,
-        quantityDescription: formData.quantityDescription || undefined,
-        manufacturingDate: formData.manufacturingDate ? new Date(formData.manufacturingDate).toISOString() : undefined,
-        countryOfOrigin: formData.countryOfOrigin || undefined,
         deliveryDestination: deliveryDestination || undefined,
         preferredDeliveryDate: formData.preferredDeliveryDate ? new Date(formData.preferredDeliveryDate + 'T00:00:00').toISOString() : undefined,
         photos: formData.photos.length > 0 ? formData.photos : undefined,
@@ -409,9 +403,15 @@ function PostOrder() {
         link: formData.link || undefined
       };
 
-      // Only include productName if not movers_packers or gift_delivery_partner
+      // Only include order information fields if not movers_packers or gift_delivery_partner
       if (formData.deliveryMethod !== 'movers_packers' && formData.deliveryMethod !== 'gift_delivery_partner') {
         orderInfo.productName = formData.productName;
+        orderInfo.productDescription = formData.productDescription || undefined;
+        orderInfo.brand = formData.brand || undefined;
+        orderInfo.quantityType = formData.quantityType || undefined;
+        orderInfo.quantityDescription = formData.quantityDescription || undefined;
+        orderInfo.manufacturingDate = formData.manufacturingDate ? new Date(formData.manufacturingDate).toISOString() : undefined;
+        orderInfo.countryOfOrigin = formData.countryOfOrigin || undefined;
       }
 
       // Add gift-specific fields if delivery method is gift_delivery_partner
@@ -661,20 +661,86 @@ function PostOrder() {
     }
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async (transaction: any) => {
     setMessage({ 
       type: 'success', 
       text: 'Payment submitted successfully! Your order is being processed.'
     });
     
-    // Redirect to order tracking after 2 seconds
-    setTimeout(() => {
-      if (createdOrder?._id) {
-        navigate(`/orders/track/${createdOrder._id}`);
-      } else {
-        navigate('/');
+    // Get order ID from transaction or created order
+    // Transaction.orderId might be a string or an object with _id
+    let orderIdToUse = null;
+    
+    // First, try to get orderId from the transaction
+    if (transaction?.orderId) {
+      if (typeof transaction.orderId === 'string') {
+        orderIdToUse = transaction.orderId;
+      } else if (transaction.orderId._id) {
+        orderIdToUse = transaction.orderId._id.toString();
+      } else if (transaction.orderId.toString) {
+        orderIdToUse = transaction.orderId.toString();
       }
-    }, 2000);
+    }
+    
+    // Fallback to createdOrder._id if transaction doesn't have orderId
+    if (!orderIdToUse && createdOrder?._id) {
+      orderIdToUse = typeof createdOrder._id === 'string' 
+        ? createdOrder._id 
+        : createdOrder._id.toString();
+    }
+    
+    // If still no orderId, try to fetch the transaction by its ID to get the orderId
+    if (!orderIdToUse && transaction?._id) {
+      try {
+        const transactionId = typeof transaction._id === 'string' ? transaction._id : transaction._id.toString();
+        const fetchedTransaction = await api.transactions.getById(transactionId) as { status?: string; data?: any };
+        if (fetchedTransaction.status === 'success' && fetchedTransaction.data?.orderId) {
+          const txOrderId = fetchedTransaction.data.orderId;
+          orderIdToUse = typeof txOrderId === 'string' ? txOrderId : txOrderId.toString();
+        }
+      } catch (err) {
+        console.error('Error fetching transaction to get orderId:', err);
+      }
+    }
+    
+    console.log('Payment success - Order ID to use:', orderIdToUse, 'Transaction:', transaction, 'Created Order:', createdOrder);
+    
+    // If we have an order ID, refresh the order to ensure it exists before redirecting
+    if (orderIdToUse) {
+      try {
+        // Wait a moment for the order to be fully saved
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Refresh the order to get the latest data including gift card URL if generated
+        const refreshedOrder = await api.orders.getById(orderIdToUse) as { status?: string; data?: any };
+        if (refreshedOrder.status === 'success' && refreshedOrder.data) {
+          setCreatedOrder(refreshedOrder.data);
+          console.log('Order refreshed successfully, redirecting to:', `/orders/track/${orderIdToUse}`);
+          // Redirect to order tracking after a short delay
+          setTimeout(() => {
+            navigate(`/orders/track/${orderIdToUse}`);
+          }, 1000);
+        } else {
+          console.warn('Order not found on refresh, but redirecting anyway:', orderIdToUse);
+          // If order not found, still try to redirect (might be a timing issue)
+          setTimeout(() => {
+            navigate(`/orders/track/${orderIdToUse}`);
+          }, 1000);
+        }
+      } catch (error: any) {
+        console.error('Error refreshing order after payment:', error);
+        // Still redirect even if refresh fails - the order might exist but API might be slow
+        setTimeout(() => {
+          navigate(`/orders/track/${orderIdToUse}`);
+        }, 1000);
+      }
+    } else {
+      console.error('No order ID available for redirect. Transaction:', transaction, 'Created Order:', createdOrder);
+      setMessage({ 
+        type: 'error', 
+        text: 'Payment submitted but could not find order ID. Please contact support with transaction ID: ' + (transaction?._id || 'unknown')
+      });
+    }
   };
 
   const handlePaymentCancel = () => {
@@ -1559,7 +1625,7 @@ function PostOrder() {
             )}
 
             {/* Gift Selection Section (for gift_delivery_partner) */}
-            {formData.deliveryMethod === 'gift_delivery_partner' ? (
+            {formData.deliveryMethod === 'gift_delivery_partner' && (
               <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
                   <span className="text-2xl">🎁</span>
@@ -1659,30 +1725,30 @@ function PostOrder() {
                   </div>
                 )}
               </div>
-            ) : (
-              /* Order Information Section (for other delivery methods) */
+            )}
+
+            {/* Order Information Section (for other delivery methods, not for movers_packers or gift_delivery_partner) */}
+            {formData.deliveryMethod !== 'movers_packers' && formData.deliveryMethod !== 'gift_delivery_partner' && (
               <div className="border-b border-gray-200 pb-6">
                 <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
                   <span className="text-2xl">📦</span>
                   Order Information
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {formData.deliveryMethod !== 'movers_packers' && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="productName"
-                        required
-                        value={formData.productName}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
-                        placeholder="e.g., Smartphone, Laptop, etc."
-                      />
-                    </div>
-                  )}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="productName"
+                      required
+                      value={formData.productName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                      placeholder="e.g., Smartphone, Laptop, etc."
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Product Description <span className="text-red-500">*</span>

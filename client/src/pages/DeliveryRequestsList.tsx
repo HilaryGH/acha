@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../utils/auth';
 
 interface DeliveryRequest {
   _id: string;
   uniqueId: string;
   status: string;
+  assignedPartnerId?: string | null;
   orderInfo: {
     productName: string;
     productDescription?: string;
@@ -35,10 +37,62 @@ function DeliveryRequestsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [user, setUser] = useState<any>(null);
+  const [acceptingRequest, setAcceptingRequest] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [partnerId, setPartnerId] = useState<string>('');
+  const [showPriceDialog, setShowPriceDialog] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [offerPrice, setOfferPrice] = useState<string>('');
+  const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState<string>('');
 
   useEffect(() => {
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+    
+    // Check if user is a delivery partner
+    if (currentUser) {
+      const isPartner = currentUser.role === 'delivery_partner' || 
+                       currentUser.role === 'acha_sisters_delivery_partner' ||
+                       currentUser.role === 'movers_packers' ||
+                       currentUser.role === 'gift_delivery_partner';
+      
+      if (isPartner) {
+        // For role-based delivery partners, use the User ID directly
+        // Handle both _id and id fields
+        const userId = currentUser._id || currentUser.id;
+        if (userId) {
+          setPartnerId(userId.toString());
+          console.log('Set partnerId from user in list:', userId.toString(), 'Role:', currentUser.role);
+        }
+      } else {
+        // Try to find Partner document ID
+        loadPartnerId(currentUser);
+      }
+    }
+    
     loadRequests();
   }, [filterStatus]);
+
+  const loadPartnerId = async (currentUser: any) => {
+    try {
+      const partnersResponse = await api.partners.getAll() as any;
+      const partners = partnersResponse.data || partnersResponse || [];
+      const partner = Array.isArray(partners) 
+        ? partners.find((p: any) => 
+            p.email?.toLowerCase() === currentUser.email?.toLowerCase() || 
+            p.userId === currentUser.id ||
+            p.userId?.toString() === currentUser.id
+          )
+        : null;
+      
+      if (partner) {
+        setPartnerId(partner._id);
+      }
+    } catch (error) {
+      console.error('Error loading partner:', error);
+    }
+  };
 
   const loadRequests = async () => {
     try {
@@ -97,9 +151,135 @@ function DeliveryRequestsList() {
     return new Date(dateString).toLocaleString();
   };
 
+  const handleAcceptRequest = async (requestId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation to detail page
+    
+    if (!user) {
+      setMessage({ 
+        type: 'error', 
+        text: 'Please log in to accept delivery requests' 
+      });
+      return;
+    }
+
+    // Check if user is a delivery partner
+    const isPartner = user.role === 'delivery_partner' || 
+                     user.role === 'acha_sisters_delivery_partner' ||
+                     user.role === 'movers_packers' ||
+                     user.role === 'gift_delivery_partner';
+    
+    if (!isPartner && !partnerId) {
+      setMessage({ 
+        type: 'error', 
+        text: 'You need to be registered as a delivery partner to accept requests. Please complete your partner registration.' 
+      });
+      return;
+    }
+
+    // Show price input dialog
+    setSelectedRequestId(requestId);
+    setOfferPrice('');
+    setEstimatedDeliveryTime('');
+    setShowPriceDialog(true);
+  };
+
+  const handleSubmitAcceptRequest = async () => {
+    if (!selectedRequestId || !user) return;
+
+    // Validate price
+    const price = parseFloat(offerPrice);
+    if (isNaN(price) || price <= 0) {
+      setMessage({ 
+        type: 'error', 
+        text: 'Please enter a valid price (greater than 0)' 
+      });
+      return;
+    }
+
+    setShowPriceDialog(false);
+    setAcceptingRequest(selectedRequestId);
+    setMessage(null);
+
+    try {
+      // For role-based delivery partners, use the User ID directly
+      // Handle both _id and id fields from user object
+      const userId = user._id || user.id;
+      let currentPartnerId = partnerId || userId;
+      
+      // Ensure we have a valid partner ID
+      if (!currentPartnerId) {
+        setMessage({ 
+          type: 'error', 
+          text: 'Unable to identify your partner account. Please ensure you are logged in as a registered delivery partner.' 
+        });
+        return;
+      }
+      
+      console.log('Accepting request with:', { 
+        orderId: selectedRequestId, 
+        partnerId: currentPartnerId, 
+        partnerIdType: typeof currentPartnerId,
+        userRole: user.role,
+        offerPrice: price 
+      });
+
+      const response = await api.orders.partnerAcceptRequest({
+        orderId: selectedRequestId,
+        partnerId: currentPartnerId.toString(), // Ensure it's a string
+        offerPrice: price,
+        estimatedDeliveryTime: estimatedDeliveryTime || undefined
+      }) as any;
+
+      if (response.status === 'success') {
+        setMessage({ type: 'success', text: `Request accepted successfully! Order assigned to you with price ${price} ETB. Buyer has been notified.` });
+        // Refresh the list
+        setTimeout(() => {
+          loadRequests();
+          setMessage(null);
+        }, 2000);
+      } else {
+        setMessage({ type: 'error', text: response.message || 'Failed to accept request' });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to accept request' });
+    } finally {
+      setAcceptingRequest(null);
+      setSelectedRequestId(null);
+      setOfferPrice('');
+      setEstimatedDeliveryTime('');
+    }
+  };
+
+  const isDeliveryPartner = user && (
+    user.role === 'delivery_partner' || 
+    user.role === 'acha_sisters_delivery_partner' ||
+    user.role === 'movers_packers' ||
+    user.role === 'gift_delivery_partner' ||
+    !!partnerId
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Message */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p>{message.text}</p>
+              </div>
+              <button
+                onClick={() => setMessage(null)}
+                className="ml-4 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -241,6 +421,70 @@ function DeliveryRequestsList() {
           )}
         </div>
       </div>
+
+      {/* Price Input Dialog */}
+      {showPriceDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Accept Delivery Request</h2>
+            <p className="text-gray-600 mb-6">
+              Please provide your delivery price and estimated delivery time. The buyer will be notified with this information.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Delivery Price (ETB) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={offerPrice}
+                  onChange={(e) => setOfferPrice(e.target.value)}
+                  placeholder="Enter delivery price"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estimated Delivery Time (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={estimatedDeliveryTime}
+                  onChange={(e) => setEstimatedDeliveryTime(e.target.value)}
+                  placeholder="e.g., 2-3 days, 1 week"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPriceDialog(false);
+                  setSelectedRequestId(null);
+                  setOfferPrice('');
+                  setEstimatedDeliveryTime('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitAcceptRequest}
+                disabled={!offerPrice || parseFloat(offerPrice) <= 0}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Accept & Send Price
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -633,6 +633,9 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Track if Google OAuth is initialized
+let isGoogleOAuthInitialized = false;
+
 /**
  * Initialize Google OAuth Strategy
  */
@@ -643,14 +646,20 @@ const initializeGoogleStrategy = () => {
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.warn('⚠️  Google OAuth credentials not found. Google login will be disabled.');
+    console.warn('   Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file');
+    isGoogleOAuthInitialized = false;
     return;
   }
 
-  passport.use(new GoogleStrategy({
-    clientID: GOOGLE_CLIENT_ID,
-    clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: GOOGLE_CALLBACK_URL
-  }, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Remove existing strategy if it exists
+    passport.unuse('google');
+    
+    passport.use('google', new GoogleStrategy({
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: GOOGLE_CALLBACK_URL
+    }, async (accessToken, refreshToken, profile, done) => {
     try {
       // Find user by googleId or email
       let user = await User.findOne({ 
@@ -661,6 +670,11 @@ const initializeGoogleStrategy = () => {
       });
 
       if (user) {
+        // RESTRICTION: Only allow Google login for users with 'individual' role
+        if (user.role !== 'individual') {
+          return done(new Error(`Google login is only available for individual users. Your account has the role: ${user.role}. Please use email/password login instead.`), null);
+        }
+
         // Update googleId if not set
         if (!user.googleId) {
           user.googleId = profile.id;
@@ -669,7 +683,7 @@ const initializeGoogleStrategy = () => {
         return done(null, user);
       }
 
-      // Create new user
+      // Create new user with 'individual' role only
       let userId;
       try {
         userId = await generateUserId('individual');
@@ -681,7 +695,7 @@ const initializeGoogleStrategy = () => {
         name: profile.displayName || profile.name?.givenName + ' ' + profile.name?.familyName || 'User',
         email: profile.emails[0].value.toLowerCase(),
         googleId: profile.id,
-        role: 'individual',
+        role: 'individual', // Always create as individual role
         status: 'active',
         userId: userId
       });
@@ -706,6 +720,13 @@ const initializeGoogleStrategy = () => {
       return done(error, null);
     }
   }));
+    
+    isGoogleOAuthInitialized = true;
+    console.log('✅ Google OAuth strategy initialized successfully');
+  } catch (error) {
+    console.error('❌ Error initializing Google OAuth strategy:', error);
+    isGoogleOAuthInitialized = false;
+  }
 };
 
 // Initialize Google Strategy
@@ -714,26 +735,45 @@ initializeGoogleStrategy();
 /**
  * Google OAuth authentication - redirects to Google
  */
-const googleAuth = passport.authenticate('google', {
-  scope: ['profile', 'email']
-});
+const googleAuth = (req, res, next) => {
+  // Check if Google OAuth is initialized
+  if (!isGoogleOAuthInitialized) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Google OAuth is not configured. Please contact administrator.')}`);
+  }
+
+  // Use passport to authenticate with Google
+  passport.authenticate('google', {
+    scope: ['profile', 'email']
+  })(req, res, next);
+};
 
 /**
  * Google OAuth callback - handles the response from Google
+ * RESTRICTED: Only allows login for users with 'individual' role
  */
 const googleCallback = async (req, res) => {
   passport.authenticate('google', { session: false }, async (err, user) => {
     if (err) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(err.message)}`);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent(err.message)}`);
     }
 
     if (!user) {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent('Authentication failed')}`);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Authentication failed')}`);
+    }
+
+    // RESTRICTION: Double-check role (should already be checked in strategy, but extra safety)
+    if (user.role !== 'individual') {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Google login is only available for individual users. Please use email/password login instead.')}`);
     }
 
     // Check if user is active
     if (user.status !== 'active') {
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent('Your account is not active. Please contact administrator.')}`);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Your account is not active. Please contact administrator.')}`);
     }
 
     // Update last login
@@ -744,7 +784,7 @@ const googleCallback = async (req, res) => {
     const token = generateToken(user._id);
 
     // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     return res.redirect(`${frontendUrl}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
       id: user._id,
       name: user.name,

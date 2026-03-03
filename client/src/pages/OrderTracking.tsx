@@ -42,7 +42,7 @@ function OrderTracking() {
     }
   };
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (retryCount = 0) => {
     if (!orderId) return;
     
     try {
@@ -52,10 +52,74 @@ function OrderTracking() {
         setOrder(response.data);
         setError(null);
       } else {
-        setError(response.message || 'Failed to fetch order');
+        // Check if it's a 404 error - might be a timing issue, retry up to 3 times
+        if ((response.message?.includes('not found') || response.message?.includes('Order not found')) && retryCount < 3) {
+          console.log(`Order not found (attempt ${retryCount + 1}/3), retrying in 2 seconds...`);
+          setTimeout(async () => {
+            await fetchOrder(retryCount + 1);
+          }, 2000);
+          return; // Don't set loading to false yet
+        } else {
+          // If we've exhausted retries, try to get order from transaction
+          if (retryCount >= 3) {
+            try {
+              const transactionResponse = await api.transactions.getByOrder(orderId) as { status?: string; data?: any[] };
+              if (transactionResponse.status === 'success' && transactionResponse.data && transactionResponse.data.length > 0) {
+                const tx = transactionResponse.data[0];
+                if (tx.orderId) {
+                  const actualOrderId = typeof tx.orderId === 'string' ? tx.orderId : tx.orderId.toString();
+                  console.log('Found order ID from transaction, trying:', actualOrderId);
+                  const orderResponse = await api.orders.getById(actualOrderId) as { status?: string; data?: any; message?: string };
+                  if (orderResponse.status === 'success') {
+                    setOrder(orderResponse.data);
+                    setError(null);
+                    // Update URL to correct order ID
+                    window.history.replaceState({}, '', `/orders/track/${actualOrderId}`);
+                    return;
+                  }
+                }
+              }
+            } catch (txErr) {
+              console.error('Error fetching order from transaction:', txErr);
+            }
+          }
+          setError(response.message || 'Order not found. Please check the order ID and try again.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      // Check if it's a 404 error - might be a timing issue, retry up to 3 times
+      if ((err.message?.includes('not found') || err.message?.includes('Order not found') || err.message?.includes('404')) && retryCount < 3) {
+        console.log(`Order not found in catch (attempt ${retryCount + 1}/3), retrying in 2 seconds...`);
+        setTimeout(async () => {
+          await fetchOrder(retryCount + 1);
+        }, 2000);
+        return; // Don't set loading to false yet
+      } else {
+        // If we've exhausted retries, try to get order from transaction
+        if (retryCount >= 3) {
+          try {
+            const transactionResponse = await api.transactions.getByOrder(orderId) as { status?: string; data?: any[] };
+            if (transactionResponse.status === 'success' && transactionResponse.data && transactionResponse.data.length > 0) {
+              const tx = transactionResponse.data[0];
+              if (tx.orderId) {
+                const actualOrderId = typeof tx.orderId === 'string' ? tx.orderId : tx.orderId.toString();
+                console.log('Found order ID from transaction, trying:', actualOrderId);
+                const orderResponse = await api.orders.getById(actualOrderId) as { status?: string; data?: any; message?: string };
+                if (orderResponse.status === 'success') {
+                  setOrder(orderResponse.data);
+                  setError(null);
+                  // Update URL to correct order ID
+                  window.history.replaceState({}, '', `/orders/track/${actualOrderId}`);
+                  return;
+                }
+              }
+            }
+          } catch (txErr) {
+            console.error('Error fetching order from transaction:', txErr);
+          }
+        }
+        setError(err.message || 'An error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -123,13 +187,29 @@ function OrderTracking() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <p className="text-red-800">{error}</p>
-            <button
-              onClick={() => navigate('/')}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Go Home
-            </button>
+            <p className="text-red-800 mb-2">{error}</p>
+            {error.includes('not found') && (
+              <p className="text-sm text-red-600 mb-4">
+                The order might still be processing. Please wait a moment and try again.
+              </p>
+            )}
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchOrder();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Go Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -211,7 +291,7 @@ function OrderTracking() {
                   {order.paymentStatus ? order.paymentStatus.toUpperCase() : 'PENDING'}
                 </span>
               </div>
-              {transaction && transaction.status === 'completed' && (
+              {(transaction && (transaction.status === 'completed' || order.paymentStatus === 'paid' || order.paymentStatus === 'processing')) && (
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowInvoice(true)}
@@ -222,7 +302,7 @@ function OrderTracking() {
                     </svg>
                     View Invoice
                   </button>
-                  {order.deliveryMethod === 'gift_delivery_partner' && order.giftCardUrl && (
+                  {order.deliveryMethod === 'gift_delivery_partner' && (
                     <button
                       onClick={async () => {
                         try {
@@ -231,12 +311,13 @@ function OrderTracking() {
                           setError(error.message || 'Failed to download gift card');
                         }
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2"
+                      disabled={!order.giftCardUrl}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Download Gift Card
+                      {order.giftCardUrl ? 'Download Gift Card' : 'Gift Card Generating...'}
                     </button>
                   )}
                 </div>

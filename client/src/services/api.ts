@@ -473,10 +473,10 @@ export const api = {
         body: JSON.stringify({ orderId, travelerId }),
       });
     },
-    assignToPartner: async (orderId: string, partnerId: string) => {
+    assignToPartner: async (orderId: string, partnerId: string, offerId?: string) => {
       return request('/orders/assign/partner', {
         method: 'POST',
-        body: JSON.stringify({ orderId, partnerId }),
+        body: JSON.stringify({ orderId, partnerId, offerId }),
       });
     },
     updateStatus: async (orderId: string, status: string, message?: string, location?: string) => {
@@ -552,7 +552,7 @@ export const api = {
         body: JSON.stringify(data),
       });
     },
-    partnerAcceptRequest: async (data: { orderId: string; partnerId: string }) => {
+    partnerAcceptRequest: async (data: { orderId: string; partnerId: string; offerPrice?: number; estimatedDeliveryTime?: string }) => {
       return request('/orders/accept', {
         method: 'POST',
         body: JSON.stringify(data),

@@ -61,11 +61,15 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
   const handleGoogleSignIn = async () => {
     try {
+      setSignInError(null);
       // Redirect to Google OAuth endpoint
       const googleAuthUrl = api.users.getGoogleAuthUrl();
-      window.location.href = googleAuthUrl;
+      console.log('Redirecting to Google OAuth:', googleAuthUrl);
+      // Use window.location.replace to ensure redirect happens
+      window.location.replace(googleAuthUrl);
     } catch (error: any) {
-      setSignInError(error.message || 'Failed to initiate Google sign in');
+      console.error('Google sign in error:', error);
+      setSignInError(error.message || 'Failed to initiate Google sign in. Please check your connection and try again.');
     }
   };
 
@@ -257,7 +261,12 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
             {/* Social Sign In Buttons */}
             <div className="mt-4 space-y-2">
               <button
-                onClick={handleGoogleSignIn}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleGoogleSignIn();
+                }}
                 className="w-full py-2 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">

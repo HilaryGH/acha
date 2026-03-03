@@ -95,55 +95,74 @@ function FindDeliveryItem() {
       setLoading(true);
       setError(null);
       
-      // Fetch all orders that are for partner delivery methods
+      // Fetch only unassigned requests using getAvailableRequests API
       let allRequests: DeliveryRequest[] = [];
       
-      // Try to get available requests first (if API supports it)
       try {
         const params: any = {};
-        if (partnerId) {
+        // Use user ID as partnerId if user is a delivery partner (for role-based partners)
+        const isUserDeliveryPartner = user && (
+          user.role === 'delivery_partner' || 
+          user.role === 'acha_sisters_delivery_partner' ||
+          user.role === 'movers_packers' ||
+          user.role === 'gift_delivery_partner'
+        );
+        
+        if (isUserDeliveryPartner && user.id) {
+          params.partnerId = user.id;
+        } else if (partnerId) {
           params.partnerId = partnerId;
         }
+        
         const availableRequestsResponse = await api.orders.getAvailableRequests(params) as { status?: string; data?: DeliveryRequest[]; message?: string; count?: number };
         if (availableRequestsResponse.status === 'success') {
           allRequests = availableRequestsResponse.data || [];
         }
       } catch (err) {
         console.log('getAvailableRequests not available, fetching all orders instead');
-      }
-      
-      // If no requests from getAvailableRequests, fetch all orders and filter
-      if (allRequests.length === 0) {
-        const ordersResponse = await api.orders.getAll() as { status?: string; data?: DeliveryRequest[] | { orders?: DeliveryRequest[] }; message?: string };
-        
-        if (ordersResponse.status === 'success') {
-          const ordersData = ordersResponse.data;
-          allRequests = Array.isArray(ordersData) 
-            ? ordersData 
-            : (ordersData as any)?.orders || [];
+        // Fallback: fetch all orders and filter
+        try {
+          const ordersResponse = await api.orders.getAll() as { status?: string; data?: DeliveryRequest[] | { orders?: DeliveryRequest[] }; message?: string };
+          
+          if (ordersResponse.status === 'success') {
+            const ordersData = ordersResponse.data;
+            allRequests = Array.isArray(ordersData) 
+              ? ordersData 
+              : (ordersData as any)?.orders || [];
+          }
+        } catch (fallbackErr) {
+          console.error('Error fetching orders:', fallbackErr);
+          throw fallbackErr;
         }
       }
       
       console.log('Total delivery requests fetched:', allRequests.length);
       
-      // Filter to show ONLY unassigned requests (no assignedPartnerId and status is pending/offers_received)
+      // Strictly filter to show ONLY unassigned requests
       const unassignedRequests = allRequests.filter((request: DeliveryRequest) => {
         // Only show requests that:
-        // 1. Have NO assignedPartnerId (truly unassigned)
+        // 1. Have NO assignedPartnerId at all (truly unassigned - check both null and undefined)
+        const hasNoAssignment = !request.assignedPartnerId || 
+                                request.assignedPartnerId === null || 
+                                request.assignedPartnerId === undefined;
+        
         // 2. Status is pending, offers_received, or active (not assigned, completed, cancelled, etc.)
-        // 3. Are for partner delivery methods (not traveler)
-        const isPartnerDelivery = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'].includes(request.deliveryMethod);
-        const isUnassigned = !request.assignedPartnerId;
         const isPendingStatus = ['pending', 'offers_received', 'active'].includes(request.status?.toLowerCase() || '');
         
-        return isPartnerDelivery && isUnassigned && isPendingStatus;
+        // 3. Are for partner delivery methods (not traveler)
+        const isPartnerDelivery = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'].includes(request.deliveryMethod);
+        
+        // 4. Partner acceptance status is not 'accepted' (if it exists)
+        const notAccepted = !request.partnerAcceptanceStatus || request.partnerAcceptanceStatus !== 'accepted';
+        
+        return isPartnerDelivery && hasNoAssignment && isPendingStatus && notAccepted;
       });
       
-      console.log('Unassigned delivery requests:', unassignedRequests.length);
+      console.log('Unassigned delivery requests after filtering:', unassignedRequests.length);
       setRequests(unassignedRequests);
     } catch (err: any) {
       console.error('Error fetching delivery requests:', err);
-      setError(err.message || 'An error occurred');
+      setError(err.message || 'An error occurred while fetching delivery requests');
     } finally {
       setLoading(false);
     }
@@ -517,7 +536,13 @@ function FindDeliveryItem() {
                         </button>
                       )}
                       <button
-                        onClick={() => navigate(`/delivery-requests/${request._id}`)}
+                        onClick={() => {
+                          if (request._id) {
+                            navigate(`/delivery-requests/${request._id}`);
+                          } else {
+                            setMessage({ type: 'error', text: 'Invalid request ID. Please try again.' });
+                          }
+                        }}
                         className="w-full mt-2 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                       >
                         View Details →
@@ -526,7 +551,13 @@ function FindDeliveryItem() {
                   ) : (
                     <div className="mt-4">
                       <button
-                        onClick={() => navigate(`/delivery-requests/${request._id}`)}
+                        onClick={() => {
+                          if (request._id) {
+                            navigate(`/delivery-requests/${request._id}`);
+                          } else {
+                            setMessage({ type: 'error', text: 'Invalid request ID. Please try again.' });
+                          }
+                        }}
                         className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                       >
                         View Details →

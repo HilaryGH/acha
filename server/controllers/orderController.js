@@ -357,62 +357,48 @@ exports.createOrder = async (req, res) => {
         partnerRole = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'];
       }
       
-      // Find users with delivery partner roles matching location
+      // Find users with delivery partner roles - first get all active partners with matching role
       const roleQuery = Array.isArray(partnerRole) ? { $in: partnerRole } : partnerRole;
-      let matchingUsers = await User.find({
+      let allMatchingUsers = await User.find({
         role: roleQuery,
-        status: 'active',
-        $or: [
-          { city: { $regex: new RegExp(buyerCity, 'i') } },
-          { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } },
-          { location: { $regex: new RegExp(buyerCity, 'i') } }
-        ]
-      }).limit(50);
+        status: 'active'
+      }).limit(100); // Get more candidates to filter
 
-      console.log(`Found ${matchingUsers.length} potential delivery partners (users) with role matching ${deliveryMethod} in ${buyerCity}`);
+      console.log(`Found ${allMatchingUsers.length} total active delivery partners with role matching ${deliveryMethod}`);
+
+      // Filter by city match using the locationsMatch function (more flexible than regex)
+      let matchingUsers = allMatchingUsers.filter(user => {
+        const city = user.city || user.primaryLocation || user.location || '';
+        return locationsMatch(city, buyerCity);
+      });
+
+      console.log(`Found ${matchingUsers.length} delivery partners (users) matching city ${buyerCity}`);
       if (matchingUsers.length > 0) {
         console.log(`Partner details:`, matchingUsers.map(u => ({
           name: u.name,
           role: u.role,
           city: u.city,
           primaryLocation: u.primaryLocation,
+          location: u.location,
           hasDistancePricing: !!(u.distancePricing && Array.isArray(u.distancePricing) && u.distancePricing.length > 0),
           distancePricingCount: u.distancePricing?.length || 0
         })));
       }
 
-      // Filter by location match, date availability, and distancePricing requirement
+      // Include all city-matched partners (don't filter out those without distancePricing)
+      // Partners without distancePricing can still be matched and provide pricing when accepting
       const suitableUsers = matchingUsers.filter(user => {
-        const locationMatch = locationsMatch(user.city, buyerCity) || 
-                             locationsMatch(user.primaryLocation, buyerCity) ||
-                             locationsMatch(user.location, buyerCity);
+        // Check if partner has distancePricing (for logging purposes)
+        const hasDistancePricing = user.distancePricing && 
+                                   Array.isArray(user.distancePricing) && 
+                                   user.distancePricing.length > 0;
         
-        // For delivery_partner methods, only include partners with distancePricing
-        // Gift delivery partners don't require distancePricing (they have giftTypes pricing)
-        const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
-                                       deliveryMethod === 'acha_sisters_delivery_partner' ||
-                                       deliveryMethod === 'movers_packers';
-        
-        if (requiresDistancePricing) {
-          const hasDistancePricing = user.distancePricing && 
-                                     Array.isArray(user.distancePricing) && 
-                                     user.distancePricing.length > 0;
-          if (!hasDistancePricing) {
-            console.log(`Partner ${user.name} (${user.email}) filtered out: missing distancePricing`);
-          }
-          if (!locationMatch) {
-            console.log(`Partner ${user.name} (${user.email}) filtered out: location mismatch (partner: ${user.city || user.primaryLocation || user.location}, buyer: ${buyerCity})`);
-          }
-          return locationMatch && hasDistancePricing;
+        if (!hasDistancePricing) {
+          console.log(`Partner ${user.name} (${user.email}) matched by city but doesn't have distancePricing configured - they can provide pricing when accepting`);
         }
         
-        // For partners, we can check if they have availability settings
-        // If preferredDate is set, check if partner is available around that time
-        // (This is a basic check - you can enhance this with actual availability data)
-        if (!locationMatch) {
-          console.log(`Partner ${user.name} (${user.email}) filtered out: location mismatch (partner: ${user.city || user.primaryLocation || user.location}, buyer: ${buyerCity})`);
-        }
-        return locationMatch;
+        // All city-matched partners pass through - they can provide pricing when accepting the order
+        return true;
       });
 
       // Convert to match format
@@ -435,38 +421,37 @@ exports.createOrder = async (req, res) => {
       partnerMatches.push(...userMatches);
 
       // Also check Partner model for legacy partners and gift delivery partners
-      const legacyPartners = await Partner.find({
+      // First get all approved partners with matching registration type
+      const allLegacyPartners = await Partner.find({
         status: 'approved',
         $or: [
           { registrationType: 'Invest/Partner', partner: 'Delivery Partner' },
           { registrationType: 'Gift Delivery Partner' }
-        ],
-        $or: [
-          { city: { $regex: new RegExp(buyerCity, 'i') } },
-          { primaryLocation: { $regex: new RegExp(buyerCity, 'i') } }
         ]
-      }).limit(50);
+      }).limit(100); // Get more candidates to filter
 
-      console.log(`Found ${legacyPartners.length} potential legacy partners in ${buyerCity}`);
+      console.log(`Found ${allLegacyPartners.length} total approved legacy partners`);
+
+      // Filter by city match using the locationsMatch function (more flexible than regex)
+      const legacyPartners = allLegacyPartners.filter(partner => {
+        const city = partner.city || partner.primaryLocation || '';
+        return locationsMatch(city, buyerCity);
+      });
+
+      console.log(`Found ${legacyPartners.length} legacy partners matching city ${buyerCity}`);
 
       const suitableLegacyPartners = legacyPartners.filter(partner => {
-        const locationMatch = locationsMatch(partner.city, buyerCity) || 
-                             locationsMatch(partner.primaryLocation, buyerCity);
+        // Check if partner has distancePricing (for logging purposes)
+        const hasDistancePricing = partner.distancePricing && 
+                                   Array.isArray(partner.distancePricing) && 
+                                   partner.distancePricing.length > 0;
         
-        // For delivery_partner methods, only include partners with distancePricing
-        // Gift delivery partners don't require distancePricing (they have giftTypes pricing)
-        const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
-                                       deliveryMethod === 'acha_sisters_delivery_partner' ||
-                                       deliveryMethod === 'movers_packers';
-        
-        if (requiresDistancePricing) {
-          const hasDistancePricing = partner.distancePricing && 
-                                     Array.isArray(partner.distancePricing) && 
-                                     partner.distancePricing.length > 0;
-          return locationMatch && hasDistancePricing;
+        if (!hasDistancePricing) {
+          console.log(`Legacy partner ${partner.name || partner.companyName} (${partner.email}) matched by city but doesn't have distancePricing configured - they can provide pricing when accepting`);
         }
         
-        return locationMatch;
+        // All city-matched partners pass through - they can provide pricing when accepting the order
+        return true;
       });
 
       const legacyMatches = suitableLegacyPartners.map(p => ({
@@ -628,22 +613,15 @@ exports.createOrder = async (req, res) => {
           } else {
             // Assign to User model
             const partner = await User.findById(partnerId);
-            // For delivery_partner methods, ensure partner has distancePricing
-            const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
-                                           deliveryMethod === 'acha_sisters_delivery_partner' ||
-                                           deliveryMethod === 'movers_packers';
-            const hasDistancePricing = !requiresDistancePricing || 
-                                       (partner.distancePricing && 
-                                        Array.isArray(partner.distancePricing) && 
-                                        partner.distancePricing.length > 0);
             
-            if (partner && partner.role === deliveryMethod && partner.status === 'active' && hasDistancePricing) {
+            // Allow partners without distancePricing to be assigned - they can provide pricing when accepting
+            if (partner && partner.role === deliveryMethod && partner.status === 'active') {
               order.assignedPartnerId = partnerId;
               order.status = 'assigned';
               order.partnerAcceptanceStatus = 'pending';
               const partnerName = partner.name || partner.companyName || 'Partner';
               
-              // Calculate delivery fee from partner's distance pricing
+              // Calculate delivery fee from partner's distance pricing (if available)
               // Use pickup location (where item is picked up from) and delivery location (where item is delivered to)
               const pickupLocation = order.pickupLocation?.address 
                 ? `${order.pickupLocation.address}, ${order.pickupLocation.city || order.pickupLocation.address}`
@@ -653,7 +631,12 @@ exports.createOrder = async (req, res) => {
                 ? `${order.deliveryLocation.address}, ${order.deliveryLocation.city || order.deliveryLocation.address}`
                 : (order.deliveryLocation?.city || order.orderInfo?.deliveryDestination || buyerCity);
               
-              if (pickupLocation && deliveryDestination) {
+              // Only calculate fee if partner has distancePricing configured
+              const hasDistancePricing = partner.distancePricing && 
+                                         Array.isArray(partner.distancePricing) && 
+                                         partner.distancePricing.length > 0;
+              
+              if (hasDistancePricing && pickupLocation && deliveryDestination) {
                 // Calculate distance from partner location to pickup location, then from pickup to delivery
                 // For delivery partners, distance is from pickup to delivery (they pick up from buyer and deliver)
                 const calculatedFee = await calculateDeliveryFeeFromDistancePricing(partner, pickupLocation, deliveryDestination);
@@ -665,6 +648,8 @@ exports.createOrder = async (req, res) => {
                   order.pricing.deliveryFee = calculatedFee;
                   console.log(`Calculated delivery fee ${calculatedFee} ETB for order ${order.uniqueId} from partner ${partnerName}'s distance pricing`);
                 }
+              } else if (!hasDistancePricing) {
+                console.log(`Partner ${partnerName} doesn't have distancePricing configured - they will provide pricing when accepting the order`);
               }
               
               await order.addTrackingUpdate('assigned', `Order automatically assigned to ${deliveryMethod}: ${partnerName}`, '');
@@ -700,16 +685,9 @@ exports.createOrder = async (req, res) => {
         } else {
           // For legacy partner delivery, assign to Partner model
           const partner = await Partner.findById(partnerId);
-          // For delivery_partner methods, ensure partner has distancePricing
-          const requiresDistancePricing = deliveryMethod === 'delivery_partner' || 
-                                         deliveryMethod === 'acha_sisters_delivery_partner' ||
-                                         deliveryMethod === 'movers_packers';
-          const hasDistancePricing = !requiresDistancePricing || 
-                                     (partner.distancePricing && 
-                                      Array.isArray(partner.distancePricing) && 
-                                      partner.distancePricing.length > 0);
           
-          if (partner && partner.status === 'approved' && hasDistancePricing) {
+          // Allow partners without distancePricing to be assigned - they can provide pricing when accepting
+          if (partner && partner.status === 'approved') {
             order.assignedPartnerId = partnerId;
             order.status = 'assigned';
             order.partnerAcceptanceStatus = 'pending';
@@ -840,26 +818,71 @@ exports.getAllOrders = async (req, res) => {
 // Get single order by ID
 exports.getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate('buyerId', 'name email phone currentCity location')
-      .populate('assignedTravelerId', 'name email phone currentLocation destinationCity departureDate arrivalDate')
-      .populate('assignedPartnerId', 'name companyName email phone city primaryLocation');
+    // The route parameter is 'orderId', not 'id'
+    const id = req.params.orderId || req.params.id;
+    console.log(`Fetching order with ID: ${id}`);
+    
+    // Check if id is a valid MongoDB ObjectId
+    const mongoose = require('mongoose');
+    let order = null;
+    
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      // Try to find by _id first
+      console.log(`ID is valid ObjectId, searching by _id: ${id}`);
+      order = await Order.findById(id)
+        .populate('buyerId', 'name email phone currentCity location')
+        .populate('assignedTravelerId', 'name email phone currentLocation destinationCity departureDate arrivalDate')
+        .populate('assignedPartnerId', 'name companyName email phone city primaryLocation');
+      
+      if (order) {
+        console.log(`Order found by _id: ${order.uniqueId || order._id}`);
+      } else {
+        console.log(`Order not found by _id: ${id}`);
+      }
+    } else {
+      console.log(`ID is not a valid ObjectId, will try uniqueId: ${id}`);
+    }
+    
+    // If not found by _id, try to find by uniqueId
+    if (!order) {
+      console.log(`Trying to find order by uniqueId: ${id}`);
+      order = await Order.findOne({ uniqueId: id })
+        .populate('buyerId', 'name email phone currentCity location')
+        .populate('assignedTravelerId', 'name email phone currentLocation destinationCity departureDate arrivalDate')
+        .populate('assignedPartnerId', 'name companyName email phone city primaryLocation');
+      
+      if (order) {
+        console.log(`Order found by uniqueId: ${order.uniqueId || order._id}`);
+      } else {
+        console.log(`Order not found by uniqueId: ${id}`);
+      }
+    }
 
     if (!order) {
+      console.log(`Order not found with ID: ${id}`);
       return res.status(404).json({
         status: 'error',
         message: 'Order not found'
       });
     }
 
+    console.log(`Successfully fetched order: ${order.uniqueId || order._id}, status: ${order.status}`);
     res.status(200).json({
       status: 'success',
       data: order
     });
   } catch (error) {
+    console.error('Error fetching order by ID:', error);
+    // Handle invalid ObjectId errors more gracefully
+    if (error.name === 'CastError' || error.message?.includes('Cast to ObjectId failed')) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid order ID format'
+      });
+    }
     res.status(500).json({
       status: 'error',
-      message: error.message
+      message: error.message || 'Failed to fetch order'
     });
   }
 };
@@ -1421,11 +1444,11 @@ exports.getAvailableRequests = async (req, res) => {
     }
     
     // Build filter - make pickupLocation optional for public view
-    // Show all orders with partner delivery methods, regardless of location data
+    // Show only pending orders so delivery partners can browse and accept them
     // Filter out orders that are already assigned and accepted (show unmatched requests)
     const filter = {
       deliveryMethod: { $in: allowedDeliveryMethods },
-      status: { $nin: ['completed', 'cancelled'] }, // Exclude only completed and cancelled orders
+      status: 'pending', // Only show pending orders for delivery partners to browse and accept
       // Filter to show only unmatched requests:
       // - No assignedPartnerId, OR
       // - assignedPartnerId exists but partnerAcceptanceStatus is not 'accepted' (pending/rejected)
@@ -1639,13 +1662,24 @@ exports.submitPartnerOffer = async (req, res) => {
 // Partner accepts/assigns themselves to a delivery request directly
 exports.partnerAcceptRequest = async (req, res) => {
   try {
-    const { orderId, partnerId } = req.body;
+    const { orderId, partnerId, offerPrice: providedOfferPrice, estimatedDeliveryTime: providedEstimatedDeliveryTime } = req.body;
 
     if (!orderId || !partnerId) {
       return res.status(400).json({
         status: 'error',
         message: 'Order ID and Partner ID are required'
       });
+    }
+
+    // Validate offer price if provided
+    if (providedOfferPrice !== undefined && providedOfferPrice !== null) {
+      const price = parseFloat(providedOfferPrice);
+      if (isNaN(price) || price <= 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Offer price must be a valid number greater than 0'
+        });
+      }
     }
 
     const Transaction = require('../models/Transaction');
@@ -1682,17 +1716,81 @@ exports.partnerAcceptRequest = async (req, res) => {
     // Verify partner exists - check User model for role-based partners, Partner model for others
     const User = require('../models/User');
     let partner = null;
+    
+    console.log(`Looking up partner with ID: ${partnerId} (type: ${typeof partnerId}) for delivery method: ${order.deliveryMethod}`);
+    
     if (order.deliveryMethod === 'delivery_partner' || order.deliveryMethod === 'acha_sisters_delivery_partner' || 
         order.deliveryMethod === 'movers_packers' || order.deliveryMethod === 'gift_delivery_partner') {
-      partner = await User.findById(partnerId);
-      if (!partner || partner.role !== order.deliveryMethod) {
+      // For role-based delivery methods, check User model
+      // Try multiple lookup methods
+      const mongoose = require('mongoose');
+      
+      // Method 1: Find by _id (standard MongoDB ObjectId)
+      // Convert partnerId to string and check if it's a valid ObjectId
+      const partnerIdStr = partnerId.toString();
+      if (mongoose.Types.ObjectId.isValid(partnerIdStr)) {
+        try {
+          partner = await User.findById(partnerIdStr);
+          console.log(`User lookup by _id (${partnerIdStr}) result: ${partner ? `Found user with role: ${partner.role}, email: ${partner.email}` : 'User not found'}`);
+        } catch (err) {
+          console.error(`Error looking up user by _id: ${err.message}`);
+        }
+      } else {
+        console.log(`PartnerId ${partnerIdStr} is not a valid MongoDB ObjectId`);
+      }
+      
+      // Method 2: Find by userId field (if partnerId is a string userId)
+      if (!partner) {
+        try {
+          partner = await User.findOne({ userId: partnerIdStr });
+          console.log(`User lookup by userId field (${partnerIdStr}) result: ${partner ? `Found user with role: ${partner.role}, email: ${partner.email}` : 'User not found'}`);
+        } catch (err) {
+          console.error(`Error looking up user by userId: ${err.message}`);
+        }
+      }
+      
+      // Method 3: Find by email (if partnerId is actually an email)
+      if (!partner && partnerIdStr.includes('@')) {
+        try {
+          partner = await User.findOne({ email: partnerIdStr.toLowerCase() });
+          console.log(`User lookup by email result: ${partner ? `Found user with role: ${partner.role}` : 'User not found'}`);
+        } catch (err) {
+          console.error(`Error looking up user by email: ${err.message}`);
+        }
+      }
+      
+      if (!partner) {
+        console.error(`Failed to find partner with ID: ${partnerId} for delivery method: ${order.deliveryMethod}`);
         return res.status(404).json({
           status: 'error',
-          message: 'Partner not found or role mismatch'
+          message: 'Partner not found. Please ensure you are logged in as a registered delivery partner. If the issue persists, please log out and log back in.'
+        });
+      }
+      
+      // Check if role matches - must be exact match for role-based delivery methods
+      const isDeliveryPartnerRole = ['delivery_partner', 'acha_sisters_delivery_partner', 'movers_packers', 'gift_delivery_partner'].includes(partner.role);
+      
+      if (!isDeliveryPartnerRole) {
+        console.log(`User is not a delivery partner role. User role: ${partner.role}, required: ${order.deliveryMethod}`);
+        return res.status(403).json({
+          status: 'error',
+          message: `You must be registered as a delivery partner to accept orders. Your current role is: ${partner.role}`
+        });
+      }
+      
+      // Role must match the order's delivery method exactly
+      if (partner.role !== order.deliveryMethod) {
+        console.log(`Role mismatch: partner role is ${partner.role}, order delivery method is ${order.deliveryMethod}`);
+        return res.status(403).json({
+          status: 'error',
+          message: `Role mismatch. Your role (${partner.role}) does not match the required delivery method (${order.deliveryMethod}). Please accept orders that match your partner type.`
         });
       }
     } else {
+      // For other delivery methods, check Partner model
       partner = await Partner.findById(partnerId);
+      console.log(`Partner lookup result: ${partner ? `Found partner` : 'Partner not found'}`);
+      
       if (!partner) {
         return res.status(404).json({
           status: 'error',
@@ -1700,16 +1798,30 @@ exports.partnerAcceptRequest = async (req, res) => {
         });
       }
     }
+    
+    console.log(`Partner verified: ${partner.name || partner.email}, role: ${partner.role || 'N/A'}`);
 
-    // Check if partner has an existing offer - if so, mark it as accepted
+    // Check if partner has an existing offer - if so, update it
     const existingOffer = order.partnerOffers.find(
       offer => offer.partnerId.toString() === partnerId
     );
 
-    let offerPrice = 0;
+    let offerPrice = providedOfferPrice ? parseFloat(providedOfferPrice) : 0;
+    
     if (existingOffer) {
+      // Update existing offer with provided price if given
+      if (providedOfferPrice !== undefined && providedOfferPrice !== null) {
+        existingOffer.offerPrice = offerPrice;
+      }
+      if (providedEstimatedDeliveryTime) {
+        existingOffer.estimatedDeliveryTime = providedEstimatedDeliveryTime;
+      }
       existingOffer.status = 'accepted';
-      offerPrice = existingOffer.offerPrice || 0;
+      existingOffer.message = existingOffer.message || 'Partner accepted request with price';
+      // Use existing offer price if no new price provided
+      if (!offerPrice) {
+        offerPrice = existingOffer.offerPrice || 0;
+      }
       // Reject other pending offers
       order.partnerOffers.forEach(offer => {
         if (offer.partnerId.toString() !== partnerId && offer.status === 'pending') {
@@ -1717,12 +1829,12 @@ exports.partnerAcceptRequest = async (req, res) => {
         }
       });
     } else {
-      // Create an offer automatically if partner doesn't have one
+      // Create a new offer with the provided price
       order.partnerOffers.push({
         partnerId,
-        offerPrice: null,
-        estimatedDeliveryTime: null,
-        message: 'Partner accepted request directly',
+        offerPrice: offerPrice || null,
+        estimatedDeliveryTime: providedEstimatedDeliveryTime || null,
+        message: offerPrice ? `Partner accepted request with delivery price: ${offerPrice} ETB` : 'Partner accepted request directly',
         status: 'accepted'
       });
       // Reject other pending offers
@@ -1733,7 +1845,7 @@ exports.partnerAcceptRequest = async (req, res) => {
       });
     }
 
-    // Calculate delivery fee from partner's distance pricing if not provided in offer
+    // Calculate delivery fee - use provided offer price if available, otherwise calculate from distance pricing
     let deliveryFee = offerPrice || order.pricing?.deliveryFee || 0;
     if (!offerPrice && partner.distancePricing && Array.isArray(partner.distancePricing) && partner.distancePricing.length > 0) {
       // Use pickup location (where item is picked up from) and delivery location (where item is delivered to)
