@@ -430,6 +430,17 @@ function ViewDeliveryRequest() {
     );
   }
 
+  // Early return if order is null
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Order not found</p>
+        </div>
+      </div>
+    );
+  }
+
   const hasOffers = order.partnerOffers && order.partnerOffers.length > 0;
   const pendingOffers = order.partnerOffers?.filter(o => o.status === 'pending') || [];
   // Check if order is assigned to current partner (handle both User ID and Partner ID)
@@ -686,8 +697,10 @@ function ViewDeliveryRequest() {
                     {isClient && offer.status === 'pending' && order.status !== 'assigned' && (
                       <button
                         onClick={() => {
-                          const partnerIdValue = offer.partnerId?._id || offer.partnerId?.toString() || offer.partnerId;
-                          handleAcceptOffer(offer._id, partnerIdValue);
+                          const partnerIdValue = offer.partnerId?._id || offer.partnerId?.toString() || (typeof offer.partnerId === 'string' ? offer.partnerId : '');
+                          if (partnerIdValue && typeof partnerIdValue === 'string') {
+                            handleAcceptOffer(offer._id, partnerIdValue);
+                          }
                         }}
                         disabled={acceptingOffer === offer._id}
                         className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"

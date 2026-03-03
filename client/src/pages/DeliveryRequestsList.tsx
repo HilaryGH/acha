@@ -38,7 +38,7 @@ function DeliveryRequestsList() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [user, setUser] = useState<any>(null);
-  const [acceptingRequest, setAcceptingRequest] = useState<string | null>(null);
+  const [_acceptingRequest, setAcceptingRequest] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [partnerId, setPartnerId] = useState<string>('');
   const [showPriceDialog, setShowPriceDialog] = useState(false);
@@ -151,38 +151,6 @@ function DeliveryRequestsList() {
     return new Date(dateString).toLocaleString();
   };
 
-  const handleAcceptRequest = async (requestId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation to detail page
-    
-    if (!user) {
-      setMessage({ 
-        type: 'error', 
-        text: 'Please log in to accept delivery requests' 
-      });
-      return;
-    }
-
-    // Check if user is a delivery partner
-    const isPartner = user.role === 'delivery_partner' || 
-                     user.role === 'acha_sisters_delivery_partner' ||
-                     user.role === 'movers_packers' ||
-                     user.role === 'gift_delivery_partner';
-    
-    if (!isPartner && !partnerId) {
-      setMessage({ 
-        type: 'error', 
-        text: 'You need to be registered as a delivery partner to accept requests. Please complete your partner registration.' 
-      });
-      return;
-    }
-
-    // Show price input dialog
-    setSelectedRequestId(requestId);
-    setOfferPrice('');
-    setEstimatedDeliveryTime('');
-    setShowPriceDialog(true);
-  };
-
   const handleSubmitAcceptRequest = async () => {
     if (!selectedRequestId || !user) return;
 
@@ -250,13 +218,6 @@ function DeliveryRequestsList() {
     }
   };
 
-  const isDeliveryPartner = user && (
-    user.role === 'delivery_partner' || 
-    user.role === 'acha_sisters_delivery_partner' ||
-    user.role === 'movers_packers' ||
-    user.role === 'gift_delivery_partner' ||
-    !!partnerId
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">

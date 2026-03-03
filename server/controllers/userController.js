@@ -642,7 +642,31 @@ let isGoogleOAuthInitialized = false;
 const initializeGoogleStrategy = () => {
   const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
   const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-  const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/users/auth/google/callback';
+  
+  // Determine callback URL based on environment
+  // If explicitly set in env, use that; otherwise detect environment
+  let GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
+  
+  if (!GOOGLE_CALLBACK_URL) {
+    // Detect environment: check NODE_ENV and PORT
+    // Development: NODE_ENV is not 'production' OR PORT is 5000 (default dev port)
+    // Production: NODE_ENV is 'production' AND PORT is not 5000
+    const isDevelopment = process.env.NODE_ENV !== 'production' || 
+                          !process.env.PORT || 
+                          process.env.PORT === '5000';
+    
+    if (isDevelopment) {
+      // Development: use localhost
+      GOOGLE_CALLBACK_URL = 'http://localhost:5000/api/users/auth/google/callback';
+      console.log('🔧 Development mode: Using localhost callback URL');
+    } else {
+      // Production: use production URL
+      GOOGLE_CALLBACK_URL = 'https://acha-eeme.onrender.com/api/users/auth/google/callback';
+      console.log('🚀 Production mode: Using production callback URL');
+    }
+  } else {
+    console.log('📝 Using custom callback URL from environment:', GOOGLE_CALLBACK_URL);
+  }
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     console.warn('⚠️  Google OAuth credentials not found. Google login will be disabled.');
@@ -723,6 +747,7 @@ const initializeGoogleStrategy = () => {
     
     isGoogleOAuthInitialized = true;
     console.log('✅ Google OAuth strategy initialized successfully');
+    console.log(`   Callback URL: ${GOOGLE_CALLBACK_URL}`);
   } catch (error) {
     console.error('❌ Error initializing Google OAuth strategy:', error);
     isGoogleOAuthInitialized = false;
@@ -733,12 +758,28 @@ const initializeGoogleStrategy = () => {
 initializeGoogleStrategy();
 
 /**
+ * Get frontend URL based on environment
+ */
+const getFrontendUrl = () => {
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL;
+  }
+  // Auto-detect: development or production
+  // Development: NODE_ENV is not 'production' OR PORT is 5000
+  // Production: NODE_ENV is 'production' AND PORT is not 5000
+  const isDevelopment = process.env.NODE_ENV !== 'production' || 
+                        !process.env.PORT || 
+                        process.env.PORT === '5000';
+  return isDevelopment ? 'http://localhost:3000' : 'http://localhost:3000'; // Default fallback
+};
+
+/**
  * Google OAuth authentication - redirects to Google
  */
 const googleAuth = (req, res, next) => {
   // Check if Google OAuth is initialized
   if (!isGoogleOAuthInitialized) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = getFrontendUrl();
     return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Google OAuth is not configured. Please contact administrator.')}`);
   }
 
@@ -753,26 +794,24 @@ const googleAuth = (req, res, next) => {
  * RESTRICTED: Only allows login for users with 'individual' role
  */
 const googleCallback = async (req, res) => {
+  const frontendUrl = getFrontendUrl();
+  
   passport.authenticate('google', { session: false }, async (err, user) => {
     if (err) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent(err.message)}`);
     }
 
     if (!user) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Authentication failed')}`);
     }
 
     // RESTRICTION: Double-check role (should already be checked in strategy, but extra safety)
     if (user.role !== 'individual') {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Google login is only available for individual users. Please use email/password login instead.')}`);
     }
 
     // Check if user is active
     if (user.status !== 'active') {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       return res.redirect(`${frontendUrl}/auth/google/callback?error=${encodeURIComponent('Your account is not active. Please contact administrator.')}`);
     }
 
@@ -784,7 +823,6 @@ const googleCallback = async (req, res) => {
     const token = generateToken(user._id);
 
     // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     return res.redirect(`${frontendUrl}/auth/google/callback?token=${token}&user=${encodeURIComponent(JSON.stringify({
       id: user._id,
       name: user.name,
