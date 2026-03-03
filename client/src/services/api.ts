@@ -1,6 +1,35 @@
 // API Base URL - uses environment variable for production, or Vite proxy for development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.PROD ? 'https://acha-eeme.onrender.com/api' : '/api');
+// In production, use the production backend URL
+// In development, use the Vite proxy (/api)
+const getApiBaseUrl = () => {
+  // If explicitly set in environment, use that (highest priority)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Check if we're in production build
+  // import.meta.env.PROD is true when built with vite build
+  // Also check if we're not on localhost (production deployment)
+  const isProduction = import.meta.env.PROD || 
+                      (typeof window !== 'undefined' && 
+                       !window.location.hostname.includes('localhost') && 
+                       !window.location.hostname.includes('127.0.0.1'));
+  
+  if (isProduction) {
+    return 'https://acha-eeme.onrender.com/api';
+  }
+  
+  // Development: use Vite proxy
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Log API base URL in production for debugging (remove in final build if needed)
+if (import.meta.env.PROD || (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'))) {
+  console.log('🌐 API Base URL:', API_BASE_URL);
+  console.log('🌐 Frontend URL:', window.location.origin);
+}
 
 // Helper function to get auth token from localStorage
 const getAuthToken = (): string | null => {

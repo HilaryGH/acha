@@ -748,6 +748,9 @@ const initializeGoogleStrategy = () => {
     isGoogleOAuthInitialized = true;
     console.log('✅ Google OAuth strategy initialized successfully');
     console.log(`   Callback URL: ${GOOGLE_CALLBACK_URL}`);
+    console.log(`   Frontend URL (default): ${getFrontendUrl()}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    console.log(`   PORT: ${process.env.PORT || 'not set'}`);
   } catch (error) {
     console.error('❌ Error initializing Google OAuth strategy:', error);
     isGoogleOAuthInitialized = false;
