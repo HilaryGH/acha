@@ -237,8 +237,13 @@ function MatchSelection({ matches, matchType, origin, destination, onSelect, onS
                       onChange={() => setSelectedMatch(match._id)}
                       className="w-5 h-5 text-blue-600"
                     />
-                    <h3 className="text-lg font-semibold text-gray-900">{match.name}</h3>
-                    {match.companyName && (
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {matchType === 'traveler' 
+                        ? `Traveler #${match.uniqueId || match._id?.slice(-8).toUpperCase()}`
+                        : `Partner #${match.uniqueId || match._id?.slice(-8).toUpperCase()}`
+                      }
+                    </h3>
+                    {matchType === 'partner' && match.companyName && (
                       <span className="text-sm text-gray-500">({match.companyName})</span>
                     )}
                   </div>

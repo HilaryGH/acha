@@ -1024,7 +1024,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <div className="space-y-1">
-                                  <div className="font-medium text-gray-900">{transaction.buyerId?.name || 'N/A'}</div>
+                                  <div className="font-medium text-gray-900">Buyer #{transaction.buyerId?.uniqueId || transaction.buyerId?._id?.slice(-8).toUpperCase() || 'N/A'}</div>
                                   {transaction.buyerId?.email && (
                                     <div className="text-xs text-gray-500">{transaction.buyerId.email}</div>
                                   )}
@@ -1037,7 +1037,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                 {assignedTraveler ? (
                                   <div className="space-y-1">
                                     <div className="font-medium text-gray-900">Traveler</div>
-                                    <div className="text-xs">{assignedTraveler.name}</div>
+                                    <div className="text-xs">#{assignedTraveler.uniqueId || assignedTraveler._id?.slice(-8).toUpperCase()}</div>
                                     {assignedTraveler.email && (
                                       <div className="text-xs text-gray-500">{assignedTraveler.email}</div>
                                     )}
@@ -1054,8 +1054,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                 ) : assignedPartner ? (
                                   <div className="space-y-1">
                                     <div className="font-medium text-gray-900">Partner</div>
-                                    <div className="text-xs">{assignedPartner.name || assignedPartner.companyName}</div>
-                                    {assignedPartner.companyName && assignedPartner.name && (
+                                    <div className="text-xs">#{assignedPartner.uniqueId || assignedPartner._id?.slice(-8).toUpperCase()}</div>
+                                    {assignedPartner.companyName && (
                                       <div className="text-xs text-gray-500">{assignedPartner.companyName}</div>
                                     )}
                                     {assignedPartner.email && (
@@ -1493,7 +1493,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <h4 className="text-lg font-semibold text-gray-900">{partner.name}</h4>
+                            <h4 className="text-lg font-semibold text-gray-900">Partner #{partner.uniqueId || partner._id?.slice(-8).toUpperCase()}</h4>
                             {partner.companyName && <span className="text-sm text-gray-600">({partner.companyName})</span>}
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               partner.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -1989,7 +1989,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">{partner.name}</h4>
+                            <h4 className="text-lg font-semibold text-gray-900">Partner #{partner.uniqueId || partner._id?.slice(-8).toUpperCase()}</h4>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               partner.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               partner.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -2151,7 +2151,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-3">
-                            <h4 className="text-lg font-semibold text-gray-900">{trip.name}</h4>
+                            <h4 className="text-lg font-semibold text-gray-900">Traveler #{trip.uniqueId || trip._id?.slice(-8).toUpperCase()}</h4>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               trip.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               trip.status === 'verified' || trip.status === 'active' ? 'bg-green-100 text-green-800' :

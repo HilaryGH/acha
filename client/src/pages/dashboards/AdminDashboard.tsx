@@ -411,7 +411,7 @@ function AdminDashboard({ user }: AdminDashboardProps) {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-900">{partner.name}</h4>
+                            <h4 className="text-lg font-semibold text-gray-900">Partner #{partner.uniqueId || partner._id?.slice(-8).toUpperCase()}</h4>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                               partner.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               partner.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -594,7 +594,7 @@ function AdminDashboard({ user }: AdminDashboardProps) {
                             {transaction.orderId?.uniqueId || transaction.orderId?._id?.slice(-8) || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                            {transaction.buyerId?.name || 'N/A'}
+                            Buyer #{transaction.buyerId?.uniqueId || transaction.buyerId?._id?.slice(-8).toUpperCase() || 'N/A'}
                             {transaction.buyerId?.email && (
                               <div className="text-xs text-gray-500">{transaction.buyerId.email}</div>
                             )}

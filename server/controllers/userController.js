@@ -377,28 +377,29 @@ const searchUsersByLocation = async (req, res) => {
   try {
     const { location, city, role, status } = req.query;
     
-    // Validate that at least one location parameter is provided
-    if (!location && !city) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Please provide a location or city parameter'
-      });
-    }
-    
     // Build query
     const query = {};
     
     // Location search - search in city, location, or primaryLocation
-    const locationQuery = location || city;
-    query.$or = [
-      { city: { $regex: locationQuery, $options: 'i' } },
-      { location: { $regex: locationQuery, $options: 'i' } },
-      { primaryLocation: { $regex: locationQuery, $options: 'i' } }
-    ];
+    // If location/city is provided, filter by location; otherwise, if role is provided, get all users with that role
+    if (location || city) {
+      const locationQuery = location || city;
+      query.$or = [
+        { city: { $regex: locationQuery, $options: 'i' } },
+        { location: { $regex: locationQuery, $options: 'i' } },
+        { primaryLocation: { $regex: locationQuery, $options: 'i' } }
+      ];
+    }
     
-    // Filter by role if provided
+    // Filter by role if provided (required if no location/city is provided)
     if (role) {
       query.role = role;
+    } else if (!location && !city) {
+      // If no location and no role, return error
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide a location, city, or role parameter'
+      });
     }
     
     // Filter by status - only add status filter if explicitly provided and not 'all'
@@ -408,15 +409,18 @@ const searchUsersByLocation = async (req, res) => {
     }
     // If status is not provided or is 'all'/'', don't add status filter (show all)
     
-    // Find users matching the location
+    // Find users matching the query
     const users = await User.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
     
+    const locationQuery = location || city || 'all locations';
     res.json({
       status: 'success',
       count: users.length,
-      message: `Found ${users.length} user(s) in ${locationQuery}`,
+      message: role && !location && !city 
+        ? `Found ${users.length} user(s) with role ${role}`
+        : `Found ${users.length} user(s) in ${locationQuery}`,
       data: {
         users,
         searchLocation: locationQuery

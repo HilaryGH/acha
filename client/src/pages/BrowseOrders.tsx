@@ -253,7 +253,7 @@ function BrowseOrders() {
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{order.buyerId?.name || 'Buyer'}</p>
+                    <p className="text-sm font-medium text-gray-900">Buyer #{order.buyerId?.uniqueId || order.buyerId?._id?.slice(-8).toUpperCase() || 'N/A'}</p>
                     <p className="text-xs text-gray-500">{order.buyerId?.currentCity || 'Location not specified'}</p>
                   </div>
                 </div>

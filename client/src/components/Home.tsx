@@ -1,8 +1,20 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import TripsAndOrdersSection from './TripsAndOrdersSection'
 import CommunicationWidget from './CommunicationWidget'
 
 function Home() {
+  const navigate = useNavigate();
+
+  const handleCatalogClick = (role: string, searchQuery?: string) => {
+    // Navigate to search page with role-specific query
+    const params = new URLSearchParams();
+    if (searchQuery) {
+      params.set('q', searchQuery);
+    }
+    params.set('role', role);
+    navigate(`/search?${params.toString()}`);
+  };
+
   return (
     <div className="w-full bg-white">
       {/* Hero Section - Professional & Modern */}
@@ -219,8 +231,9 @@ function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-4">
             {/* Delivery Partners */}
             <div 
-              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
+              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               style={{ borderRadius: '0 2rem 0 2rem' }}
+              onClick={() => handleCatalogClick('delivery_partner')}
             >
               {/* Background Image - Right side on mobile */}
               <div className="w-1/2 md:w-full md:absolute md:inset-0">
@@ -252,8 +265,9 @@ function Home() {
 
             {/* Acha Sisters Delivery Partner */}
             <div 
-              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
+              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               style={{ borderRadius: '0 2rem 0 2rem' }}
+              onClick={() => handleCatalogClick('acha_sisters_delivery_partner')}
             >
               {/* Background Image - Right side on mobile */}
               <div className="w-1/2 md:w-full md:absolute md:inset-0">
@@ -285,8 +299,9 @@ function Home() {
             
             {/* Wanaw Gifting */}
             <div 
-              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
+              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               style={{ borderRadius: '0 2rem 0 2rem' }}
+              onClick={() => handleCatalogClick('gift_delivery_partner')}
             >
               {/* Background Image - Right side on mobile */}
               <div className="w-1/2 md:w-full md:absolute md:inset-0">
@@ -318,8 +333,9 @@ function Home() {
 
             {/* Acha Movers & Packers */}
             <div 
-              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col"
+              className="relative shadow-md overflow-hidden rounded-2xl h-32 md:h-48 flex flex-row md:flex-col cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
               style={{ borderRadius: '0 2rem 0 2rem' }}
+              onClick={() => handleCatalogClick('movers_packers')}
             >
               {/* Background Image - Right side on mobile */}
               <div className="w-1/2 md:w-full md:absolute md:inset-0">
@@ -357,8 +373,9 @@ function Home() {
               <div className="flex gap-8 flex-shrink-0">
                 {/* Delivery Partners */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('delivery_partner')}
                 >
                   <img 
                     src="/Delivery partners.png" 
@@ -370,8 +387,9 @@ function Home() {
 
                 {/* Acha Sisters Delivery Partner */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('acha_sisters_delivery_partner')}
                 >
                   <img 
                     src="/Acha Sisters Delivery Partner.png" 
@@ -383,8 +401,9 @@ function Home() {
                 
                 {/* Wanaw Gifting */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('gift_delivery_partner')}
                 >
                   <img 
                     src="/Acha Surprise Gift.png" 
@@ -396,8 +415,9 @@ function Home() {
 
                 {/* Acha Movers & Packers */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('movers_packers')}
                 >
                   <img 
                     src="/Acha Movers & Packers.png" 
@@ -412,8 +432,9 @@ function Home() {
               <div className="flex gap-8 flex-shrink-0">
                 {/* Delivery Partners */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('delivery_partner')}
                 >
                   <img 
                     src="/Delivery partners.png" 
@@ -425,8 +446,9 @@ function Home() {
 
                 {/* Acha Sisters Delivery Partner */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('acha_sisters_delivery_partner')}
                 >
                   <img 
                     src="/Acha Sisters Delivery Partner.png" 
@@ -438,8 +460,9 @@ function Home() {
                 
                 {/* Wanaw Gifting */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('gift_delivery_partner')}
                 >
                   <img 
                     src="/Acha Surprise Gift.png" 
@@ -451,8 +474,9 @@ function Home() {
 
                 {/* Acha Movers & Packers */}
                 <div 
-                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px]"
+                  className="relative shadow-md overflow-hidden rounded-2xl h-48 flex-shrink-0 w-[280px] cursor-pointer hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   style={{ borderRadius: '0 2rem 0 2rem' }}
+                  onClick={() => handleCatalogClick('movers_packers')}
                 >
                   <img 
                     src="/Acha Movers & Packers.png" 

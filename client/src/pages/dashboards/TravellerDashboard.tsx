@@ -303,7 +303,7 @@ function TravellerDashboard({ user }: TravellerDashboardProps) {
                               <p><span className="font-medium">Preferred Date:</span> {new Date(order.orderInfo.preferredDeliveryDate).toLocaleDateString()}</p>
                             )}
                             {order.buyerId && (
-                              <p><span className="font-medium">Buyer:</span> {order.buyerId.name} ({order.buyerId.email})</p>
+                              <p><span className="font-medium">Buyer:</span> #{order.buyerId.uniqueId || order.buyerId._id?.slice(-8).toUpperCase()} ({order.buyerId.email})</p>
                             )}
                           </div>
                         </div>

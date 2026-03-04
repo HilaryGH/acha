@@ -334,7 +334,7 @@ function OrderTracking() {
           {order.assignedTravelerId && (
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm font-medium text-blue-900 mb-2">Assigned Traveler</p>
-              <p className="text-blue-800">{order.assignedTravelerId.name}</p>
+              <p className="text-blue-800">Traveler #{order.assignedTravelerId.uniqueId || order.assignedTravelerId._id?.slice(-8).toUpperCase()}</p>
               <p className="text-sm text-blue-600">{order.assignedTravelerId.email}</p>
               {order.assignedTravelerId.phone && (
                 <p className="text-sm text-blue-600">
@@ -349,7 +349,7 @@ function OrderTracking() {
           {order.assignedPartnerId && (
             <div className="mt-4 p-4 bg-purple-50 rounded-lg">
               <p className="text-sm font-medium text-purple-900 mb-2">Assigned Partner</p>
-              <p className="text-purple-800">{order.assignedPartnerId.name || order.assignedPartnerId.companyName}</p>
+              <p className="text-purple-800">Partner #{order.assignedPartnerId.uniqueId || order.assignedPartnerId._id?.slice(-8).toUpperCase()}</p>
               <p className="text-sm text-purple-600">{order.assignedPartnerId.email}</p>
             </div>
           )}

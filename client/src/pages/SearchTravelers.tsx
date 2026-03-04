@@ -35,6 +35,7 @@ interface Partner {
 function SearchTravelers() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
+  const role = searchParams.get('role') || '';
   const [travelers, setTravelers] = useState<Traveller[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,21 +44,25 @@ function SearchTravelers() {
   const [searchType, setSearchType] = useState<'destination' | 'location' | 'both'>('both');
 
   useEffect(() => {
-    if (query) {
-      setSearchInput(query);
+    if (query || role) {
+      if (query) {
+        setSearchInput(query);
+      }
       // Use a small delay to ensure state is updated
       const timer = setTimeout(() => {
-        searchAll(query);
+        searchAll(query || '');
       }, 100);
       return () => clearTimeout(timer);
     } else {
       setTravelers([]);
       setPartners([]);
     }
-  }, [query, searchType]);
+  }, [query, role, searchType]);
 
   const searchAll = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+    // When coming from catalog (role only), allow empty searchQuery and just use role
+    const hasTextQuery = !!searchQuery.trim();
+    if (!hasTextQuery && !role) {
       setTravelers([]);
       setPartners([]);
       return;
@@ -67,43 +72,66 @@ function SearchTravelers() {
     setError(null);
 
     try {
-      // Search all travelers and delivery partners in parallel (all registered, not just active)
-      const [travelersResponse, deliveryPartnersRes, giftPartnersRes, achaSistersRes, moversPackersRes] = await Promise.all([
-        // Search travelers (all statuses - remove status filter)
-        (async () => {
-          const params: any = {}; // Removed status: 'active' to show all registered travelers
+      // Build search text (used for city/location search)
+      const locationQuery = hasTextQuery ? searchQuery : '';
+
+      // Prepare promises depending on role
+      const travelerPromise = (async () => {
+        // Only search travelers when no specific partner role is selected
+        if (role && role !== 'traveler') {
+          return { status: 'success', data: [] as Traveller[] };
+        }
+        const params: any = {}; // Removed status: 'active' to show all registered travelers
+        if (locationQuery) {
           if (searchType === 'destination') {
-            params.destinationCity = searchQuery;
+            params.destinationCity = locationQuery;
           } else if (searchType === 'location') {
-            params.currentLocation = searchQuery;
+            params.currentLocation = locationQuery;
           } else {
-            params.destinationCity = searchQuery;
-            params.currentLocation = searchQuery;
+            params.destinationCity = locationQuery;
+            params.currentLocation = locationQuery;
           }
-          return api.travellers.search(params) as Promise<{ status?: string; data?: Traveller[]; count?: number; travellers?: Traveller[] }>;
-        })(),
-        // Search delivery partners by city/location (all statuses)
-        api.partners.getAll({ 
-          partner: 'Delivery Partner',
-          search: searchQuery 
-        }) as Promise<{ status?: string; data?: Partner[]; count?: number }>,
-        // Search gift delivery partners by city/location (all statuses)
-        api.partners.getAll({ 
-          registrationType: 'Gift Delivery Partner',
-          search: searchQuery 
-        }) as Promise<{ status?: string; data?: Partner[]; count?: number }>,
-        // Search Acha Sisters Delivery Partners from User model (all statuses)
-        api.users.searchByLocation({
-          city: searchQuery,
-          role: 'acha_sisters_delivery_partner',
-          status: 'all' // Get all registered users regardless of status
-        }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>,
-        // Search Movers & Packers from User model (all statuses)
-        api.users.searchByLocation({
-          city: searchQuery,
-          role: 'movers_packers',
-          status: 'all' // Get all registered users regardless of status
-        }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>
+        }
+        return api.travellers.search(params) as Promise<{ status?: string; data?: Traveller[]; count?: number; travellers?: Traveller[] }>;
+      })();
+
+      const deliveryPartnersPromise = role === '' || role === 'delivery_partner'
+        ? api.partners.getAll({ 
+            partner: 'Delivery Partner',
+            ...(locationQuery ? { search: locationQuery } : {})
+          }) as Promise<{ status?: string; data?: Partner[]; count?: number }>
+        : Promise.resolve({ status: 'success', data: [] as Partner[] });
+
+      const giftPartnersPromise = role === '' || role === 'gift_delivery_partner'
+        ? api.partners.getAll({ 
+            registrationType: 'Gift Delivery Partner',
+            ...(locationQuery ? { search: locationQuery } : {})
+          }) as Promise<{ status?: string; data?: Partner[]; count?: number }>
+        : Promise.resolve({ status: 'success', data: [] as Partner[] });
+
+      const achaSistersPromise = role === '' || role === 'acha_sisters_delivery_partner'
+        ? api.users.searchByLocation({
+            city: locationQuery,
+            role: 'acha_sisters_delivery_partner',
+            status: 'all' // Get all registered users regardless of status
+          }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>
+        : Promise.resolve({ status: 'success', data: { users: [] as Partner[] } });
+
+      const moversPackersPromise = role === '' || role === 'movers_packers'
+        ? api.users.searchByLocation({
+            city: locationQuery,
+            role: 'movers_packers',
+            status: 'all' // Get all registered users regardless of status
+          }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>
+        : Promise.resolve({ status: 'success', data: { users: [] as Partner[] } });
+
+      // Search travelers and delivery partners in parallel (all registered, not just active)
+      const [travelersResponse, deliveryPartnersRes, giftPartnersRes, achaSistersRes, moversPackersRes] = await Promise.all([
+        travelerPromise,
+        deliveryPartnersPromise,
+        giftPartnersPromise,
+        achaSistersPromise,
+        moversPackersPromise
       ]);
 
       // Extract users from User model responses and format them as partners
@@ -150,7 +178,7 @@ function SearchTravelers() {
                formattedMoversPackers.length
       };
 
-      // Handle travelers response
+      // Handle travelers response (only when traveler search is active)
       if (travelersResponse.status === 'success') {
         const travellers = travelersResponse.data || travelersResponse.travellers || [];
         setTravelers(travellers);
@@ -300,7 +328,7 @@ function SearchTravelers() {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="text-xl font-bold text-gray-900">
-                          {traveler.name || `Traveler ${traveler.uniqueId || traveler._id.slice(-6)}`}
+                          Traveler #{traveler.uniqueId || traveler._id.slice(-8).toUpperCase()}
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {traveler.travellerType === 'international' ? '🌍 International' : '🚗 Domestic'} Traveler
@@ -375,6 +403,21 @@ function SearchTravelers() {
                         </div>
                         <Link
                           to={`/post-order`}
+                          state={{
+                            selectedTrip: {
+                              travelerId: traveler._id,
+                              travelerUniqueId: traveler.uniqueId || traveler._id.slice(-8).toUpperCase(),
+                              currentLocation: traveler.currentLocation,
+                              destinationCity: traveler.destinationCity,
+                              departureDate: traveler.departureDate,
+                              arrivalDate: traveler.arrivalDate,
+                              departureTime: traveler.departureTime,
+                              arrivalTime: traveler.arrivalTime,
+                              travellerType: traveler.travellerType,
+                              maximumKilograms: (traveler as any).maximumKilograms,
+                              priceOffer: (traveler as any).priceOffer
+                            }
+                          }}
                           className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
                         >
                           Post Order
@@ -398,8 +441,8 @@ function SearchTravelers() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div>
-                          <h3 className="text-xl font-bold text-gray-900">{partner.name || partner.companyName}</h3>
-                          {partner.companyName && partner.name && (
+                          <h3 className="text-xl font-bold text-gray-900">Partner #{partner.uniqueId || partner._id?.slice(-8).toUpperCase()}</h3>
+                          {partner.companyName && (
                             <p className="text-sm text-gray-600 mt-1">{partner.companyName}</p>
                           )}
                           <p className="text-sm text-gray-600 mt-1">
@@ -430,24 +473,36 @@ function SearchTravelers() {
                           </div>
                         )}
 
-                        <div className="flex items-start gap-2">
-                          <svg className="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Phone</p>
-                            <p className="text-sm text-gray-900">{partner.phone}</p>
-                          </div>
-                        </div>
+                        <p className="text-xs text-gray-500 italic">
+                          Contact info available after order placement
+                        </p>
                       </div>
 
                       <div className="pt-4 border-t border-gray-200">
-                        <Link
-                          to={`/search-delivery-partners`}
-                          className="block w-full text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                        >
-                          View Details
-                        </Link>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500 italic">
+                              Contact info available after order placement
+                            </p>
+                          </div>
+                          <Link
+                            to={`/post-order`}
+                            state={{
+                              selectedPartner: {
+                                partnerId: partner._id,
+                                partnerUniqueId: partner.uniqueId || partner._id?.slice(-8).toUpperCase(),
+                                city: partner.city,
+                                primaryLocation: partner.primaryLocation,
+                                partner: partner.partner,
+                                registrationType: partner.registrationType,
+                                companyName: partner.companyName
+                              }
+                            }}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            Post Order
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))}

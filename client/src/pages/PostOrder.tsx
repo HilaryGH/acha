@@ -94,6 +94,7 @@ function PostOrder() {
   const [availableMatches, setAvailableMatches] = useState<any[]>([]);
   const [matchType, setMatchType] = useState<'traveler' | 'partner' | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
   
   // Gift Delivery Partner specific state
   const [giftPartners, setGiftPartners] = useState<any[]>([]);
@@ -121,11 +122,12 @@ function PostOrder() {
     }
   }, []);
 
-  // Pre-fill form data if trip was selected from BrowseTrips
+  // Pre-fill form data if trip or partner was selected from SearchTravelers or BrowseTrips
   useEffect(() => {
     if (location.state?.selectedTrip) {
       const trip = location.state.selectedTrip;
       setSelectedTrip(trip);
+      setSelectedPartner(null); // Clear partner if trip is selected
       console.log('Selected trip data:', trip);
       console.log('Price offer from trip:', trip.priceOffer);
       
@@ -138,6 +140,30 @@ function PostOrder() {
         preferredDeliveryDate: trip.departureDate 
           ? new Date(trip.departureDate).toISOString().split('T')[0] 
           : prev.preferredDeliveryDate
+      }));
+    } else if (location.state?.selectedPartner) {
+      const partner = location.state.selectedPartner;
+      setSelectedPartner(partner);
+      setSelectedTrip(null); // Clear trip if partner is selected
+      console.log('Selected partner data:', partner);
+      
+      // Determine delivery method based on partner type
+      let deliveryMethod: 'delivery_partner' | 'acha_sisters_delivery_partner' | 'movers_packers' | 'gift_delivery_partner' = 'delivery_partner';
+      
+      if (partner.partner === 'Acha Sisters Delivery Partner') {
+        deliveryMethod = 'acha_sisters_delivery_partner';
+      } else if (partner.partner === 'Movers & Packers') {
+        deliveryMethod = 'movers_packers';
+      } else if (partner.registrationType === 'Gift Delivery Partner') {
+        deliveryMethod = 'gift_delivery_partner';
+      }
+      
+      // Pre-fill form with partner information
+      setFormData(prev => ({
+        ...prev,
+        deliveryMethod: deliveryMethod,
+        currentCity: partner.city || partner.primaryLocation || prev.currentCity,
+        // deliveryDestination will be filled by user
       }));
     }
   }, [location.state]);
@@ -241,6 +267,7 @@ function PostOrder() {
                 ...gt,
                 _id: gt._id || `${partner._id}_${index}`, // Add unique ID if not present
                 partnerId: partner._id,
+                partnerUniqueId: partner.uniqueId || partner._id?.slice(-8).toUpperCase(),
                 partnerName: partner.name,
                 partnerCity: partner.city,
                 partnerLocation: partner.primaryLocation
@@ -488,6 +515,12 @@ function PostOrder() {
       if (selectedTrip?.travelerId) {
         orderData.assignedTravelerId = selectedTrip.travelerId;
       }
+      
+      // If partner was selected, assign it to the order and set status to assigned
+      if (selectedPartner?.partnerId) {
+        orderData.assignedPartnerId = selectedPartner.partnerId;
+        orderData.status = 'assigned'; // Set status to assigned since partner is pre-selected
+      }
 
       // For gift delivery partner orders, auto-assign the partner who owns the selected gift
       if (formData.deliveryMethod === 'gift_delivery_partner' && selectedGiftType?.partnerId) {
@@ -543,6 +576,7 @@ function PostOrder() {
           responseData.assignedMatchId = selectedGiftType.partnerId;
           responseData.assignedPartner = {
             _id: selectedGiftType.partnerId,
+            uniqueId: selectedGiftType.partnerUniqueId,
             name: selectedGiftType.partnerName,
             city: selectedGiftType.partnerCity,
             location: selectedGiftType.partnerLocation
@@ -580,10 +614,10 @@ function PostOrder() {
           setShowPayment(true);
           setMessage({ 
             type: 'success', 
-            text: `Order created successfully! Your gift "${selectedGiftType.description}" (ETB ${selectedGiftType.price?.toLocaleString() || '0'}) has been assigned to ${selectedGiftType.partnerName}. Please proceed with payment.`
+            text: `Order created successfully! Your gift "${selectedGiftType.description}" (ETB ${selectedGiftType.price?.toLocaleString() || '0'}) has been assigned to Partner #${selectedGiftType.partnerUniqueId || selectedGiftType.partnerId?.slice(-8).toUpperCase()}. Please proceed with payment.`
           });
         }
-        // If a trip was pre-selected from BrowseTrips, skip match selection and go directly to payment
+        // If a trip was pre-selected from BrowseTrips or SearchTravelers, skip match selection and go directly to payment
         else if (selectedTrip && assignedMatchId) {
           // Store assigned match ID in createdOrder
           responseData.assignedMatchId = assignedMatchId;
@@ -603,6 +637,16 @@ function PostOrder() {
           setMessage({ 
             type: 'success', 
             text: 'Order created successfully! Your selected traveler has been assigned. Please proceed with payment.'
+          });
+        }
+        // If a partner was pre-selected from SearchTravelers, skip match selection and go directly to payment
+        else if (selectedPartner && responseData.assignedPartnerId) {
+          // Partner is already assigned, go directly to payment
+          setCreatedOrder(responseData);
+          setShowPayment(true);
+          setMessage({ 
+            type: 'success', 
+            text: `Order created successfully! Your selected partner has been assigned. Please proceed with payment.`
           });
         }
         // Always show match results first before payment (for orders without pre-selected trip)
@@ -1030,7 +1074,7 @@ function PostOrder() {
                     Selected Trip
                   </h3>
                   <div className="mt-2 text-sm text-blue-700">
-                    <p><strong>Traveler:</strong> {selectedTrip.travelerName}</p>
+                    <p><strong>Traveler:</strong> #{selectedTrip.travelerUniqueId || selectedTrip.travelerId?.slice(-8).toUpperCase()}</p>
                     <p><strong>Route:</strong> {selectedTrip.currentLocation} → {selectedTrip.destinationCity}</p>
                     {selectedTrip.departureDate && (
                       <p><strong>Departure:</strong> {new Date(selectedTrip.departureDate).toISOString().split('T')[0]}</p>
@@ -1038,6 +1082,33 @@ function PostOrder() {
                     {selectedTrip.priceOffer && (
                       <p><strong>Price Offer:</strong> ETB {selectedTrip.priceOffer.toLocaleString()}</p>
                     )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {selectedPartner && (
+            <div className="mt-4 mb-4 bg-purple-50 border-l-4 border-purple-500 p-4 rounded-lg text-left max-w-2xl mx-auto">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">🤝</span>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-purple-800">
+                    Selected Partner
+                  </h3>
+                  <div className="mt-2 text-sm text-purple-700">
+                    <p><strong>Partner:</strong> #{selectedPartner.partnerUniqueId || selectedPartner.partnerId?.slice(-8).toUpperCase()}</p>
+                    {selectedPartner.companyName && (
+                      <p><strong>Company:</strong> {selectedPartner.companyName}</p>
+                    )}
+                    <p><strong>Location:</strong> {selectedPartner.city || selectedPartner.primaryLocation || 'N/A'}</p>
+                    <p><strong>Type:</strong> {
+                      selectedPartner.partner === 'Acha Sisters Delivery Partner' ? '👭 Acha Sisters Delivery Partner' :
+                      selectedPartner.partner === 'Movers & Packers' ? '🚚 Movers & Packers' :
+                      selectedPartner.registrationType === 'Gift Delivery Partner' ? '🎁 Gift Delivery Partner' :
+                      '🚚 Delivery Partner'
+                    }</p>
                   </div>
                 </div>
               </div>
@@ -1705,7 +1776,7 @@ function PostOrder() {
                             ) : null}
                           </div>
                           <div className="mt-2 text-xs text-gray-500">
-                            <p>Partner: {giftType.partnerName}</p>
+                            <p>Partner: #{giftType.partnerUniqueId || giftType.partnerId?.slice(-8).toUpperCase()}</p>
                             {giftType.partnerCity && <p>Location: {giftType.partnerCity}</p>}
                           </div>
                         </div>
@@ -1718,7 +1789,7 @@ function PostOrder() {
                         </p>
                         <p className="text-sm text-green-700">
                           Price: ETB {selectedGiftType.price?.toLocaleString() || '0'} | 
-                          Partner: {selectedGiftType.partnerName}
+                          Partner: #{selectedGiftType.partnerUniqueId || selectedGiftType.partnerId?.slice(-8).toUpperCase()}
                         </p>
                       </div>
                     )}

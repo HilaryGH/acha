@@ -166,7 +166,7 @@ function MatchTraveler() {
                 <div key={traveler._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="mb-4">
                     <h3 className="font-semibold text-gray-900 text-lg mb-2">
-                      {traveler.name || `Traveler ${traveler.uniqueId || traveler._id.slice(-6)}`}
+                      Traveler #{traveler.uniqueId || traveler._id.slice(-8).toUpperCase()}
                     </h3>
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">

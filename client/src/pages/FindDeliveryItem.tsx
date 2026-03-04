@@ -32,6 +32,8 @@ interface DeliveryRequest {
   };
   createdAt: string;
   buyerId: {
+    _id?: string;
+    uniqueId?: string;
     name: string;
     email: string;
     phone?: string;
@@ -505,7 +507,7 @@ function FindDeliveryItem() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200 mb-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{request.buyerId?.name || 'Buyer'}</p>
+                      <p className="text-sm font-medium text-gray-900">Buyer #{request.buyerId?.uniqueId || request.buyerId?._id?.slice(-8).toUpperCase() || 'N/A'}</p>
                       {request.buyerId?.currentCity && (
                         <p className="text-xs text-gray-500">{request.buyerId.currentCity}</p>
                       )}

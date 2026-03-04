@@ -212,7 +212,7 @@ function BrowseTrips() {
                     </span>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {trip.name || 'Traveller'}
+                    Traveler #{trip.uniqueId || trip._id.slice(-8).toUpperCase()}
                   </h3>
                 </div>
 
@@ -241,7 +241,7 @@ function BrowseTrips() {
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{trip.name || 'Traveller'}</p>
+                    <p className="text-sm font-medium text-gray-900">Traveler #{trip.uniqueId || trip._id.slice(-8).toUpperCase()}</p>
                     <p className="text-xs text-gray-500">{trip.currentLocation}</p>
                   </div>
                 </div>
@@ -254,7 +254,7 @@ function BrowseTrips() {
                         state: {
                           selectedTrip: {
                             travelerId: trip._id,
-                            travelerName: trip.name,
+                            travelerUniqueId: trip.uniqueId || trip._id.slice(-8).toUpperCase(),
                             currentLocation: trip.currentLocation,
                             destinationCity: trip.destinationCity,
                             departureDate: trip.departureDate,

@@ -297,9 +297,9 @@ function SearchDeliveryPartners() {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {partner.name || partner.companyName}
+                          Partner #{partner.uniqueId || partner._id?.slice(-8).toUpperCase()}
                         </h3>
-                        {partner.companyName && partner.name && (
+                        {partner.companyName && (
                           <p className="text-sm text-gray-600">{partner.companyName}</p>
                         )}
                         <div className="mt-2 space-y-1">

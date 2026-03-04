@@ -905,7 +905,7 @@ function DeliveryPartnerDashboard({ user }: DeliveryPartnerDashboardProps) {
                               <p><span className="font-medium">Preferred Date:</span> {new Date(order.orderInfo.preferredDeliveryDate).toLocaleDateString()}</p>
                             )}
                             {order.buyerId && (
-                              <p><span className="font-medium">Buyer:</span> {order.buyerId.name} ({order.buyerId.email})</p>
+                              <p><span className="font-medium">Buyer:</span> #{order.buyerId.uniqueId || order.buyerId._id?.slice(-8).toUpperCase()} ({order.buyerId.email})</p>
                             )}
                             {/* Pickup Location */}
                             {(order.pickupLocation?.address || order.pickupLocation?.city || order.buyerId?.location || order.buyerId?.currentCity) && (

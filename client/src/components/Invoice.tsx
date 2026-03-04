@@ -227,7 +227,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
           <div class="section">
             <h3>Bill To:</h3>
             <div class="section-content">
-              <strong>${invoice.buyer?.name || 'N/A'}</strong><br>
+              <strong>Buyer #${invoice.buyer?.uniqueId || invoice.buyer?._id?.slice(-8).toUpperCase() || 'N/A'}</strong><br>
               ${invoice.buyer?.email || ''}<br>
               ${invoice.buyer?.phone || ''}
             </div>
@@ -420,7 +420,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
       <div className="mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Bill To:</h3>
         <div className="bg-gray-50 rounded-lg p-4">
-          <p className="font-semibold">{invoice.buyer?.name || 'N/A'}</p>
+          <p className="font-semibold">Buyer #{invoice.buyer?.uniqueId || invoice.buyer?._id?.slice(-8).toUpperCase() || 'N/A'}</p>
           <p className="text-gray-600">{invoice.buyer?.email || ''}</p>
           <p className="text-gray-600">{invoice.buyer?.phone || ''}</p>
         </div>
