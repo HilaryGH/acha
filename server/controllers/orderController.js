@@ -2630,3 +2630,57 @@ exports.cancelOrder = async (req, res) => {
     });
   }
 };
+
+// Delete expired orders (only if no transactions exist)
+exports.deleteExpiredOrders = async (req, res) => {
+  try {
+    const Transaction = require('../models/Transaction');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find all orders where preferredDeliveryDate has passed
+    const expiredOrders = await Order.find({
+      'orderInfo.preferredDeliveryDate': { $lt: today }
+    });
+
+    let deletedCount = 0;
+    let keptCount = 0;
+    const deletedOrderIds = [];
+    const keptOrderIds = [];
+
+    for (const order of expiredOrders) {
+      // Check if order has any transactions
+      const transactionCount = await Transaction.countDocuments({ orderId: order._id });
+
+      if (transactionCount === 0) {
+        // No transactions found, safe to delete
+        await Order.findByIdAndDelete(order._id);
+        deletedCount++;
+        deletedOrderIds.push(order._id.toString());
+      } else {
+        // Has transactions, keep the order
+        keptCount++;
+        keptOrderIds.push({
+          orderId: order._id.toString(),
+          transactionCount: transactionCount
+        });
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: `Expired orders cleanup completed. Deleted ${deletedCount} orders, kept ${keptCount} orders with transactions.`,
+      data: {
+        deletedCount,
+        keptCount,
+        deletedOrderIds,
+        keptOrderIds
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};

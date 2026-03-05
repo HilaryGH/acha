@@ -24,12 +24,32 @@ function BrowseOrders() {
       setError(null);
       const response = await api.orders.getAll() as any;
       
+      // Filter out expired orders (where preferredDeliveryDate has passed)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const filterExpiredOrders = (orders: any[]) => {
+        return orders.filter((order: any) => {
+          // Check if preferred delivery date has passed
+          if (order.orderInfo?.preferredDeliveryDate) {
+            const deliveryDate = new Date(order.orderInfo.preferredDeliveryDate);
+            deliveryDate.setHours(0, 0, 0, 0);
+            if (deliveryDate < today) {
+              return false; // Skip orders with past delivery dates
+            }
+          }
+          return true;
+        });
+      };
+      
       // Handle different response structures
       if (response && response.status === 'success') {
         // Standard API response format
         const ordersData = Array.isArray(response.data) ? response.data : [];
-        // Filter out cancelled, completed, and delivered orders
-        const activeOrders = ordersData.filter((order: any) => 
+        // Filter out expired orders first
+        const nonExpiredOrders = filterExpiredOrders(ordersData);
+        // Then filter out cancelled, completed, and delivered orders
+        const activeOrders = nonExpiredOrders.filter((order: any) => 
           order.status !== 'cancelled' && 
           order.status !== 'completed' && 
           order.status !== 'delivered'
@@ -37,7 +57,8 @@ function BrowseOrders() {
         setOrders(activeOrders);
       } else if (Array.isArray(response)) {
         // If response is directly an array
-        const activeOrders = response.filter((order: any) => 
+        const nonExpiredOrders = filterExpiredOrders(response);
+        const activeOrders = nonExpiredOrders.filter((order: any) => 
           order.status !== 'cancelled' && 
           order.status !== 'completed' && 
           order.status !== 'delivered'
@@ -45,7 +66,8 @@ function BrowseOrders() {
         setOrders(activeOrders);
       } else if (response && response.data && Array.isArray(response.data)) {
         // Handle cases where data exists but status might not be 'success'
-        const activeOrders = response.data.filter((order: any) => 
+        const nonExpiredOrders = filterExpiredOrders(response.data);
+        const activeOrders = nonExpiredOrders.filter((order: any) => 
           order.status !== 'cancelled' && 
           order.status !== 'completed' && 
           order.status !== 'delivered'

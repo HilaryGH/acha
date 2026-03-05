@@ -38,7 +38,7 @@ function PostOrder() {
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState({
-    // Buyer Information
+    // Client Information
     name: '',
     phone: '',
     email: '',
@@ -1267,11 +1267,11 @@ function PostOrder() {
               </div>
             </div>
 
-            {/* Buyer Information Section */}
+            {/* Client Information Section */}
             <div className="border-b border-gray-200 pb-6">
               <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
                 <span className="text-2xl">👤</span>
-                Buyer Information
+                Client Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

@@ -518,18 +518,18 @@ function Home() {
           </svg>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Partner With Us */}
-            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Partner With Us
               </h2>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+              <p className="text-gray-600 mb-6 text-base leading-relaxed">
                 Invest / Partner With Us - Join us in revolutionizing the delivery and travel industry
               </p>
               <Link 
                 to="/partner-with-us"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-tr-2xl rounded-bl-2xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -546,16 +546,16 @@ function Home() {
             </div>
 
             {/* Women Initiatives */}
-            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Women Initiatives
               </h2>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+              <p className="text-gray-600 mb-6 text-base leading-relaxed">
                 Join Women Initiatives - Empower yourself and join our community of amazing women
               </p>
               <Link 
                 to="/women-initiatives"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-tr-2xl rounded-bl-2xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -572,16 +572,42 @@ function Home() {
             </div>
 
             {/* Premium Community */}
-            <div className="bg-white p-8 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Acha Premium Community
               </h2>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+              <p className="text-gray-600 mb-6 text-base leading-relaxed">
                 Join our premium community - Exclusive benefits for delivery partners and corporate clients
               </p>
               <Link 
                 to="/premium"
-                className="inline-flex items-center gap-2 text-white px-8 py-3 rounded-tr-2xl rounded-bl-2xl font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-tr-2xl rounded-bl-2xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
+              >
+                  Join In
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+              </Link>
+            </div>
+
+            {/* Professionals Community */}
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-green-500">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">
+                Professionals Community
+              </h2>
+              <p className="text-gray-600 mb-6 text-base leading-relaxed">
+                Join Professionals Community - Connect with healthcare and wellness professionals in our growing network. Generate your certificate upon registration.
+              </p>
+              <Link 
+                to="/professionals-community"
+                className="inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-tr-2xl rounded-bl-2xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
@@ -757,6 +783,7 @@ function Home() {
           </div>
         </div>
       </section>
+
 
       {/* Communication Widget - Fixed at bottom right */}
       <CommunicationWidget />

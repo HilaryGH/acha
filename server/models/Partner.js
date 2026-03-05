@@ -23,7 +23,7 @@ const partnerSchema = new mongoose.Schema({
   // Partner Category (for Invest/Partner type)
   partner: {
     type: String,
-    enum: ['Delivery Partner', 'Domestic Suppliers', 'Tour & Travel'],
+    enum: ['Delivery Partner', 'Acha Sisters Delivery Partner', 'Acha Gifting Delivery Partner', 'Acha Movers & Packers'],
     required: function() { return this.registrationType === 'Invest/Partner'; }
   },
   // Investment Type (for Invest/Partner type)

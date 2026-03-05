@@ -531,6 +531,11 @@ export const api = {
         method: 'POST',
       });
     },
+    deleteExpiredOrders: async () => {
+      return request('/orders/cleanup/expired', {
+        method: 'DELETE',
+      });
+    },
     getAvailableTravelers: async (orderId: string) => {
       return request(`/orders/${orderId}/travelers`);
     },

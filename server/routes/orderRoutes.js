@@ -23,7 +23,8 @@ const {
   partnerAcceptRequest,
   partnerAcceptOrder,
   partnerRejectOrder,
-  downloadGiftCard
+  downloadGiftCard,
+  deleteExpiredOrders
 } = require('../controllers/orderController');
 
 console.log('✅ Order routes module loaded');
@@ -32,6 +33,10 @@ console.log('✅ Order routes module loaded');
 router.route('/')
   .get(getAllOrders)
   .post(createOrder);
+
+// Route to delete expired orders (only if no transactions exist)
+router.route('/cleanup/expired')
+  .delete(authenticate, deleteExpiredOrders);
 
 router.route('/request')
   .post(createDeliveryRequest);

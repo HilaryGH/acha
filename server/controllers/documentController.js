@@ -353,17 +353,26 @@ const getUserDocuments = async (req, res) => {
     const documents = [];
     const userEmail = user.email.toLowerCase().trim();
     
+    // Calculate registration time window (7 days after user registration)
+    // Only show documents from entities created during registration
+    const userRegistrationDate = user.createdAt || new Date();
+    const registrationWindowEnd = new Date(userRegistrationDate);
+    registrationWindowEnd.setDate(registrationWindowEnd.getDate() + 7); // 7 days window
+    
+    console.log(`[getUserDocuments] Looking for documents for user: ${user.name} (${userEmail})`);
+    console.log(`[getUserDocuments] Registration date: ${userRegistrationDate}, Window end: ${registrationWindowEnd}`);
+    
     // Use case-insensitive regex for email matching to handle any edge cases
     const emailRegex = new RegExp(`^${userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
     
-    console.log(`[getUserDocuments] Looking for documents for user: ${user.name} (${userEmail})`);
-    
     // Get Buyers with documents matching user email (case-insensitive)
+    // Only include buyers created during registration window
     const buyers = await Buyer.find({ 
       email: emailRegex,
-      idDocument: { $exists: true, $ne: null, $ne: '' }
+      idDocument: { $exists: true, $ne: null, $ne: '' },
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
     });
-    console.log(`[getUserDocuments] Found ${buyers.length} buyers with email matching ${userEmail}`);
+    console.log(`[getUserDocuments] Found ${buyers.length} buyers with email matching ${userEmail} (within registration window)`);
     buyers.forEach(buyer => {
       if (buyer.idDocument && buyer.idDocument.trim() !== '') {
         documents.push({
@@ -382,8 +391,12 @@ const getUserDocuments = async (req, res) => {
     });
     
     // Get Partners with documents matching user email (case-insensitive)
-    const partners = await Partner.find({ email: emailRegex });
-    console.log(`[getUserDocuments] Found ${partners.length} partners with email matching ${userEmail}`);
+    // Only include partners created during registration window
+    const partners = await Partner.find({ 
+      email: emailRegex,
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
+    });
+    console.log(`[getUserDocuments] Found ${partners.length} partners with email matching ${userEmail} (within registration window)`);
     partners.forEach(partner => {
       const docs = [];
       if (partner.idDocument && partner.idDocument.trim() !== '') docs.push({ type: 'idDocument', path: partner.idDocument, name: 'ID Document' });
@@ -410,8 +423,12 @@ const getUserDocuments = async (req, res) => {
     });
     
     // Get Travellers with documents matching user email (case-insensitive)
-    const travellers = await Traveller.find({ email: emailRegex });
-    console.log(`[getUserDocuments] Found ${travellers.length} travellers with email matching ${userEmail}`);
+    // Only include travellers created during registration window
+    const travellers = await Traveller.find({ 
+      email: emailRegex,
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
+    });
+    console.log(`[getUserDocuments] Found ${travellers.length} travellers with email matching ${userEmail} (within registration window)`);
     travellers.forEach(traveller => {
       const docs = [];
       
@@ -468,8 +485,12 @@ const getUserDocuments = async (req, res) => {
     });
     
     // Get WomenInitiatives with documents matching user email (case-insensitive)
-    const womenInitiatives = await WomenInitiative.find({ email: emailRegex });
-    console.log(`[getUserDocuments] Found ${womenInitiatives.length} women initiatives with email matching ${userEmail}`);
+    // Only include women initiatives created during registration window
+    const womenInitiatives = await WomenInitiative.find({ 
+      email: emailRegex,
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
+    });
+    console.log(`[getUserDocuments] Found ${womenInitiatives.length} women initiatives with email matching ${userEmail} (within registration window)`);
     womenInitiatives.forEach(women => {
       const docs = [];
       if (women.idDocument && women.idDocument.trim() !== '') docs.push({ type: 'idDocument', path: women.idDocument, name: 'ID Document' });
@@ -493,11 +514,13 @@ const getUserDocuments = async (req, res) => {
     });
     
     // Get Senders with documents matching user email (case-insensitive)
+    // Only include senders created during registration window
     const senders = await Sender.find({ 
       email: emailRegex,
-      idDocument: { $exists: true, $ne: null, $ne: '' }
+      idDocument: { $exists: true, $ne: null, $ne: '' },
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
     });
-    console.log(`[getUserDocuments] Found ${senders.length} senders with email matching ${userEmail}`);
+    console.log(`[getUserDocuments] Found ${senders.length} senders with email matching ${userEmail} (within registration window)`);
     senders.forEach(sender => {
       if (sender.idDocument && sender.idDocument.trim() !== '') {
         documents.push({
@@ -516,11 +539,13 @@ const getUserDocuments = async (req, res) => {
     });
     
     // Get Receivers with documents matching user email (case-insensitive)
+    // Only include receivers created during registration window
     const receivers = await Receiver.find({ 
       email: emailRegex,
-      idDocument: { $exists: true, $ne: null, $ne: '' }
+      idDocument: { $exists: true, $ne: null, $ne: '' },
+      createdAt: { $gte: userRegistrationDate, $lte: registrationWindowEnd }
     });
-    console.log(`[getUserDocuments] Found ${receivers.length} receivers with email matching ${userEmail}`);
+    console.log(`[getUserDocuments] Found ${receivers.length} receivers with email matching ${userEmail} (within registration window)`);
     receivers.forEach(receiver => {
       if (receiver.idDocument && receiver.idDocument.trim() !== '') {
         documents.push({
@@ -541,7 +566,7 @@ const getUserDocuments = async (req, res) => {
     // Sort by createdAt descending
     documents.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
-    console.log(`[getUserDocuments] Returning ${documents.length} documents for user ${userEmail}`);
+    console.log(`[getUserDocuments] Returning ${documents.length} documents for user ${userEmail} (only registration-time documents)`);
     
     res.json({
       status: 'success',

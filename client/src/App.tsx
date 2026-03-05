@@ -16,6 +16,9 @@ import About from './pages/About'
 import PartnerWithUs from './pages/PartnerWithUs'
 import WomenInitiatives from './pages/WomenInitiatives'
 import Premium from './pages/Premium'
+import ProfessionalsCommunity from './pages/ProfessionalsCommunity'
+import FreshGraduates from './pages/FreshGraduates'
+import JoinCommunity from './pages/JoinCommunity'
 import DashboardRouter from './pages/DashboardRouter'
 import SearchTravelers from './pages/SearchTravelers'
 import SearchDeliveryPartners from './pages/SearchDeliveryPartners'
@@ -54,6 +57,9 @@ function AppContent() {
         <Route path="/partner-with-us" element={<PartnerWithUs />} />
         <Route path="/women-initiatives" element={<WomenInitiatives />} />
         <Route path="/premium" element={<Premium />} />
+        <Route path="/professionals-community" element={<ProfessionalsCommunity />} />
+        <Route path="/fresh-graduates" element={<FreshGraduates />} />
+        <Route path="/join-community" element={<JoinCommunity />} />
         <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/search" element={<SearchTravelers />} />
         <Route path="/search-delivery-partners" element={<SearchDeliveryPartners />} />

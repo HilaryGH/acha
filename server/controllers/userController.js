@@ -14,7 +14,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const register = async (req, res) => {
   try {
     console.log('Register endpoint called with body:', { ...req.body, password: '***' });
-    const { name, email, password, phone, role, department, city, location, primaryLocation, distancePricing } = req.body;
+    const { name, email, password, phone, role, department, city, location, primaryLocation, distancePricing, deliveryMechanism } = req.body;
     const creatorRole = req.user?.role;
     const creatorId = req.user?.id;
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
@@ -102,6 +102,11 @@ const register = async (req, res) => {
     }
     if (primaryLocation && primaryLocation.trim()) {
       userData.primaryLocation = primaryLocation.trim();
+    }
+    
+    // Include delivery mechanism for delivery partners
+    if (deliveryMechanism && deliveryMechanism.trim()) {
+      userData.deliveryMechanism = deliveryMechanism.trim();
     }
     
     // Include distance-based pricing for delivery partners
@@ -448,10 +453,16 @@ const getUserById = async (req, res) => {
       });
     }
     
+    // Convert user to object and add transportation mechanism from user's deliveryMechanism
+    const userObject = user.toObject();
+    if (user.deliveryMechanism) {
+      userObject.transportationMechanism = user.deliveryMechanism;
+    }
+    
     res.json({
       status: 'success',
       data: {
-        user
+        user: userObject
       }
     });
   } catch (error) {

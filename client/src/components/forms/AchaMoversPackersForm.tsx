@@ -101,6 +101,11 @@ function AchaMoversPackersForm() {
         // Also set location field to primaryLocation for broader search
         registrationData.location = formData.primaryLocation.trim();
       }
+
+      // Include delivery mechanism
+      if (formData.deliveryMechanism && formData.deliveryMechanism.trim()) {
+        registrationData.deliveryMechanism = formData.deliveryMechanism.trim();
+      }
       
       const userResponse = await api.users.register(registrationData) as { status?: string; message?: string; data?: { user?: { id: string } } };
       

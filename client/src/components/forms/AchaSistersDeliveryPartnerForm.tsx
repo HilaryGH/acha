@@ -160,6 +160,11 @@ function AchaSistersDeliveryPartnerForm() {
         registrationData.location = formData.primaryLocation.trim();
       }
 
+      // Include delivery mechanism
+      if (formData.deliveryMechanism && formData.deliveryMechanism.trim()) {
+        registrationData.deliveryMechanism = formData.deliveryMechanism.trim();
+      }
+
       // Include distance-based pricing (required for order matching)
       if (distancePricing.length > 0) {
         registrationData.distancePricing = distancePricing.map(dp => ({

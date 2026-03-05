@@ -5,7 +5,7 @@ import FileUpload from '../FileUpload';
 function PartnerWithUsForm() {
   const [formData, setFormData] = useState({
     type: '', // Investor, Strategic Partner, Sponsorship
-    partner: '', // Delivery Partner, Domestic Suppliers, Tour & Travel
+    partner: '', // Delivery Partner, Acha Sisters Delivery Partner, Acha Gifting Delivery Partner, Acha Movers & Packers
     investmentType: '',
     name: '',
     companyName: '',
@@ -142,8 +142,9 @@ function PartnerWithUsForm() {
                 >
                   <option value="">-- Select Partner --</option>
                   <option value="Delivery Partner">Delivery Partner</option>
-                  <option value="Domestic Suppliers">Domestic Suppliers</option>
-                  <option value="Tour & Travel">Tour & Travel</option>
+                  <option value="Acha Sisters Delivery Partner">Acha Sisters Delivery Partner</option>
+                  <option value="Acha Gifting Delivery Partner">Acha Gifting Delivery Partner</option>
+                  <option value="Acha Movers & Packers">Acha Movers & Packers</option>
                 </select>
               </div>
               <div>
@@ -171,7 +172,7 @@ function PartnerWithUsForm() {
             <h3 className="text-lg font-semibold mb-3 text-gray-800">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Name *</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Full Name *</label>
                 <input
                   type="text"
                   name="name"

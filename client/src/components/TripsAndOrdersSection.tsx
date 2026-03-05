@@ -147,21 +147,42 @@ function TripsAndOrdersSection() {
             ? ordersResponse
             : [];
         
-        // Filter orders - show pending, matched, assigned, active, or if none exist, show all recent orders
-        let activeOrders = ordersData
+        // Filter out expired orders (where preferredDeliveryDate has passed)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const filterExpiredOrders = (orders: Order[]) => {
+          return orders.filter((order: Order) => {
+            // Check if preferred delivery date has passed
+            if (order.orderInfo?.preferredDeliveryDate) {
+              const deliveryDate = new Date(order.orderInfo.preferredDeliveryDate);
+              deliveryDate.setHours(0, 0, 0, 0);
+              if (deliveryDate < today) {
+                return false; // Skip orders with past delivery dates
+              }
+            }
+            return true;
+          });
+        };
+        
+        // Filter orders - remove expired orders first
+        const nonExpiredOrders = filterExpiredOrders(ordersData);
+        
+        // Then filter by status - show pending, matched, assigned, active, or if none exist, show all recent orders
+        let activeOrders = nonExpiredOrders
           .filter((order: Order) => order.status === 'pending' || order.status === 'matched' || order.status === 'assigned' || order.status === 'active')
           .sort((a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        // If no active orders found, show all recent orders (excluding cancelled/completed/delivered)
+        // If no active orders found, show all recent orders (excluding cancelled/completed/delivered and expired)
         if (activeOrders.length === 0) {
-          activeOrders = ordersData
+          activeOrders = nonExpiredOrders
             .filter((order: Order) => order.status !== 'cancelled' && order.status !== 'completed' && order.status !== 'delivered')
             .sort((a: Order, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
         
         setAllOrders(activeOrders);
         setOrders(activeOrders.slice(0, 4)); // Keep 4 orders for display (one row on desktop)
-        console.log('Active orders:', activeOrders.length, 'Total orders:', ordersData.length);
+        console.log('Active orders:', activeOrders.length, 'Non-expired orders:', nonExpiredOrders.length, 'Total orders:', ordersData.length);
       }
     } catch (error) {
       console.error('Error fetching data:', error);

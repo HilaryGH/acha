@@ -18,7 +18,8 @@ const createPremium = async (req, res) => {
       city,
       idDocument,
       license,
-      tradeRegistration
+      tradeRegistration,
+      price
     } = req.body;
     
     // Validate required fields
@@ -60,6 +61,7 @@ const createPremium = async (req, res) => {
       idDocument,
       license,
       tradeRegistration: category === 'corporate-clients' ? tradeRegistration : undefined,
+      price: price ? Number(price) : undefined, // Include price if provided
       status: 'pending',
       paymentStatus: 'pending'
     });

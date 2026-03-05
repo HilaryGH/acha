@@ -30,6 +30,11 @@ interface Partner {
   idDocument?: string;
   license?: string;
   tradeRegistration?: string;
+  cv?: string;
+  credentials?: string;
+  category?: string;
+  specialization?: string;
+  currentLocation?: string;
 }
 
 interface AuditLog {
@@ -75,7 +80,7 @@ interface SuperAdminDashboardProps {
 
 function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'partner-with-us' | 'women-initiatives' | 'premium-community' | 'trips'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'partner-with-us' | 'women-initiatives' | 'premium-community' | 'professionals-community' | 'trips'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -88,6 +93,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const [partnerWithUs, setPartnerWithUs] = useState<Partner[]>([]);
   const [womenInitiatives, setWomenInitiatives] = useState<any[]>([]);
   const [premiumCommunity, setPremiumCommunity] = useState<any[]>([]);
+  const [professionalsCommunity, setProfessionalsCommunity] = useState<Partner[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transactionStats, setTransactionStats] = useState<any>(null);
@@ -101,6 +107,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const [partnerWithUsFilter, setPartnerWithUsFilter] = useState<{ status?: string }>({});
   const [womenInitiativesFilter, setWomenInitiativesFilter] = useState<{ status?: string }>({});
   const [premiumFilter, setPremiumFilter] = useState<{ status?: string; category?: string }>({});
+  const [professionalsFilter, setProfessionalsFilter] = useState<{ status?: string; category?: string }>({});
   const [pdfViewer, setPdfViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
     url: '',
@@ -118,6 +125,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     startDate: '',
     endDate: ''
   });
+  const [selectedTransactionCategory, setSelectedTransactionCategory] = useState<string>('all');
 
   useEffect(() => {
     loadDashboardData();
@@ -136,9 +144,11 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       loadWomenInitiatives();
     } else if (activeTab === 'premium-community') {
       loadPremiumCommunity();
+    } else if (activeTab === 'professionals-community') {
+      loadProfessionalsCommunity();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactionFilters, tripFilters, partnerWithUsFilter, womenInitiativesFilter, premiumFilter]);
+  }, [transactionFilters, tripFilters, partnerWithUsFilter, womenInitiativesFilter, premiumFilter, professionalsFilter]);
 
   const loadDashboardData = async () => {
     try {
@@ -162,6 +172,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
         await loadWomenInitiatives();
       } else if (activeTab === 'premium-community') {
         await loadPremiumCommunity();
+      } else if (activeTab === 'professionals-community') {
+        await loadProfessionalsCommunity();
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -276,6 +288,66 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       console.error('Error loading transaction stats:', error);
       setTransactionStats(null);
     }
+  };
+
+  // Group transactions by delivery method
+  const groupTransactionsByDeliveryMethod = (transactions: any[]) => {
+    const grouped: Record<string, any[]> = {
+      traveler: [],
+      delivery_partner: [],
+      acha_sisters_delivery_partner: [],
+      gift_delivery_partner: [],
+      movers_packers: [],
+      other: []
+    };
+
+    transactions.forEach(transaction => {
+      const deliveryMethod = transaction.orderId?.deliveryMethod;
+      if (deliveryMethod && grouped[deliveryMethod]) {
+        grouped[deliveryMethod].push(transaction);
+      } else if (deliveryMethod) {
+        grouped.other.push(transaction);
+      } else {
+        grouped.other.push(transaction);
+      }
+    });
+
+    return grouped;
+  };
+
+  // Get category display name
+  const getCategoryDisplayName = (category: string) => {
+    const names: Record<string, string> = {
+      traveler: 'Traveler',
+      delivery_partner: 'Delivery Partner',
+      acha_sisters_delivery_partner: 'Acha Sisters Delivery Partner',
+      gift_delivery_partner: 'Acha Gift Delivery Partner',
+      movers_packers: 'Packers and Movers',
+      other: 'Other',
+      all: 'All Transactions'
+    };
+    return names[category] || category;
+  };
+
+  // Calculate stats for a category
+  const calculateCategoryStats = (categoryTransactions: any[]) => {
+    const completed = categoryTransactions.filter(t => t.status === 'completed');
+    const totalRevenue = completed.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const totalFees = completed.reduce((sum, t) => sum + (t.fees?.total || 0), 0);
+    const platformFees = completed.reduce((sum, t) => sum + (t.fees?.platformFee || 0), 0);
+    const serviceFees = completed.reduce((sum, t) => sum + (t.fees?.serviceFee || 0), 0);
+    const netRevenue = totalRevenue - totalFees;
+
+    return {
+      total: categoryTransactions.length,
+      completed: completed.length,
+      pending: categoryTransactions.filter(t => t.status === 'pending').length,
+      totalRevenue,
+      totalFees,
+      platformFees,
+      serviceFees,
+      netRevenue
+    };
   };
 
   const handleUpdateUserStatus = async (userId: string, newStatus: string) => {
@@ -495,6 +567,23 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     }
   };
 
+  const loadProfessionalsCommunity = async () => {
+    try {
+      setLoading(true);
+      const response = await api.partners.getAll({ registrationType: 'Professionals Community', ...professionalsFilter }) as { status?: string; data?: Partner[] };
+      if (response.status === 'success' && response.data) {
+        setProfessionalsCommunity(response.data);
+      } else {
+        setProfessionalsCommunity([]);
+      }
+    } catch (error) {
+      console.error('Error loading Professionals Community:', error);
+      setProfessionalsCommunity([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdatePartnerWithUsStatus = async (partnerId: string, newStatus: string) => {
     try {
       await api.partners.update(partnerId, { status: newStatus });
@@ -522,6 +611,17 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       await loadPremiumCommunity();
     } catch (error) {
       console.error('Error updating Premium status:', error);
+      alert('Failed to update status');
+    }
+  };
+
+  const handleUpdateProfessionalsStatus = async (partnerId: string, newStatus: string) => {
+    try {
+      await api.partners.update(partnerId, { status: newStatus });
+      await loadProfessionalsCommunity();
+      await loadOverviewStats();
+    } catch (error) {
+      console.error('Error updating Professionals Community status:', error);
       alert('Failed to update status');
     }
   };
@@ -608,6 +708,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                 { id: 'partner-with-us', label: 'Partner With Us', icon: '🤝' },
                 { id: 'women-initiatives', label: 'Women Initiatives', icon: '👩' },
                 { id: 'premium-community', label: 'Premium Community', icon: '⭐' },
+                { id: 'professionals-community', label: 'Professionals Community', icon: '🏥' },
                 { id: 'partners', label: 'Partners', icon: '🚚' },
                 { id: 'transactions', label: 'Transactions', icon: '💰' },
                 { id: 'audit', label: 'Audit Logs', icon: '📋' },
@@ -921,12 +1022,10 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                 </div>
               )}
 
-              {/* Transactions Table */}
+              {/* Category Tabs */}
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    All Transactions {transactions.length > 0 && `(${transactions.length})`}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Transactions by Category</h3>
                   <button
                     onClick={loadTransactions}
                     className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
@@ -935,45 +1034,110 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                     Refresh
                   </button>
                 </div>
-                {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
-                    <p className="mt-4 text-gray-600">Loading transactions...</p>
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-600">No transactions found</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                          {transactions.some(t => t.status === 'completed' && t.fees) && (
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fees Breakdown</th>
-                          )}
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice/Receipt</th>
-                          )}
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {transactions
-                          .sort((a, b) => {
-                            // Sort completed transactions first, then by date
-                            if (a.status === 'completed' && b.status !== 'completed') return -1;
-                            if (a.status !== 'completed' && b.status === 'completed') return 1;
-                            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                          })
-                          .map((transaction) => {
+                
+                {/* Category Tabs */}
+                <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
+                  {['all', 'traveler', 'delivery_partner', 'acha_sisters_delivery_partner', 'gift_delivery_partner', 'movers_packers'].map((category) => {
+                    const grouped = groupTransactionsByDeliveryMethod(transactions);
+                    const categoryTransactions = category === 'all' ? transactions : grouped[category] || [];
+                    const count = categoryTransactions.length;
+                    
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedTransactionCategory(category)}
+                        className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                          selectedTransactionCategory === category
+                            ? 'bg-[#1E88E5] text-white border-b-2 border-[#1E88E5]'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {getCategoryDisplayName(category)} {count > 0 && `(${count})`}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Category Statistics */}
+                {(() => {
+                  const grouped = groupTransactionsByDeliveryMethod(transactions);
+                  const categoryTransactions = selectedTransactionCategory === 'all' 
+                    ? transactions 
+                    : grouped[selectedTransactionCategory] || [];
+                  const stats = calculateCategoryStats(categoryTransactions);
+                  
+                  return (
+                    <>
+                      {categoryTransactions.length > 0 && (
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
+                            <p className="text-xs font-medium text-gray-600">Total Transactions</p>
+                            <p className="text-xl font-bold text-blue-700 mt-1">{stats.total}</p>
+                            <p className="text-xs text-gray-500 mt-1">{stats.completed} completed</p>
+                          </div>
+                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                            <p className="text-xs font-medium text-gray-600">Total Revenue</p>
+                            <p className="text-xl font-bold text-green-700 mt-1">
+                              ETB {stats.totalRevenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">From completed</p>
+                          </div>
+                          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                            <p className="text-xs font-medium text-gray-600">Total Fees</p>
+                            <p className="text-xl font-bold text-purple-700 mt-1">
+                              ETB {stats.totalFees.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">Platform + Service</p>
+                          </div>
+                          <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
+                            <p className="text-xs font-medium text-gray-600">Net Revenue</p>
+                            <p className="text-xl font-bold text-orange-700 mt-1">
+                              ETB {stats.netRevenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">After fees</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {loading ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
+                          <p className="mt-4 text-gray-600">Loading transactions...</p>
+                        </div>
+                      ) : categoryTransactions.length === 0 ? (
+                        <div className="text-center py-12">
+                          <p className="text-gray-600">No transactions found for {getCategoryDisplayName(selectedTransactionCategory)}</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                {categoryTransactions.some(t => t.status === 'completed' && t.fees) && (
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fees Breakdown</th>
+                                )}
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                {categoryTransactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
+                                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice/Receipt</th>
+                                )}
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {categoryTransactions
+                                .sort((a, b) => {
+                                  // Sort completed transactions first, then by date
+                                  if (a.status === 'completed' && b.status !== 'completed') return -1;
+                                  if (a.status !== 'completed' && b.status === 'completed') return 1;
+                                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                                })
+                                .map((transaction) => {
                             const order = transaction.orderId;
                             const assignedTraveler = order?.assignedTravelerId;
                             const assignedPartner = order?.assignedPartnerId;
@@ -1075,52 +1239,128 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                 {transaction.amount?.toFixed(2) || '0.00'} {transaction.currency || 'ETB'}
                               </td>
-                              {transactions.some(t => t.status === 'completed' && t.fees) && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {transaction.status === 'completed' && transaction.fees ? (
-                                    <div className="text-xs">
-                                      <div>Platform: ETB {(transaction.fees.platformFee || 0).toFixed(2)}</div>
-                                      <div>Service: ETB {(transaction.fees.serviceFee || 0).toFixed(2)}</div>
-                                      <div>Delivery: ETB {(transaction.fees.deliveryFee || 0).toFixed(2)}</div>
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
-                                  )}
-                                </td>
-                              )}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                                {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                  transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                  transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  transaction.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                  transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {transaction.status || 'N/A'}
-                                </span>
-                              </td>
-                              {transactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {transaction.status === 'completed' ? (
-                                    <div className="text-xs">
-                                      {transaction.invoiceNumber && (
-                                        <div className="text-blue-600 font-medium">INV: {transaction.invoiceNumber}</div>
-                                      )}
-                                      {transaction.receiptNumber && (
-                                        <div className="text-green-600 font-medium">RCP: {transaction.receiptNumber}</div>
-                                      )}
-                                      {!transaction.invoiceNumber && !transaction.receiptNumber && (
+                                  {categoryTransactions.some(t => t.status === 'completed' && t.fees) && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {transaction.status === 'completed' && transaction.fees ? (
+                                        <div className="text-xs">
+                                          <div>Platform: ETB {(transaction.fees.platformFee || 0).toFixed(2)}</div>
+                                          <div>Service: ETB {(transaction.fees.serviceFee || 0).toFixed(2)}</div>
+                                          <div>Delivery: ETB {(transaction.fees.deliveryFee || 0).toFixed(2)}</div>
+                                        </div>
+                                      ) : (
                                         <span className="text-gray-400">-</span>
                                       )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-400">-</span>
+                                    </td>
                                   )}
-                                </td>
-                              )}
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                                    {transaction.paymentMethod?.replace('_', ' ') || 'N/A'}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                      transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      transaction.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                      transaction.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {transaction.status || 'N/A'}
+                                    </span>
+                                  </td>
+                                  {categoryTransactions.some(t => t.status === 'completed' && (t.invoiceNumber || t.receiptNumber)) && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                      {transaction.status === 'completed' ? (
+                                        <div className="text-xs">
+                                          {transaction.invoiceNumber && (
+                                            <div className="text-blue-600 font-medium">INV: {transaction.invoiceNumber}</div>
+                                          )}
+                                          {transaction.receiptNumber && (
+                                            <div className="text-green-600 font-medium">RCP: {transaction.receiptNumber}</div>
+                                          )}
+                                          {!transaction.invoiceNumber && !transaction.receiptNumber && (
+                                            <span className="text-gray-400">-</span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-400">-</span>
+                                      )}
+                                    </td>
+                                  )}
+                                  <td className="px-6 py-4 text-sm text-gray-500">
+                                    <div className="space-y-2 max-w-xs">
+                                      {/* Payment Proof */}
+                                      {transaction.paymentDetails?.paymentProof && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-medium text-gray-600">Payment Proof:</span>
+                                          <a
+                                            href={transaction.paymentDetails.paymentProof}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                          >
+                                            <span>View</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                          </a>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Order Photos */}
+                                      {orderInfo.photos && Array.isArray(orderInfo.photos) && orderInfo.photos.length > 0 && (
+                                        <div className="flex flex-col gap-1">
+                                          <span className="text-xs font-medium text-gray-600">Order Photos ({orderInfo.photos.length}):</span>
+                                          <div className="flex flex-wrap gap-1">
+                                            {orderInfo.photos.slice(0, 3).map((photo: string, idx: number) => (
+                                              <a
+                                                key={idx}
+                                                href={photo}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block"
+                                              >
+                                                <img
+                                                  src={photo}
+                                                  alt={`Order photo ${idx + 1}`}
+                                                  className="w-12 h-12 object-cover rounded border border-gray-300 hover:border-blue-500 transition"
+                                                />
+                                              </a>
+                                            ))}
+                                            {orderInfo.photos.length > 3 && (
+                                              <div className="w-12 h-12 bg-gray-100 rounded border border-gray-300 flex items-center justify-center text-xs text-gray-600">
+                                                +{orderInfo.photos.length - 3}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Order Video */}
+                                      {orderInfo.video && (
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-medium text-gray-600">Order Video:</span>
+                                          <a
+                                            href={orderInfo.video}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                          >
+                                            <span>View</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                          </a>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Show message if no documents */}
+                                      {!transaction.paymentDetails?.paymentProof && 
+                                       (!orderInfo.photos || (Array.isArray(orderInfo.photos) && orderInfo.photos.length === 0)) && 
+                                       !orderInfo.video && (
+                                        <span className="text-xs text-gray-400">No documents</span>
+                                      )}
+                                    </div>
+                                  </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <div>{new Date(transaction.createdAt).toLocaleDateString()}</div>
                                 {transaction.status === 'completed' && transaction.paidAt && (
@@ -1129,13 +1369,16 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                                   </div>
                                 )}
                               </td>
-                            </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                                  </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1969,6 +2212,183 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
             </div>
           )}
 
+          {activeTab === 'professionals-community' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Professionals Community Registrations</h3>
+                <button
+                  onClick={loadProfessionalsCommunity}
+                  className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
+                  style={{ backgroundColor: '#1E88E5' }}
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="mb-6 flex gap-4">
+                <select
+                  value={professionalsFilter.status || ''}
+                  onChange={(e) => {
+                    setProfessionalsFilter({ ...professionalsFilter, status: e.target.value || undefined });
+                    loadProfessionalsCommunity();
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select
+                  value={professionalsFilter.category || ''}
+                  onChange={(e) => {
+                    setProfessionalsFilter({ ...professionalsFilter, category: e.target.value || undefined });
+                    loadProfessionalsCommunity();
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                >
+                  <option value="">All Categories</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Fresh Graduate">Fresh Graduate</option>
+                </select>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
+                  <p className="mt-4 text-gray-600">Loading registrations...</p>
+                </div>
+              ) : professionalsCommunity.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No Professionals Community registrations found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {professionalsCommunity.map((professional) => (
+                    <div key={professional._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h4 className="text-lg font-semibold text-gray-900">Professional #{professional.uniqueId || professional._id?.slice(-8).toUpperCase()}</h4>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              professional.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              professional.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              professional.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {professional.status}
+                            </span>
+                            {professional.category && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full capitalize" style={{ backgroundColor: 'rgba(30, 136, 229, 0.1)', color: '#1E88E5' }}>
+                                {professional.category}
+                              </span>
+                            )}
+                            {professional.status && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full capitalize" style={{ backgroundColor: 'rgba(67, 160, 71, 0.1)', color: '#43A047' }}>
+                                {professional.status}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
+                            <div>
+                              <span className="font-medium">Name:</span> {professional.name || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Email:</span> {professional.email || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Phone:</span> {professional.phone || 'N/A'}
+                            </div>
+                            {professional.specialization && (
+                              <div>
+                                <span className="font-medium">Specialization:</span> {professional.specialization}
+                              </div>
+                            )}
+                            {professional.currentLocation && (
+                              <div>
+                                <span className="font-medium">Location:</span> {professional.currentLocation}
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-medium">Registered:</span> {new Date(professional.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          {/* Documents */}
+                          {(professional.cv || professional.credentials) && (
+                            <div className="mt-4">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-2">Documents:</h5>
+                              <div className="flex flex-wrap gap-2">
+                                {professional.cv && (
+                                  <a
+                                    href={professional.cv.startsWith('http') ? professional.cv : `${import.meta.env.VITE_API_BASE_URL || ''}${professional.cv}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs px-2 py-1 rounded text-white hover:opacity-80"
+                                    style={{ backgroundColor: '#1E88E5' }}
+                                  >
+                                    CV
+                                  </a>
+                                )}
+                                {professional.credentials && (
+                                  <a
+                                    href={professional.credentials.startsWith('http') ? professional.credentials : `${import.meta.env.VITE_API_BASE_URL || ''}${professional.credentials}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs px-2 py-1 rounded text-white hover:opacity-80"
+                                    style={{ backgroundColor: '#43A047' }}
+                                  >
+                                    Credentials
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 ml-4">
+                          {professional.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateProfessionalsStatus(professional._id, 'approved')}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateProfessionalsStatus(professional._id, 'rejected')}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {professional.status === 'reviewed' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateProfessionalsStatus(professional._id, 'approved')}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateProfessionalsStatus(professional._id, 'rejected')}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'partners' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Partner Applications</h3>
@@ -2660,6 +3080,19 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Department</label>
                       <p className="text-base text-gray-900 mt-1">{userDetailsModal.userDetails.department || 'N/A'}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Transportation Mechanism</label>
+                      <p className="mt-1">
+                        {userDetailsModal.userDetails.transportationMechanism ? (
+                          <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full capitalize bg-blue-100 text-blue-800">
+                            {userDetailsModal.userDetails.transportationMechanism.replace(/-/g, ' ').replace(/_/g, ' ')}
+                          </span>
+                        ) : (
+                          <span className="text-base text-gray-500">N/A</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   

@@ -75,6 +75,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Delivery Mechanism (for delivery partners)
+  deliveryMechanism: {
+    type: String,
+    enum: ['cycle-rider', 'e-bike-rider', 'motorcycle-rider'],
+    trim: true
+  },
   // Distance-based pricing for delivery partners
   distancePricing: [{
     minDistance: {
