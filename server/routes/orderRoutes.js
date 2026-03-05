@@ -24,6 +24,7 @@ const {
   partnerAcceptOrder,
   partnerRejectOrder,
   downloadGiftCard,
+  generateInvoiceFromOrder,
   deleteExpiredOrders
 } = require('../controllers/orderController');
 
@@ -116,6 +117,9 @@ router.route('/:orderId/offers')
 
 router.route('/:orderId/gift-card')
   .get(downloadGiftCard);
+
+router.route('/:orderId/invoice')
+  .get(generateInvoiceFromOrder);
 
 router.route('/:orderId')
   .put(updateOrder)

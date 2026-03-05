@@ -2448,7 +2448,108 @@ exports.getOrdersForTraveller = async (req, res) => {
   }
 };
 
+// Generate invoice from order (creates transaction if needed for cash payments)
+exports.generateInvoiceFromOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const Transaction = require('../models/Transaction');
+    
+    const order = await Order.findById(orderId).populate('buyerId');
+    
+    if (!order) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    // Check if transaction already exists
+    let transaction = null;
+    if (order.transactionId) {
+      transaction = await Transaction.findById(order.transactionId)
+        .populate('orderId')
+        .populate('buyerId');
+    }
+
+    // If no transaction exists, create one for cash payment scenario
+    if (!transaction) {
+      // Always calculate total from components to ensure accuracy
+      const itemValue = order.pricing?.itemValue || 0;
+      const deliveryFee = order.pricing?.deliveryFee || 0;
+      const serviceFee = order.pricing?.serviceFee || 0;
+      const platformFee = order.pricing?.platformFee || 0;
+      const feesTotal = deliveryFee + serviceFee + platformFee;
+      const totalAmount = itemValue + feesTotal; // Calculate from components, not from totalAmount field
+      
+      transaction = await Transaction.create({
+        orderId: order._id,
+        buyerId: order.buyerId._id || order.buyerId,
+        transactionType: 'order_payment',
+        paymentMethod: 'cash', // Default to cash for pending payments
+        amount: totalAmount, // This is itemValue + all fees
+        currency: order.pricing?.currency || 'ETB',
+        fees: {
+          deliveryFee: deliveryFee,
+          serviceFee: serviceFee,
+          platformFee: platformFee,
+          total: feesTotal
+        },
+        status: 'pending' // Payment due invoice
+      });
+
+      // Link transaction to order
+      order.transactionId = transaction._id;
+      await order.save();
+    }
+
+    // Generate invoice number if it doesn't exist
+    if (!transaction.invoiceNumber) {
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      transaction.invoiceNumber = `INV-${year}${month}-${randomNum}`;
+      transaction.invoiceGenerated = true;
+      transaction.invoiceGeneratedAt = new Date();
+      await transaction.save();
+    }
+
+    // Populate transaction data
+    transaction = await Transaction.findById(transaction._id)
+      .populate('orderId')
+      .populate('buyerId');
+
+    res.status(200).json({
+      status: 'success',
+      message: transaction.status === 'completed' 
+        ? 'Invoice generated successfully' 
+        : 'Payment due invoice generated successfully',
+      data: {
+        transaction,
+        invoice: {
+          invoiceNumber: transaction.invoiceNumber,
+          invoiceDate: transaction.invoiceGeneratedAt || transaction.createdAt,
+          buyer: transaction.buyerId,
+          order: transaction.orderId,
+          amount: transaction.amount,
+          currency: transaction.currency,
+          fees: transaction.fees,
+          paymentMethod: transaction.paymentMethod,
+          paidAt: transaction.paidAt,
+          status: transaction.status
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error generating invoice from order:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to generate invoice'
+    });
+  }
+};
+
 // Download gift card for an order
+// Generates gift card if it doesn't exist (for pending orders with cash payment)
 exports.downloadGiftCard = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -2472,12 +2573,22 @@ exports.downloadGiftCard = async (req, res) => {
       });
     }
 
-    // Check if gift card exists
+    // Generate gift card if it doesn't exist (for cash payments - pending orders)
     if (!order.giftCardUrl) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Gift card has not been generated yet. Please complete payment first.'
-      });
+      try {
+        const { generateGiftCard } = require('../utils/giftCardGenerator');
+        const giftCardPath = await generateGiftCard(order, order.buyerId);
+        order.giftCardUrl = giftCardPath;
+        order.giftCardGeneratedAt = new Date();
+        await order.save();
+        console.log(`Gift card generated for order ${order.uniqueId}: ${giftCardPath}`);
+      } catch (giftCardError) {
+        console.error('Error generating gift card:', giftCardError);
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to generate gift card. ' + (giftCardError.message || 'Please try again later.')
+        });
+      }
     }
 
     // Get the file path

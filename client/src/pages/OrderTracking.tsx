@@ -291,37 +291,38 @@ function OrderTracking() {
                   {order.paymentStatus ? order.paymentStatus.toUpperCase() : 'PENDING'}
                 </span>
               </div>
-              {(transaction && (transaction.status === 'completed' || order.paymentStatus === 'paid' || order.paymentStatus === 'processing')) && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowInvoice(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    View Invoice
-                  </button>
+              {/* Show invoice button (for both pending/payment due and completed, with or without transaction) */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowInvoice(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {transaction && transaction.status === 'completed' ? 'View Invoice' : 'View Payment Due Invoice'}
+                </button>
                   {order.deliveryMethod === 'gift_delivery_partner' && (
                     <button
                       onClick={async () => {
                         try {
+                          setError(null);
                           await api.orders.downloadGiftCard(order._id);
+                          // Refresh order to get updated gift card URL
+                          await fetchOrder();
                         } catch (error: any) {
                           setError(error.message || 'Failed to download gift card');
                         }
                       }}
-                      disabled={!order.giftCardUrl}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      {order.giftCardUrl ? 'Download Gift Card' : 'Gift Card Generating...'}
+                      Download Gift Card
                     </button>
                   )}
-                </div>
-              )}
+              </div>
             </div>
             {order.pricing && (
               <div className="mt-3 text-sm">
@@ -392,11 +393,12 @@ function OrderTracking() {
         )}
 
         {/* Invoice Modal */}
-        {showInvoice && transaction && (
+        {showInvoice && order && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <Invoice
-                transactionId={transaction._id}
+                transactionId={transaction?._id}
+                orderId={order._id}
                 onClose={() => setShowInvoice(false)}
               />
             </div>

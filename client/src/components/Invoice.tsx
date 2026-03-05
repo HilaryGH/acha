@@ -2,23 +2,37 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 
 interface InvoiceProps {
-  transactionId: string;
+  transactionId?: string;
+  orderId?: string;
   onClose?: () => void;
 }
 
-function Invoice({ transactionId, onClose }: InvoiceProps) {
+function Invoice({ transactionId, orderId, onClose }: InvoiceProps) {
   const [transaction, setTransaction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvoice();
-  }, [transactionId]);
+  }, [transactionId, orderId]);
 
   const fetchInvoice = async () => {
     try {
       setLoading(true);
-      const response = await api.transactions.generateInvoice(transactionId) as { status?: string; data?: any; message?: string };
+      let response;
+      
+      // If transactionId exists, use transaction endpoint
+      if (transactionId) {
+        response = await api.transactions.generateInvoice(transactionId) as { status?: string; data?: any; message?: string };
+      } 
+      // Otherwise, use order endpoint (creates transaction if needed)
+      else if (orderId) {
+        response = await api.orders.generateInvoice(orderId) as { status?: string; data?: any; message?: string };
+      } else {
+        setError('Either transaction ID or order ID is required');
+        return;
+      }
+      
       if (response.status === 'success') {
         setTransaction(response.data.transaction);
       } else {
@@ -39,6 +53,22 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
     // Create a downloadable invoice PDF (HTML format optimized for PDF conversion)
     if (!transaction) return;
     
+    const isPaymentDue = transaction.status !== 'completed';
+    
+    // Get item value from order pricing, or calculate from transaction
+    const fees = transaction.fees || {};
+    const deliveryFee = fees.deliveryFee || 0;
+    const serviceFee = fees.serviceFee || 0;
+    const platformFee = fees.platformFee || 0;
+    const feesTotal = deliveryFee + serviceFee + platformFee;
+    
+    // Item value should come from order pricing if available, otherwise calculate from transaction
+    const itemValue = transaction.orderId?.pricing?.itemValue || 
+                     (transaction.amount - feesTotal);
+    
+    // Calculate total correctly: itemValue + all fees
+    const calculatedTotal = itemValue + feesTotal;
+    
     const invoice = {
       invoiceNumber: transaction.invoiceNumber,
       invoiceDate: new Date(transaction.invoiceGeneratedAt || transaction.createdAt).toLocaleDateString('en-US', { 
@@ -48,16 +78,21 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
       }),
       buyer: transaction.buyerId,
       order: transaction.orderId,
-      amount: transaction.amount,
+      amount: calculatedTotal, // Use calculated total
+      itemValue: itemValue, // Store item value
       currency: transaction.currency || 'ETB',
-      fees: transaction.fees,
+      fees: {
+        ...fees,
+        total: feesTotal // Ensure fees.total is correct
+      },
       paymentMethod: transaction.paymentMethod,
       paidAt: transaction.paidAt ? new Date(transaction.paidAt).toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
       }) : 'N/A',
-      status: transaction.status
+      status: transaction.status,
+      isPaymentDue: isPaymentDue
     };
 
     const fullHTML = `
@@ -213,14 +248,25 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
               </div>
             </div>
             <div>
+              ${invoice.isPaymentDue ? `
+              <div class="info-item">
+                <div class="info-label">Payment Status</div>
+                <div class="info-value" style="color: #dc2626; font-weight: bold;">PAYMENT DUE</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Payment Method</div>
+                <div class="info-value">${invoice.paymentMethod ? invoice.paymentMethod.replace(/_/g, ' ').toUpperCase() : 'CASH'}</div>
+              </div>
+              ` : `
               <div class="info-item">
                 <div class="info-label">Payment Date</div>
                 <div class="info-value">${invoice.paidAt}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Payment Method</div>
-                <div class="info-value">${invoice.paymentMethod.replace(/_/g, ' ').toUpperCase()}</div>
+                <div class="info-value">${invoice.paymentMethod ? invoice.paymentMethod.replace(/_/g, ' ').toUpperCase() : 'N/A'}</div>
               </div>
+              `}
             </div>
           </div>
           
@@ -252,7 +298,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
             <tbody>
               <tr>
                 <td>Item Value</td>
-                <td style="text-align: right;">${(invoice.amount - (invoice.fees?.total || 0)).toFixed(2)} ${invoice.currency}</td>
+                <td style="text-align: right;">${invoice.itemValue.toFixed(2)} ${invoice.currency}</td>
               </tr>
               <tr>
                 <td>Delivery Fee</td>
@@ -274,8 +320,13 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
           </table>
           
           <div class="footer">
+            ${invoice.isPaymentDue ? `
+            <p style="color: #dc2626; font-weight: bold; font-size: 14px;">⚠️ PAYMENT DUE - Please complete payment to proceed with your order.</p>
+            <p>This is a payment due invoice. Payment is required before order processing.</p>
+            ` : `
             <p><strong>Thank you for using Acha Delivery Services!</strong></p>
             <p>This is an official invoice for your records.</p>
+            `}
             <div class="company-info">
               <p>Acha Delivery Services - Your trusted delivery partner</p>
               <p>For inquiries, please contact our support team.</p>
@@ -285,12 +336,15 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
       </html>
     `;
     
-    // Create blob and download
+    // Create blob and download as HTML (can be converted to PDF by user)
     const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Invoice_${invoice.invoiceNumber}_${new Date().toISOString().split('T')[0]}.html`;
+    const fileName = invoice.isPaymentDue 
+      ? `Payment_Due_Invoice_${invoice.invoiceNumber}_${new Date().toISOString().split('T')[0]}.html`
+      : `Invoice_${invoice.invoiceNumber}_${new Date().toISOString().split('T')[0]}.html`;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -337,16 +391,38 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
     return null;
   }
 
+  const isPaymentDue = transaction.status !== 'completed';
+  
+  // Get item value from order pricing, or calculate from transaction
+  const fees = transaction.fees || {};
+  const deliveryFee = fees.deliveryFee || 0;
+  const serviceFee = fees.serviceFee || 0;
+  const platformFee = fees.platformFee || 0;
+  const feesTotal = deliveryFee + serviceFee + platformFee;
+  
+  // Item value should come from order pricing if available, otherwise calculate from transaction
+  const itemValue = transaction.orderId?.pricing?.itemValue || 
+                   (transaction.amount - feesTotal);
+  
+  // Calculate total correctly: itemValue + all fees
+  const calculatedTotal = itemValue + feesTotal;
+  
   const invoice = {
     invoiceNumber: transaction.invoiceNumber,
-    invoiceDate: new Date(transaction.invoiceGeneratedAt).toLocaleDateString(),
+    invoiceDate: new Date(transaction.invoiceGeneratedAt || transaction.createdAt).toLocaleDateString(),
     buyer: transaction.buyerId,
     order: transaction.orderId,
-    amount: transaction.amount,
+    amount: calculatedTotal, // Use calculated total
+    itemValue: itemValue, // Store item value
     currency: transaction.currency,
-    fees: transaction.fees,
+    fees: {
+      ...fees,
+      total: feesTotal // Ensure fees.total is correct
+    },
     paymentMethod: transaction.paymentMethod,
-    paidAt: new Date(transaction.paidAt).toLocaleDateString()
+    paidAt: transaction.paidAt ? new Date(transaction.paidAt).toLocaleDateString() : 'N/A',
+    status: transaction.status,
+    isPaymentDue: isPaymentDue
   };
 
   return (
@@ -406,14 +482,29 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
           <h3 className="text-sm font-medium text-gray-500 mb-2">Invoice Date</h3>
           <p className="text-lg font-semibold">{invoice.invoiceDate}</p>
         </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Date</h3>
-          <p className="text-lg font-semibold">{invoice.paidAt}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
-          <p className="text-lg font-semibold capitalize">{invoice.paymentMethod.replace('_', ' ')}</p>
-        </div>
+        {invoice.isPaymentDue ? (
+          <>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Status</h3>
+              <p className="text-lg font-semibold text-red-600">Payment Due</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
+              <p className="text-lg font-semibold capitalize">{invoice.paymentMethod ? invoice.paymentMethod.replace('_', ' ') : 'Cash'}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Date</h3>
+              <p className="text-lg font-semibold">{invoice.paidAt}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
+              <p className="text-lg font-semibold capitalize">{invoice.paymentMethod ? invoice.paymentMethod.replace('_', ' ') : 'N/A'}</p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Bill To */}
@@ -448,7 +539,7 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
           <tbody>
             <tr className="border-b border-gray-200">
               <td className="px-4 py-3">Item Value</td>
-              <td className="px-4 py-3 text-right">{(invoice.amount - (invoice.fees?.total || 0)).toFixed(2)} {invoice.currency}</td>
+              <td className="px-4 py-3 text-right">{invoice.itemValue.toFixed(2)} {invoice.currency}</td>
             </tr>
             <tr className="border-b border-gray-200">
               <td className="px-4 py-3">Delivery Fee</td>
@@ -474,7 +565,15 @@ function Invoice({ transactionId, onClose }: InvoiceProps) {
 
       {/* Footer */}
       <div className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-600">
-        <p>Thank you for using Acha Delivery Services!</p>
+        {invoice.isPaymentDue ? (
+          <>
+            <p className="text-red-600 font-semibold mb-2">⚠️ Payment Due</p>
+            <p className="mb-2">Please complete payment to proceed with your order.</p>
+            <p className="text-sm">This is a payment due invoice. Payment is required before order processing.</p>
+          </>
+        ) : (
+          <p>Thank you for using Acha Delivery Services!</p>
+        )}
         <p className="mt-2 text-sm">TIN: XXX</p>
         <p className="mt-2 text-sm">For inquiries, please contact our support team.</p>
       </div>

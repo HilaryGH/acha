@@ -636,6 +636,9 @@ export const api = {
       
       return { status: 'success', message: 'Gift card downloaded successfully' };
     },
+    generateInvoice: async (orderId: string) => {
+      return request(`/orders/${orderId}/invoice`);
+    },
   },
 
 

@@ -501,6 +501,7 @@ exports.getTransactionsByBuyer = async (req, res) => {
 };
 
 // Generate invoice (returns transaction with invoice details)
+// Allows invoice generation for both pending (payment due) and completed transactions
 exports.generateInvoice = async (req, res) => {
   try {
     const { transactionId } = req.params;
@@ -515,30 +516,36 @@ exports.generateInvoice = async (req, res) => {
       });
     }
 
-    if (transaction.status !== 'completed') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Transaction must be completed to generate invoice'
-      });
+    // Generate invoice number if it doesn't exist (for pending transactions - payment due invoices)
+    if (!transaction.invoiceNumber) {
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      transaction.invoiceNumber = `INV-${year}${month}-${randomNum}`;
+      transaction.invoiceGenerated = true;
+      transaction.invoiceGeneratedAt = new Date();
+      await transaction.save();
     }
 
-    // Invoice is auto-generated when status is completed
-    // This endpoint just returns the invoice data
+    // Invoice can be generated for both pending (payment due) and completed transactions
     res.status(200).json({
       status: 'success',
-      message: 'Invoice generated successfully',
+      message: transaction.status === 'completed' 
+        ? 'Invoice generated successfully' 
+        : 'Payment due invoice generated successfully',
       data: {
         transaction,
         invoice: {
           invoiceNumber: transaction.invoiceNumber,
-          invoiceDate: transaction.invoiceGeneratedAt,
+          invoiceDate: transaction.invoiceGeneratedAt || transaction.createdAt,
           buyer: transaction.buyerId,
           order: transaction.orderId,
           amount: transaction.amount,
           currency: transaction.currency,
           fees: transaction.fees,
           paymentMethod: transaction.paymentMethod,
-          paidAt: transaction.paidAt
+          paidAt: transaction.paidAt,
+          status: transaction.status // Include status to differentiate payment due vs paid
         }
       }
     });

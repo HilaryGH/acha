@@ -652,6 +652,31 @@ const deleteUser = async (req, res) => {
 let isGoogleOAuthInitialized = false;
 
 /**
+ * Get frontend URL based on environment
+ */
+const getFrontendUrl = () => {
+  // If explicitly set in environment, use that
+  if (process.env.FRONTEND_URL) {
+    return process.env.FRONTEND_URL;
+  }
+  
+  // Auto-detect: development or production
+  // Development: NODE_ENV is not 'production' OR PORT is 5000
+  // Production: NODE_ENV is 'production' AND PORT is not 5000
+  const isDevelopment = process.env.NODE_ENV !== 'production' || 
+                        !process.env.PORT || 
+                        process.env.PORT === '5000';
+  
+  // Return appropriate URL based on environment
+  if (isDevelopment) {
+    return 'http://localhost:3000';
+  } else {
+    // Production: use Netlify URL
+    return 'https://achade.netlify.app';
+  }
+};
+
+/**
  * Initialize Google OAuth Strategy
  */
 const initializeGoogleStrategy = () => {
@@ -774,31 +799,6 @@ const initializeGoogleStrategy = () => {
 
 // Initialize Google Strategy
 initializeGoogleStrategy();
-
-/**
- * Get frontend URL based on environment
- */
-const getFrontendUrl = () => {
-  // If explicitly set in environment, use that
-  if (process.env.FRONTEND_URL) {
-    return process.env.FRONTEND_URL;
-  }
-  
-  // Auto-detect: development or production
-  // Development: NODE_ENV is not 'production' OR PORT is 5000
-  // Production: NODE_ENV is 'production' AND PORT is not 5000
-  const isDevelopment = process.env.NODE_ENV !== 'production' || 
-                        !process.env.PORT || 
-                        process.env.PORT === '5000';
-  
-  // Return appropriate URL based on environment
-  if (isDevelopment) {
-    return 'http://localhost:3000';
-  } else {
-    // Production: use Netlify URL
-    return 'https://achade.netlify.app';
-  }
-};
 
 /**
  * Google OAuth authentication - redirects to Google
