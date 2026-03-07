@@ -22,51 +22,76 @@ function BrowseTrips() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.travellers.getAll() as any;
       
-      // Filter out trips with past arrival dates
+      // Fetch both trips and orders in parallel
+      const [tripsResponse, ordersResponse] = await Promise.all([
+        api.travellers.getAll() as any,
+        api.orders.getAll() as any
+      ]);
+      
+      // Get list of assigned traveler IDs from orders
+      let assignedTravelerIds: string[] = [];
+      if (ordersResponse && ordersResponse.status === 'success') {
+        const ordersData = Array.isArray(ordersResponse.data) ? ordersResponse.data : [];
+        assignedTravelerIds = ordersData
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      } else if (Array.isArray(ordersResponse)) {
+        assignedTravelerIds = ordersResponse
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      } else if (ordersResponse && ordersResponse.data && Array.isArray(ordersResponse.data)) {
+        assignedTravelerIds = ordersResponse.data
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      }
+      
+      // Mark trips as expired or assigned, but keep them in the list
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const filterPastTrips = (tripsData: any[]) => {
-        return tripsData.filter((trip: any) => {
-          // Check if arrival date has passed
-          if (trip.arrivalDate) {
-            const arrivalDate = new Date(trip.arrivalDate);
-            arrivalDate.setHours(0, 0, 0, 0);
-            if (arrivalDate < today) {
-              return false; // Skip trips with past arrival dates
-            }
-          }
-          // If no arrival date, check departure date
-          if (!trip.arrivalDate && trip.departureDate) {
-            const departureDate = new Date(trip.departureDate);
-            departureDate.setHours(0, 0, 0, 0);
-            if (departureDate < today) {
-              return false; // Skip trips with past departure dates
-            }
-          }
-          return true;
-        });
-      };
-      
       // Handle different response structures
-      if (response && response.status === 'success') {
+      let tripsData: any[] = [];
+      if (tripsResponse && tripsResponse.status === 'success') {
         // Standard API response format
-        const tripsData = Array.isArray(response.data) ? response.data : [];
-        setTrips(filterPastTrips(tripsData));
-      } else if (Array.isArray(response)) {
+        tripsData = Array.isArray(tripsResponse.data) ? tripsResponse.data : [];
+      } else if (Array.isArray(tripsResponse)) {
         // If response is directly an array
-        setTrips(filterPastTrips(response));
-      } else if (response && response.data && Array.isArray(response.data)) {
+        tripsData = tripsResponse;
+      } else if (tripsResponse && tripsResponse.data && Array.isArray(tripsResponse.data)) {
         // Handle cases where data exists but status might not be 'success'
-        setTrips(filterPastTrips(response.data));
-      } else {
-        // No trips found or unexpected response format
-        setTrips([]);
-        if (response && response.message) {
-          console.warn('API response warning:', response.message);
+        tripsData = tripsResponse.data;
+      }
+      
+      // Process trips: mark as expired/assigned but keep them
+      const processedTrips = tripsData.map((trip: any) => {
+        const processedTrip = { ...trip };
+        
+        // Check if trip is expired based on departure date
+        if (trip.departureDate) {
+          const departureDate = new Date(trip.departureDate);
+          departureDate.setHours(0, 0, 0, 0);
+          processedTrip.isExpired = departureDate < today;
+        } else {
+          processedTrip.isExpired = true; // No departure date = expired
         }
+        
+        // Check if trip is already assigned
+        processedTrip.isAssigned = assignedTravelerIds.includes(trip._id.toString());
+        
+        return processedTrip;
+      });
+      
+      // Filter to only show pending/active/verified trips (but keep expired/assigned ones marked)
+      const validStatuses = ['pending', 'active', 'verified'];
+      const filteredTrips = processedTrips.filter((trip: any) => {
+        return validStatuses.includes(trip.status);
+      });
+      
+      setTrips(filteredTrips);
+      
+      if (tripsResponse && tripsResponse.message && filteredTrips.length === 0) {
+        console.warn('API response warning:', tripsResponse.message);
       }
     } catch (err: any) {
       console.error('Error fetching trips:', err);
@@ -192,10 +217,19 @@ function BrowseTrips() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTrips.map((trip: any) => (
-              <div key={trip._id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
+            {filteredTrips.map((trip: any) => {
+              const isDisabled = trip.isExpired || trip.isAssigned;
+              return (
+              <div 
+                key={trip._id} 
+                className={`bg-white rounded-xl shadow-lg p-6 transition-shadow ${
+                  isDisabled 
+                    ? 'opacity-60 border-2 border-gray-300' 
+                    : 'hover:shadow-xl'
+                }`}
+              >
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       trip.travellerType === 'international'
                         ? 'bg-blue-100 text-blue-700'
@@ -210,6 +244,16 @@ function BrowseTrips() {
                     }`}>
                       {trip.status}
                     </span>
+                    {trip.isExpired && (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                        Expired
+                      </span>
+                    )}
+                    {trip.isAssigned && (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                        Already Assigned
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     Traveler #{trip.uniqueId || trip._id.slice(-8).toUpperCase()}
@@ -247,34 +291,45 @@ function BrowseTrips() {
                 </div>
 
                 <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      // Navigate to PostOrder page with pre-filled trip data
-                      navigate('/post-order', {
-                        state: {
-                          selectedTrip: {
-                            travelerId: trip._id,
-                            travelerUniqueId: trip.uniqueId || trip._id.slice(-8).toUpperCase(),
-                            currentLocation: trip.currentLocation,
-                            destinationCity: trip.destinationCity,
-                            departureDate: trip.departureDate,
-                            arrivalDate: trip.arrivalDate,
-                            departureTime: trip.departureTime,
-                            arrivalTime: trip.arrivalTime,
-                            travellerType: trip.travellerType,
-                            maximumKilograms: trip.maximumKilograms,
-                            priceOffer: trip.priceOffer
+                  {isDisabled ? (
+                    <button
+                      disabled
+                      className="w-full py-2 px-4 bg-gray-400 text-white rounded-lg cursor-not-allowed text-sm font-medium"
+                      title={trip.isExpired ? 'This trip has expired' : 'This trip is already assigned'}
+                    >
+                      {trip.isExpired ? 'Expired' : 'Already Assigned'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        // Navigate to PostOrder page with pre-filled trip data
+                        navigate('/post-order', {
+                          state: {
+                            selectedTrip: {
+                              travelerId: trip._id,
+                              travelerUniqueId: trip.uniqueId || trip._id.slice(-8).toUpperCase(),
+                              currentLocation: trip.currentLocation,
+                              destinationCity: trip.destinationCity,
+                              departureDate: trip.departureDate,
+                              arrivalDate: trip.arrivalDate,
+                              departureTime: trip.departureTime,
+                              arrivalTime: trip.arrivalTime,
+                              travellerType: trip.travellerType,
+                              maximumKilograms: trip.maximumKilograms,
+                              priceOffer: trip.priceOffer
+                            }
                           }
-                        }
-                      });
-                    }}
-                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Place Order
-                  </button>
+                        });
+                      }}
+                      className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Place Order
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

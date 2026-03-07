@@ -93,6 +93,10 @@ const orderSchema = new mongoose.Schema({
     giftMessage: {
       type: String,
       trim: true
+    },
+    giftOccasion: {
+      type: String,
+      trim: true
     }
   },
   // Pickup and Delivery Locations (for location-based matching)

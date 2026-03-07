@@ -1556,6 +1556,11 @@ async function sendGiftRecipientEmail(recipientEmail, recipientName, buyerName, 
             
             <div class="gift-details">
               <h3 style="color: #f5576c; margin-top: 0;">Gift Details</h3>
+              ${giftDetails.giftOccasion ? `
+              <div class="detail-row">
+                <span class="detail-label">Occasion:</span> <strong style="color: #f5576c;">${giftDetails.giftOccasion}</strong>
+              </div>
+              ` : ''}
               <div class="detail-row">
                 <span class="detail-label">Gift Type:</span> ${giftDetails.giftType || 'Special Gift'}
               </div>
@@ -1597,6 +1602,7 @@ async function sendGiftRecipientEmail(recipientEmail, recipientName, buyerName, 
         Great news! ${buyerName} has sent you a special gift through Acha Delivery!
         
         Gift Details:
+        ${giftDetails.giftOccasion ? `Occasion: ${giftDetails.giftOccasion}\n` : ''}
         Gift Type: ${giftDetails.giftType || 'Special Gift'}
         ${giftDetails.giftMessage ? `Personal Message: "${giftDetails.giftMessage}"\n` : ''}
         ${giftDetails.deliveryAddress ? `Delivery Address: ${giftDetails.deliveryAddress}\n` : ''}

@@ -661,18 +661,20 @@ const getFrontendUrl = () => {
   }
   
   // Auto-detect: development or production
-  // Development: NODE_ENV is not 'production' OR PORT is 5000
-  // Production: NODE_ENV is 'production' AND PORT is not 5000
-  const isDevelopment = process.env.NODE_ENV !== 'production' || 
-                        !process.env.PORT || 
-                        process.env.PORT === '5000';
+  // Check if we're on Render.com (production) by checking hostname or PORT
+  // Render.com typically sets PORT to a random port, not 5000
+  // Also check if we're not on localhost
+  const isProduction = process.env.NODE_ENV === 'production' || 
+                      (process.env.PORT && process.env.PORT !== '5000') ||
+                      process.env.RENDER; // Render.com sets this env var
   
   // Return appropriate URL based on environment
-  if (isDevelopment) {
-    return 'http://localhost:3000';
-  } else {
+  if (isProduction) {
     // Production: use Netlify URL
     return 'https://achade.netlify.app';
+  } else {
+    // Development: use localhost
+    return 'http://localhost:3000';
   }
 };
 
@@ -688,21 +690,20 @@ const initializeGoogleStrategy = () => {
   let GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
   
   if (!GOOGLE_CALLBACK_URL) {
-    // Detect environment: check NODE_ENV and PORT
-    // Development: NODE_ENV is not 'production' OR PORT is 5000 (default dev port)
-    // Production: NODE_ENV is 'production' AND PORT is not 5000
-    const isDevelopment = process.env.NODE_ENV !== 'production' || 
-                          !process.env.PORT || 
-                          process.env.PORT === '5000';
+    // Detect environment: check NODE_ENV, PORT, and Render.com env vars
+    // Render.com sets RENDER env var, and PORT is typically not 5000
+    const isProduction = process.env.NODE_ENV === 'production' || 
+                         (process.env.PORT && process.env.PORT !== '5000') ||
+                         process.env.RENDER; // Render.com sets this env var
     
-    if (isDevelopment) {
-      // Development: use localhost
-      GOOGLE_CALLBACK_URL = 'http://localhost:5000/api/users/auth/google/callback';
-      console.log('🔧 Development mode: Using localhost callback URL');
-    } else {
+    if (isProduction) {
       // Production: use production URL
       GOOGLE_CALLBACK_URL = 'https://acha-eeme.onrender.com/api/users/auth/google/callback';
       console.log('🚀 Production mode: Using production callback URL');
+    } else {
+      // Development: use localhost
+      GOOGLE_CALLBACK_URL = 'http://localhost:5000/api/users/auth/google/callback';
+      console.log('🔧 Development mode: Using localhost callback URL');
     }
   } else {
     console.log('📝 Using custom callback URL from environment:', GOOGLE_CALLBACK_URL);

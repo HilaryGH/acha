@@ -55,9 +55,30 @@ function TripsAndOrdersSection() {
     try {
       setLoading(true);
       
-      // Fetch trips
-      const tripsResponse = await api.travellers.getAll() as { status?: string; data?: any[]; count?: number; message?: string };
+      // Fetch trips and orders in parallel
+      const [tripsResponse, ordersResponse] = await Promise.all([
+        api.travellers.getAll() as { status?: string; data?: any[]; count?: number; message?: string },
+        api.orders.getAll() as { status?: string; data?: any[]; count?: number; message?: string }
+      ]);
+      
       console.log('Trips response:', tripsResponse);
+      
+      // Get list of assigned traveler IDs from orders
+      let assignedTravelerIds: string[] = [];
+      if (ordersResponse && ordersResponse.status === 'success') {
+        const ordersData = Array.isArray(ordersResponse.data) ? ordersResponse.data : [];
+        assignedTravelerIds = ordersData
+          .filter((order: Order) => order.assignedTravelerId)
+          .map((order: Order) => order.assignedTravelerId!.toString());
+      } else if (Array.isArray(ordersResponse)) {
+        assignedTravelerIds = ordersResponse
+          .filter((order: Order) => order.assignedTravelerId)
+          .map((order: Order) => order.assignedTravelerId!.toString());
+      } else if (ordersResponse && ordersResponse.data && Array.isArray(ordersResponse.data)) {
+        assignedTravelerIds = ordersResponse.data
+          .filter((order: Order) => order.assignedTravelerId)
+          .map((order: Order) => order.assignedTravelerId!.toString());
+      }
       
       // Check if response indicates an error
       if (tripsResponse.status === 'error') {
@@ -72,66 +93,43 @@ function TripsAndOrdersSection() {
             ? tripsResponse 
             : [];
         
-        // Filter trips - remove trips with past arrival dates
+        // Mark trips as expired or assigned, but keep them in the list
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Filter trips - show active, verified, pending, or if none exist, show all recent trips
-        // Also filter out trips where arrival date has passed
-        let activeTrips = tripsData
+        // Process trips: mark as expired/assigned but keep them
+        const processedTrips = tripsData.map((trip: Trip) => {
+          const processedTrip = { ...trip };
+          
+          // Check if trip is expired based on departure date
+          if (trip.departureDate) {
+            const departureDate = new Date(trip.departureDate);
+            departureDate.setHours(0, 0, 0, 0);
+            (processedTrip as any).isExpired = departureDate < today;
+          } else {
+            (processedTrip as any).isExpired = true; // No departure date = expired
+          }
+          
+          // Check if trip is already assigned
+          (processedTrip as any).isAssigned = assignedTravelerIds.includes(trip._id.toString());
+          
+          return processedTrip;
+        });
+        
+        // Filter to only show pending/active/verified trips (but keep expired/assigned ones marked)
+        const validStatuses = ['pending', 'active', 'verified'];
+        let activeTrips = processedTrips
           .filter((trip: Trip) => {
-            // Check if arrival date has passed
-            if (trip.arrivalDate) {
-              const arrivalDate = new Date(trip.arrivalDate);
-              arrivalDate.setHours(0, 0, 0, 0);
-              if (arrivalDate < today) {
-                return false; // Skip trips with past arrival dates
-              }
-            }
-            // If no arrival date, check departure date
-            if (!trip.arrivalDate && trip.departureDate) {
-              const departureDate = new Date(trip.departureDate);
-              departureDate.setHours(0, 0, 0, 0);
-              if (departureDate < today) {
-                return false; // Skip trips with past departure dates
-              }
-            }
-            return trip.status === 'active' || trip.status === 'verified' || trip.status === 'pending';
+            return validStatuses.includes(trip.status);
           })
           .sort((a: Trip, b: Trip) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        // If no active trips found, show all recent trips (excluding cancelled/completed and past dates)
-        if (activeTrips.length === 0) {
-          activeTrips = tripsData
-            .filter((trip: Trip) => {
-              // Check if arrival date has passed
-              if (trip.arrivalDate) {
-                const arrivalDate = new Date(trip.arrivalDate);
-                arrivalDate.setHours(0, 0, 0, 0);
-                if (arrivalDate < today) {
-                  return false;
-                }
-              }
-              // If no arrival date, check departure date
-              if (!trip.arrivalDate && trip.departureDate) {
-                const departureDate = new Date(trip.departureDate);
-                departureDate.setHours(0, 0, 0, 0);
-                if (departureDate < today) {
-                  return false;
-                }
-              }
-              return trip.status !== 'cancelled' && trip.status !== 'completed';
-            })
-            .sort((a: Trip, b: Trip) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        }
-        
         setAllTrips(activeTrips);
         setTrips(activeTrips.slice(0, 4)); // Keep 4 trips for display (one row on desktop)
-        console.log('Active trips:', activeTrips.length, 'Total trips:', tripsData.length);
+        console.log('Active trips:', activeTrips.length, 'Total trips:', tripsData.length, 'Assigned travelers:', assignedTravelerIds.length);
       }
 
-      // Fetch orders from new Order API
-      const ordersResponse = await api.orders.getAll() as { status?: string; data?: any[]; count?: number; message?: string };
+      // Process orders (already fetched above in parallel)
       console.log('Orders response:', ordersResponse);
       
       // Check if response indicates an error
@@ -399,10 +397,16 @@ function TripsAndOrdersSection() {
                   </div>
                 ) : (
                   <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-x-visible md:pb-0">
-                    {trips.map((trip) => (
+                    {trips.map((trip) => {
+                      const isDisabled = (trip as any).isExpired || (trip as any).isAssigned;
+                      return (
                       <div
                         key={trip._id}
-                        className="p-5 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-white min-w-[280px] max-w-[280px] md:min-w-0 md:max-w-none flex-shrink-0 snap-start group cursor-pointer"
+                        className={`p-5 rounded-xl border-2 transition-all duration-300 bg-white min-w-[280px] max-w-[280px] md:min-w-0 md:max-w-none flex-shrink-0 snap-start group ${
+                          isDisabled 
+                            ? 'opacity-60 border-gray-300 cursor-not-allowed' 
+                            : 'border-gray-200 hover:border-blue-400 hover:shadow-lg cursor-pointer'
+                        }`}
                       >
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -413,6 +417,16 @@ function TripsAndOrdersSection() {
                             }`}>
                               {trip.travellerType === 'international' ? '🌍 International' : '🏠 Domestic'}
                             </span>
+                            {(trip as any).isExpired && (
+                              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                Expired
+                              </span>
+                            )}
+                            {(trip as any).isAssigned && (
+                              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                                Assigned
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-col gap-1 text-sm">
                             <span className="font-semibold text-gray-900 truncate">{trip.currentLocation}</span>
@@ -431,7 +445,8 @@ function TripsAndOrdersSection() {
                           </p>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -353,6 +353,7 @@ exports.updateTransactionStatus = async (req, res) => {
                 {
                   giftType: order.orderInfo.giftType,
                   giftMessage: order.orderInfo.giftMessage,
+                  giftOccasion: order.orderInfo.giftOccasion,
                   deliveryAddress: order.orderInfo.recipientAddress,
                   preferredDeliveryDate: order.orderInfo.preferredDeliveryDate
                 }

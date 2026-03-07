@@ -500,6 +500,7 @@ exports.createOrder = async (req, res) => {
           {
             giftType: orderInfo.giftType,
             giftMessage: orderInfo.giftMessage,
+            giftOccasion: orderInfo.giftOccasion,
             deliveryAddress: orderInfo.recipientAddress,
             preferredDeliveryDate: orderInfo.preferredDeliveryDate
           }

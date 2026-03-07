@@ -16,6 +16,8 @@ interface Traveller {
   arrivalTime: string;
   travellerType: 'international' | 'domestic';
   status: string;
+  isExpired?: boolean;
+  isAssigned?: boolean;
 }
 
 interface Partner {
@@ -75,6 +77,9 @@ function SearchTravelers() {
       // Build search text (used for city/location search)
       const locationQuery = hasTextQuery ? searchQuery : '';
 
+      // Fetch orders to check which travelers are already assigned
+      const ordersPromise = api.orders.getAll() as Promise<{ status?: string; data?: any[]; count?: number }>;
+
       // Prepare promises depending on role
       const travelerPromise = (async () => {
         // Only search travelers when no specific partner role is selected
@@ -125,14 +130,32 @@ function SearchTravelers() {
           }) as Promise<{ status?: string; data?: { users?: Partner[] }; count?: number }>
         : Promise.resolve({ status: 'success', data: { users: [] as Partner[] } });
 
-      // Search travelers and delivery partners in parallel (all registered, not just active)
-      const [travelersResponse, deliveryPartnersRes, giftPartnersRes, achaSistersRes, moversPackersRes] = await Promise.all([
+      // Search travelers, delivery partners, and orders in parallel
+      const [travelersResponse, deliveryPartnersRes, giftPartnersRes, achaSistersRes, moversPackersRes, ordersResponse] = await Promise.all([
         travelerPromise,
         deliveryPartnersPromise,
         giftPartnersPromise,
         achaSistersPromise,
-        moversPackersPromise
+        moversPackersPromise,
+        ordersPromise
       ]);
+
+      // Get list of assigned traveler IDs from orders
+      let assignedTravelerIds: string[] = [];
+      if (ordersResponse && ordersResponse.status === 'success') {
+        const ordersData = Array.isArray(ordersResponse.data) ? ordersResponse.data : [];
+        assignedTravelerIds = ordersData
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      } else if (Array.isArray(ordersResponse)) {
+        assignedTravelerIds = ordersResponse
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      } else if (ordersResponse && ordersResponse.data && Array.isArray(ordersResponse.data)) {
+        assignedTravelerIds = ordersResponse.data
+          .filter((order: any) => order.assignedTravelerId)
+          .map((order: any) => order.assignedTravelerId.toString());
+      }
 
       // Extract users from User model responses and format them as partners
       const achaSistersUsers = achaSistersRes.data?.users || achaSistersRes.data || [];
@@ -181,7 +204,36 @@ function SearchTravelers() {
       // Handle travelers response (only when traveler search is active)
       if (travelersResponse.status === 'success') {
         const travellers = travelersResponse.data || travelersResponse.travellers || [];
-        setTravelers(travellers);
+        
+        // Mark travelers as expired or assigned, but keep them in the list
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const processedTravellers = travellers.map((traveler: Traveller) => {
+          const processedTraveler = { ...traveler };
+          
+          // Check if trip is expired based on departure date
+          if (traveler.departureDate) {
+            const departureDate = new Date(traveler.departureDate);
+            departureDate.setHours(0, 0, 0, 0);
+            processedTraveler.isExpired = departureDate < today;
+          } else {
+            processedTraveler.isExpired = true; // No departure date = expired
+          }
+          
+          // Check if trip is already assigned
+          processedTraveler.isAssigned = assignedTravelerIds.includes(traveler._id.toString());
+          
+          return processedTraveler;
+        });
+        
+        // Filter to only show pending/active/verified trips (but keep expired/assigned ones marked)
+        const validStatuses = ['pending', 'active', 'verified'];
+        const filteredTravellers = processedTravellers.filter((traveler: Traveller) => {
+          return validStatuses.includes(traveler.status);
+        });
+        
+        setTravelers(filteredTravellers);
       } else {
         setTravelers([]);
       }
@@ -320,10 +372,16 @@ function SearchTravelers() {
 
             {travelers.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {travelers.map((traveler) => (
+                {travelers.map((traveler) => {
+                  const isDisabled = traveler.isExpired || traveler.isAssigned;
+                  return (
                   <div
                     key={traveler._id}
-                    className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+                    className={`bg-white rounded-xl shadow-lg p-6 transition-shadow ${
+                      isDisabled 
+                        ? 'opacity-60 border-2 border-gray-300' 
+                        : 'hover:shadow-xl'
+                    }`}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -334,9 +392,25 @@ function SearchTravelers() {
                           {traveler.travellerType === 'international' ? '🌍 International' : '🚗 Domestic'} Traveler
                         </p>
                       </div>
-                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        {traveler.status}
-                      </span>
+                      <div className="flex flex-col gap-1 items-end">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          traveler.status === 'active' ? 'bg-green-100 text-green-800' :
+                          traveler.status === 'verified' ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {traveler.status}
+                        </span>
+                        {traveler.isExpired && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            Expired
+                          </span>
+                        )}
+                        {traveler.isAssigned && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            Already Assigned
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-3 mb-4">
@@ -401,31 +475,42 @@ function SearchTravelers() {
                             </p>
                           )}
                         </div>
-                        <Link
-                          to={`/post-order`}
-                          state={{
-                            selectedTrip: {
-                              travelerId: traveler._id,
-                              travelerUniqueId: traveler.uniqueId || traveler._id.slice(-8).toUpperCase(),
-                              currentLocation: traveler.currentLocation,
-                              destinationCity: traveler.destinationCity,
-                              departureDate: traveler.departureDate,
-                              arrivalDate: traveler.arrivalDate,
-                              departureTime: traveler.departureTime,
-                              arrivalTime: traveler.arrivalTime,
-                              travellerType: traveler.travellerType,
-                              maximumKilograms: (traveler as any).maximumKilograms,
-                              priceOffer: (traveler as any).priceOffer
-                            }
-                          }}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                        >
-                          Post Order
-                        </Link>
+                        {isDisabled ? (
+                          <button
+                            disabled
+                            className="px-4 py-2 bg-gray-400 text-white text-sm font-semibold rounded-lg cursor-not-allowed"
+                            title={traveler.isExpired ? 'This trip has expired' : 'This trip is already assigned'}
+                          >
+                            {traveler.isExpired ? 'Expired' : 'Already Assigned'}
+                          </button>
+                        ) : (
+                          <Link
+                            to={`/post-order`}
+                            state={{
+                              selectedTrip: {
+                                travelerId: traveler._id,
+                                travelerUniqueId: traveler.uniqueId || traveler._id.slice(-8).toUpperCase(),
+                                currentLocation: traveler.currentLocation,
+                                destinationCity: traveler.destinationCity,
+                                departureDate: traveler.departureDate,
+                                arrivalDate: traveler.arrivalDate,
+                                departureTime: traveler.departureTime,
+                                arrivalTime: traveler.arrivalTime,
+                                travellerType: traveler.travellerType,
+                                maximumKilograms: (traveler as any).maximumKilograms,
+                                priceOffer: (traveler as any).priceOffer
+                              }
+                            }}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                          >
+                            Post Order
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

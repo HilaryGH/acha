@@ -61,12 +61,23 @@ async function generateGiftCard(order, buyer) {
       .font('Helvetica-Bold')
       .text(order.orderInfo?.recipientName || 'Recipient', 50, 205, { align: 'left' });
 
+    // Gift occasion
+    let currentY = 240;
+    if (order.orderInfo?.giftOccasion) {
+      doc.fontSize(14)
+        .fillColor('#f5576c')
+        .font('Helvetica-Bold')
+        .text(`Occasion: ${order.orderInfo.giftOccasion}`, 50, currentY, { align: 'left' });
+      currentY += 20;
+    }
+
     // Gift type
     if (order.orderInfo?.giftType) {
       doc.fontSize(12)
         .fillColor('#666666')
         .font('Helvetica')
-        .text(`Gift Type: ${order.orderInfo.giftType}`, 50, 240, { align: 'left' });
+        .text(`Gift Type: ${order.orderInfo.giftType}`, 50, currentY, { align: 'left' });
+      currentY += 20;
     }
 
     // Gift message
@@ -74,10 +85,11 @@ async function generateGiftCard(order, buyer) {
       doc.fontSize(12)
         .fillColor('#333333')
         .font('Helvetica-Oblique')
-        .text(`"${order.orderInfo.giftMessage}"`, 50, 265, {
+        .text(`"${order.orderInfo.giftMessage}"`, 50, currentY, {
           align: 'left',
           width: 500
         });
+      currentY += 30;
     }
 
     // From section
