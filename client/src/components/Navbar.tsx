@@ -40,15 +40,19 @@ function Navbar() {
       checkAuthStatus();
     };
 
-    // Listen for custom logout event
+    // Listen for storage changes (logout from other tabs/windows)
     window.addEventListener('storage', handleStorageChange);
     
-    // Also listen for custom logout event dispatched from same window
+    // Listen for custom logout event dispatched from same window
     window.addEventListener('logout', handleStorageChange);
+    
+    // Listen for custom login event (e.g., from Google OAuth callback)
+    window.addEventListener('login', handleStorageChange);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('logout', handleStorageChange);
+      window.removeEventListener('login', handleStorageChange);
     };
   }, []);
 

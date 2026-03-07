@@ -38,10 +38,11 @@ function GoogleAuthCallback() {
         localStorage.setItem('token', token);
         localStorage.setItem('user', userParam);
         
+        // Dispatch login event to notify other components (like Navbar)
+        window.dispatchEvent(new Event('login'));
+        
         // Redirect to home page
-        navigate('/home');
-        // Reload to update navbar
-        window.location.reload();
+        navigate('/home', { replace: true });
       } catch (err) {
         console.error('Error processing Google auth callback:', err);
         localStorage.removeItem('token');
