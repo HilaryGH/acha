@@ -31,7 +31,7 @@ type PaymentMethod =
 
 type Currency = 'ETB' | 'USD';
 
-function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: PaymentFormProps) {
+const PaymentForm = ({ orderId, buyerId, amount, fees, onSuccess, onCancel }: PaymentFormProps) => {
   const [currency, setCurrency] = useState<Currency>('ETB');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('telebirr');
   const [paymentDetails, setPaymentDetails] = useState({
@@ -499,7 +499,7 @@ function PaymentForm({ orderId, buyerId, amount, fees, onSuccess, onCancel }: Pa
       </form>
     </div>
   );
-}
+};
 
 export default PaymentForm;
 

@@ -97,8 +97,28 @@ exports.createTransaction = async (req, res) => {
       }
       
       // Set pricing based on calculated payment
-      order.pricing.totalAmount = amount;
-      order.pricing.deliveryFee = calculatedFees.deliveryFee || amount;
+      // For gift delivery orders, preserve itemValue from giftPrice
+      if (order.deliveryMethod === 'gift_delivery_partner' && order.orderInfo?.giftPrice) {
+        const giftPrice = typeof order.orderInfo.giftPrice === 'number' 
+          ? order.orderInfo.giftPrice 
+          : parseFloat(order.orderInfo.giftPrice) || 0;
+        // Always set itemValue from giftPrice for gift orders (don't overwrite with amount)
+        order.pricing.itemValue = giftPrice;
+        console.log(`Setting itemValue for gift order ${order.uniqueId} from giftPrice: ${giftPrice} ETB`);
+      }
+      
+      // For gift orders, totalAmount should be itemValue + fees, not the transaction amount
+      // The transaction amount already includes itemValue + fees, so we need to calculate it correctly
+      if (order.deliveryMethod === 'gift_delivery_partner' && order.pricing?.itemValue) {
+        const itemValue = order.pricing.itemValue;
+        const feesTotal = (calculatedFees.deliveryFee || 0) + (calculatedFees.serviceFee || 0) + (calculatedFees.platformFee || 0);
+        order.pricing.totalAmount = itemValue + feesTotal;
+        console.log(`Calculated totalAmount for gift order: itemValue (${itemValue}) + fees (${feesTotal}) = ${order.pricing.totalAmount}`);
+      } else {
+        order.pricing.totalAmount = amount;
+      }
+      
+      order.pricing.deliveryFee = calculatedFees.deliveryFee || 0; // Fixed: don't default to amount
       order.pricing.serviceFee = calculatedFees.serviceFee || 0;
       order.pricing.platformFee = calculatedFees.platformFee || 0;
       order.pricing.currency = currency || 'ETB';

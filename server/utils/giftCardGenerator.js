@@ -20,100 +20,100 @@ async function generateGiftCard(order, buyer) {
     const filename = `gift-card-${order.uniqueId || order._id}-${Date.now()}.pdf`;
     const filepath = path.join(giftCardsDir, filename);
 
-    // Create PDF document
+    // Create PDF document - smaller size
     const doc = new PDFDocument({
-      size: [600, 400],
-      margin: 30
+      size: [400, 250],
+      margin: 20
     });
 
     // Pipe PDF to file
     doc.pipe(fs.createWriteStream(filepath));
 
     // Background gradient effect (simulated with rectangles)
-    doc.rect(0, 0, 600, 400)
-      .linearGradient(0, 0, 600, 400, '0%', '#f093fb', '100%', '#f5576c')
+    doc.rect(0, 0, 400, 250)
+      .linearGradient(0, 0, 400, 250, '0%', '#f093fb', '100%', '#f5576c')
       .fill();
 
     // White content area
-    doc.rect(20, 20, 560, 360)
+    doc.rect(15, 15, 370, 220)
       .fillColor('#ffffff')
       .fill();
 
     // Gift icon/emoji area
-    doc.fontSize(60)
+    doc.fontSize(40)
       .fillColor('#f5576c')
-      .text('🎁', 250, 50, { align: 'center' });
+      .text('🎁', 180, 25, { align: 'center' });
 
     // Title
-    doc.fontSize(32)
+    doc.fontSize(22)
       .fillColor('#f5576c')
       .font('Helvetica-Bold')
-      .text('Gift Card', 0, 120, { align: 'center' });
+      .text('Gift Card', 0, 70, { align: 'center' });
 
     // Gift details
-    doc.fontSize(14)
+    doc.fontSize(10)
       .fillColor('#333333')
       .font('Helvetica')
-      .text('This gift card is presented to:', 50, 180, { align: 'left' });
+      .text('This gift card is presented to:', 30, 105, { align: 'left' });
 
-    doc.fontSize(18)
+    doc.fontSize(14)
       .fillColor('#f5576c')
       .font('Helvetica-Bold')
-      .text(order.orderInfo?.recipientName || 'Recipient', 50, 205, { align: 'left' });
+      .text(order.orderInfo?.recipientName || 'Recipient', 30, 120, { align: 'left' });
 
     // Gift occasion
-    let currentY = 240;
+    let currentY = 140;
     if (order.orderInfo?.giftOccasion) {
-      doc.fontSize(14)
+      doc.fontSize(10)
         .fillColor('#f5576c')
         .font('Helvetica-Bold')
-        .text(`Occasion: ${order.orderInfo.giftOccasion}`, 50, currentY, { align: 'left' });
-      currentY += 20;
+        .text(`Occasion: ${order.orderInfo.giftOccasion}`, 30, currentY, { align: 'left' });
+      currentY += 15;
     }
 
     // Gift type
     if (order.orderInfo?.giftType) {
-      doc.fontSize(12)
+      doc.fontSize(9)
         .fillColor('#666666')
         .font('Helvetica')
-        .text(`Gift Type: ${order.orderInfo.giftType}`, 50, currentY, { align: 'left' });
-      currentY += 20;
+        .text(`Gift Type: ${order.orderInfo.giftType}`, 30, currentY, { align: 'left' });
+      currentY += 15;
     }
 
     // Gift message
     if (order.orderInfo?.giftMessage) {
-      doc.fontSize(12)
+      doc.fontSize(9)
         .fillColor('#333333')
         .font('Helvetica-Oblique')
-        .text(`"${order.orderInfo.giftMessage}"`, 50, currentY, {
+        .text(`"${order.orderInfo.giftMessage}"`, 30, currentY, {
           align: 'left',
-          width: 500
+          width: 340
         });
-      currentY += 30;
+      currentY += 20;
     }
 
     // From section
-    doc.fontSize(12)
+    doc.fontSize(9)
       .fillColor('#666666')
       .font('Helvetica')
-      .text('From:', 50, 310, { align: 'left' });
+      .text('From:', 30, 195, { align: 'left' });
 
-    doc.fontSize(14)
+    doc.fontSize(11)
       .fillColor('#333333')
       .font('Helvetica-Bold')
-      .text(buyer.name || 'Acha Delivery', 50, 330, { align: 'left' });
+      .text(buyer.name || 'Acha Delivery', 30, 210, { align: 'left' });
 
     // Order ID
-    doc.fontSize(10)
+    doc.fontSize(8)
       .fillColor('#999999')
       .font('Helvetica')
-      .text(`Order ID: ${order.uniqueId || order._id}`, 0, 360, { align: 'center' });
+      .text(`Order ID: ${order.uniqueId || order._id}`, 0, 225, { align: 'center' });
 
     // Date
-    doc.fontSize(10)
+    doc.fontSize(8)
       .fillColor('#999999')
       .font('Helvetica')
-      .text(`Date: ${new Date().toLocaleDateString()}`, 0, 375, { align: 'center' });
+      .text(`Date: ${new Date().toLocaleDateString()}`, 0, 238, { align: 'center' });
 
     // Finalize PDF
     doc.end();

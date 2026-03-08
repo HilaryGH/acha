@@ -233,6 +233,22 @@ exports.createOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
+    // Set pricing for gift delivery orders - use giftPrice as itemValue
+    if (deliveryMethod === 'gift_delivery_partner' && orderInfo.giftPrice) {
+      if (!order.pricing) {
+        order.pricing = {};
+      }
+      const giftPrice = typeof orderInfo.giftPrice === 'number' 
+        ? orderInfo.giftPrice 
+        : parseFloat(orderInfo.giftPrice) || 0;
+      
+      order.pricing.itemValue = giftPrice;
+      order.pricing.currency = 'ETB';
+      // Delivery fee, service fee, and platform fee will be set later or default to 0, 25, 15
+      await order.save();
+      console.log(`Set itemValue for gift order ${order.uniqueId}: ${giftPrice} ETB`);
+    }
+
     // Find ALL available matches (both travelers and delivery partners)
     // Match based on location, destination, and date
     const buyerCity = buyer.currentCity;
@@ -2607,10 +2623,26 @@ exports.downloadGiftCard = async (req, res) => {
     const filename = `gift-card-${order.uniqueId || order._id}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', fs.statSync(filePath).size);
 
     // Send the file
     const fileStream = fs.createReadStream(filePath);
+    
+    fileStream.on('error', (streamError) => {
+      console.error('Error reading gift card file:', streamError);
+      if (!res.headersSent) {
+        res.status(500).json({
+          status: 'error',
+          message: 'Error reading gift card file'
+        });
+      }
+    });
+    
     fileStream.pipe(res);
+    
+    fileStream.on('end', () => {
+      console.log(`Gift card downloaded successfully for order ${order.uniqueId || order._id}`);
+    });
   } catch (error) {
     console.error('Error downloading gift card:', error);
     res.status(500).json({

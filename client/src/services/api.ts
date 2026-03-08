@@ -606,35 +606,78 @@ export const api = {
     },
     downloadGiftCard: async (orderId: string) => {
       const token = getAuthToken();
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      
+      try {
+        // Fetch the PDF file
+        const response = await fetch(`${API_BASE_URL}/orders/${orderId}/gift-card`, {
+          method: 'GET',
+          headers: token ? {
+            'Authorization': `Bearer ${token}`
+          } : {},
+        });
+        
+        // Check if response is ok
+        if (!response.ok) {
+          let errorMessage = `Failed to download gift card! Status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        // Get the blob
+        const blob = await response.blob();
+        
+        // Verify blob is not empty
+        if (blob.size === 0) {
+          throw new Error('Downloaded file is empty');
+        }
+        
+        // Get filename from Content-Disposition header or use default
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = `gift-card-${orderId}.pdf`;
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, '').replace(/^UTF-8''/, ''));
+          }
+        }
+        
+        // Create blob URL
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Create and trigger download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = filename;
+        downloadLink.style.cssText = 'position: absolute; left: -9999px; opacity: 0; pointer-events: none;';
+        
+        // Append to body
+        document.body.appendChild(downloadLink);
+        
+        // Force focus and click
+        downloadLink.focus();
+        downloadLink.click();
+        
+        // Clean up after a delay
+        setTimeout(() => {
+          if (document.body.contains(downloadLink)) {
+            document.body.removeChild(downloadLink);
+          }
+          // Revoke URL after download should have started
+          setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+          }, 1000);
+        }, 100);
+        
+        return { status: 'success', message: 'Gift card downloaded successfully' };
+      } catch (error: any) {
+        console.error('Error downloading gift card:', error);
+        throw error;
       }
-      
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/gift-card`, {
-        method: 'GET',
-        headers,
-      });
-      
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({
-          message: `Failed to download gift card! status: ${response.status}`,
-        }));
-        throw new Error(error.message || 'Failed to download gift card');
-      }
-      
-      // Get the blob and create download link
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `gift-card-${orderId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      return { status: 'success', message: 'Gift card downloaded successfully' };
     },
     generateInvoice: async (orderId: string) => {
       return request(`/orders/${orderId}/invoice`);

@@ -920,6 +920,18 @@ function PostOrder() {
 
   const calculateFees = () => {
     try {
+      // For gift delivery orders, delivery fee is 0 (included in gift price)
+      if (formData.deliveryMethod === 'gift_delivery_partner') {
+        const serviceFee = 25;
+        const platformFee = 15;
+        return {
+          deliveryFee: 0,
+          serviceFee: serviceFee,
+          platformFee: platformFee,
+          total: serviceFee + platformFee
+        };
+      }
+      
       let deliveryFee = 50; // Default delivery fee
       
       // Priority 1: Check if we have a selected trip with price offer (from BrowseTrips)
@@ -1200,12 +1212,22 @@ function PostOrder() {
                 orderId={createdOrder._id}
                 buyerId={createdBuyerId}
                 amount={itemValue}
-                fees={createdOrder.pricing ? {
-                  deliveryFee: createdOrder.pricing.deliveryFee || calculateFees().deliveryFee,
-                  serviceFee: createdOrder.pricing.serviceFee || calculateFees().serviceFee,
-                  platformFee: createdOrder.pricing.platformFee || calculateFees().platformFee,
-                  total: createdOrder.pricing.totalAmount || (itemValue + calculateFees().total)
-                } : calculateFees()}
+                fees={(() => {
+                  if (createdOrder.pricing) {
+                    const deliveryFee = createdOrder.pricing.deliveryFee ?? calculateFees().deliveryFee;
+                    const serviceFee = createdOrder.pricing.serviceFee ?? calculateFees().serviceFee;
+                    const platformFee = createdOrder.pricing.platformFee ?? calculateFees().platformFee;
+                    // fees.total should be the sum of fees only, not including itemValue
+                    const feesTotal = deliveryFee + serviceFee + platformFee;
+                    return {
+                      deliveryFee,
+                      serviceFee,
+                      platformFee,
+                      total: feesTotal
+                    };
+                  }
+                  return calculateFees();
+                })()}
                 onSuccess={handlePaymentSuccess}
                 onCancel={handlePaymentCancel}
               />

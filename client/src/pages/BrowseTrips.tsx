@@ -181,6 +181,7 @@ function BrowseTrips() {
                 <option value="">All Types</option>
                 <option value="international">International</option>
                 <option value="domestic">Domestic</option>
+                <option value="intra_city">Intra City</option>
               </select>
             </div>
             <div>
@@ -233,9 +234,15 @@ function BrowseTrips() {
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       trip.travellerType === 'international'
                         ? 'bg-blue-100 text-blue-700'
+                        : trip.travellerType === 'intra_city'
+                        ? 'bg-purple-100 text-purple-700'
                         : 'bg-green-100 text-green-700'
                     }`}>
-                      {trip.travellerType === 'international' ? '🌍 International' : '🏠 Domestic'}
+                      {trip.travellerType === 'international' 
+                        ? '🌍 International' 
+                        : trip.travellerType === 'intra_city'
+                        ? '🏙️ Intra City'
+                        : '🏠 Domestic'}
                     </span>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       trip.status === 'active' ? 'bg-green-100 text-green-800' :
