@@ -518,9 +518,38 @@ function Home() {
           </svg>
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Top Row - 3 Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            {/* Acha Pay */}
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-lg text-center border-l-4 border-green-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Acha Pay
+                </h2>
+              </div>
+              <p className="text-gray-600 mb-6 text-base leading-relaxed">
+                Deposit funds to your Acha account. Secure payment processing with competitive rates.
+              </p>
+              <Link 
+                to="/achapay"
+                className="inline-flex items-center gap-2 text-white px-6 py-2.5 rounded-tr-2xl rounded-bl-2xl font-bold text-sm transition-all duration-300 shadow-md hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #0d9488 100%)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)';
+                }}
+              >
+                  Get Started
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+              </Link>
+            </div>
+
             {/* Partner With Us */}
-            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-lg text-center border-l-4 border-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Partner With Us
               </h2>
@@ -546,7 +575,7 @@ function Home() {
             </div>
 
             {/* Women Initiatives */}
-            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-lg text-center border-l-4 border-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Women Initiatives
               </h2>
@@ -570,9 +599,12 @@ function Home() {
                   </svg>
               </Link>
             </div>
+          </div>
 
+          {/* Bottom Row - 2 Cards Centered */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Premium Community */}
-            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-blue-600">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-lg text-center border-l-4 border-blue-600 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Acha Premium Community
               </h2>
@@ -598,7 +630,7 @@ function Home() {
             </div>
 
             {/* Professionals Community */}
-            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-md text-center border-l-4 border-green-500">
+            <div className="bg-white p-6 rounded-tr-3xl rounded-bl-3xl shadow-lg text-center border-l-4 border-green-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
               <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Professionals Community
               </h2>

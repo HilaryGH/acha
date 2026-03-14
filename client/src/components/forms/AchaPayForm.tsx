@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api } from '../../services/api';
 import FileUpload from '../FileUpload';
+import { api } from '../../services/api';
 
 function AchaPayForm() {
   const [formData, setFormData] = useState({
@@ -37,22 +37,14 @@ function AchaPayForm() {
     setLoading(true);
     setMessage(null);
 
-    // Validate amount
+    // Form validation
     if (!validateAmount(formData.amount)) {
-      setMessage({ 
-        type: 'error', 
-        text: 'Amount must be between USD 25 and USD 2600' 
-      });
+      setMessage({ type: 'error', text: 'Amount must be between USD 25 and USD 2600' });
       setLoading(false);
       return;
     }
-
-    // Validate conversion rate
-    if (!formData.conversionRate || parseFloat(formData.conversionRate) <= 0) {
-      setMessage({ 
-        type: 'error', 
-        text: 'Please enter a valid conversion rate' 
-      });
+    if (!conversionRate || conversionRate <= 0) {
+      setMessage({ type: 'error', text: 'Please enter a valid conversion rate' });
       setLoading(false);
       return;
     }
@@ -67,11 +59,11 @@ function AchaPayForm() {
         bankAccountHolderName: formData.bankAccountHolderName,
         bankAccountNumber: formData.bankAccountNumber,
         bankName: formData.bankName,
-        photo: formData.photo
+        photo: formData.photo,
+        status: 'pending'
       };
 
-      // Submit to API
-      const response = await api.achaPay.create(submitData) as { status?: string; message?: string };
+      const response = await api.achaPay.create(submitData) as { status?: string; message?: string; data?: any };
       
       if (response.status === 'success' || response) {
         setMessage({ 
@@ -92,7 +84,7 @@ function AchaPayForm() {
     } catch (error: any) {
       setMessage({ 
         type: 'error', 
-        text: error.response?.data?.message || 'Failed to submit payment request. Please try again.' 
+        text: error.message || 'Failed to submit payment request. Please try again.' 
       });
     } finally {
       setLoading(false);
@@ -101,26 +93,25 @@ function AchaPayForm() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
-        <div className="text-center mb-6">
-          <img src="/acha.png" alt="Acha Logo" className="h-12 md:h-16 mx-auto mb-4" />
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">💰 Acha Pay</h2>
-          <p className="text-sm text-gray-600">Deposit funds to your Acha account</p>
+      {/* Acha Pay Card */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 md:p-8">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Acha Pay</h2>
         </div>
-        
+
         {message && (
-          <div className={`mb-5 p-3 rounded-lg text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
           }`}>
             {message.text}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount (USD) *
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Amount (USD)
             </label>
             <input
               type="number"
@@ -131,8 +122,8 @@ function AchaPayForm() {
               max="2600"
               step="0.01"
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
-              placeholder="Enter amount (USD 25 - USD 2600)"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
+              placeholder="Enter amount"
             />
             <p className="text-xs text-gray-500 mt-1">Limit: USD 25 to USD 2600</p>
             {formData.amount && !validateAmount(formData.amount) && (
@@ -141,13 +132,14 @@ function AchaPayForm() {
           </div>
 
           {/* Processing Fee - Display Only */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Processing Fee:</span>
               <span className="text-sm font-semibold text-gray-900">
-                {processingFee.toFixed(2)} USD (20% of Amount)
+                {processingFee.toFixed(2)} USD
               </span>
             </div>
+            <p className="text-xs text-gray-500 mt-1">20% of Amount</p>
           </div>
 
           {/* Total Deposit - Display Only */}
@@ -158,13 +150,13 @@ function AchaPayForm() {
                 {totalDeposit.toFixed(2)} USD
               </span>
             </div>
-            <p className="text-xs text-gray-600 mt-1">Amount + Processing Fee</p>
+            <p className="text-xs text-gray-500 mt-1">Amount + Processing Fee</p>
           </div>
 
           {/* Conversion Rate */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Conversion Rate *
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Conversion Rate
             </label>
             <input
               type="number"
@@ -174,8 +166,8 @@ function AchaPayForm() {
               min="0"
               step="0.01"
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
-              placeholder="Enter conversion rate (1 USD = X Birr)"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
+              placeholder="Enter conversion rate"
             />
             <p className="text-xs text-gray-500 mt-1">1 USD = X Birr</p>
           </div>
@@ -189,14 +181,14 @@ function AchaPayForm() {
                   {payment.toFixed(2)} Birr
                 </span>
               </div>
-              <p className="text-xs text-gray-600 mt-1">Conversion Rate ({conversionRate}) × Amount ({amount} USD)</p>
+              <p className="text-xs text-gray-500 mt-1">Conversion Rate ({conversionRate}) × Amount ({amount} USD)</p>
             </div>
           )}
 
           {/* Bank Account Holder Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bank Account Holder Name *
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Bank Account Holder Name
             </label>
             <input
               type="text"
@@ -204,15 +196,15 @@ function AchaPayForm() {
               value={formData.bankAccountHolderName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
               placeholder="Enter bank account holder name"
             />
           </div>
 
           {/* Bank Account Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bank Account Number *
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Bank Account Number
             </label>
             <input
               type="text"
@@ -220,15 +212,15 @@ function AchaPayForm() {
               value={formData.bankAccountNumber}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
               placeholder="Enter bank account number"
             />
           </div>
 
           {/* Bank Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bank Name *
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Bank Name
             </label>
             <input
               type="text"
@@ -236,26 +228,31 @@ function AchaPayForm() {
               value={formData.bankName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
               placeholder="Enter bank name"
             />
           </div>
 
           {/* Attach Photo */}
-          <FileUpload
-            label="Attach Photo *"
-            value={formData.photo}
-            onChange={(value) => setFormData(prev => ({ ...prev, photo: value }))}
-            accept="image/*"
-          />
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Attach Photo
+            </label>
+            <FileUpload
+              label=""
+              value={formData.photo}
+              onChange={(value) => setFormData(prev => ({ ...prev, photo: value }))}
+              accept="image/*"
+            />
+          </div>
 
           <button
             type="submit"
-            disabled={loading || !validateAmount(formData.amount)}
+            disabled={loading || !validateAmount(formData.amount) || !conversionRate || !formData.bankAccountHolderName || !formData.bankAccountNumber || !formData.bankName || !formData.photo}
             className="w-full py-3 px-5 rounded-lg text-white font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 50%, #16a34a 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
           >
-            {loading ? 'Submitting...' : 'Submit Payment Request'}
+            {loading ? 'Submitting...' : 'Submit'}
           </button>
         </form>
       </div>

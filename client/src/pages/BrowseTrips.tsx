@@ -219,7 +219,15 @@ function BrowseTrips() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTrips.map((trip: any) => {
-              const isDisabled = trip.isExpired || trip.isAssigned;
+              // Disable ordering if:
+              // 1. Trip is expired
+              // 2. Trip is already assigned (matched)
+              // 3. Status is not "active" (i.e., "pending" or "verified")
+              // 4. Status is "active" but already matched
+              const isDisabled = trip.isExpired || 
+                                 trip.isAssigned || 
+                                 trip.status !== 'active' ||
+                                 (trip.status === 'active' && trip.isAssigned);
               return (
               <div 
                 key={trip._id} 
@@ -302,9 +310,27 @@ function BrowseTrips() {
                     <button
                       disabled
                       className="w-full py-2 px-4 bg-gray-400 text-white rounded-lg cursor-not-allowed text-sm font-medium"
-                      title={trip.isExpired ? 'This trip has expired' : 'This trip is already assigned'}
+                      title={
+                        trip.isExpired 
+                          ? 'This trip has expired' 
+                          : trip.isAssigned 
+                          ? 'This trip is already matched' 
+                          : trip.status === 'pending'
+                          ? 'Ordering is only available for active trips'
+                          : trip.status === 'verified'
+                          ? 'Ordering is only available for active trips'
+                          : 'This trip is not available for ordering'
+                      }
                     >
-                      {trip.isExpired ? 'Expired' : 'Already Assigned'}
+                      {trip.isExpired 
+                        ? 'Expired' 
+                        : trip.isAssigned 
+                        ? 'Already Matched' 
+                        : trip.status === 'pending'
+                        ? 'Pending - Not Available'
+                        : trip.status === 'verified'
+                        ? 'Verified - Not Available'
+                        : 'Not Available'}
                     </button>
                   ) : (
                     <button

@@ -80,7 +80,7 @@ interface SuperAdminDashboardProps {
 
 function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'partner-with-us' | 'women-initiatives' | 'premium-community' | 'professionals-community' | 'trips'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'partners' | 'transactions' | 'audit' | 'settings' | 'partner-with-us' | 'women-initiatives' | 'premium-community' | 'professionals-community' | 'trips' | 'acha-pay'>('overview');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -94,6 +94,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const [womenInitiatives, setWomenInitiatives] = useState<any[]>([]);
   const [premiumCommunity, setPremiumCommunity] = useState<any[]>([]);
   const [professionalsCommunity, setProfessionalsCommunity] = useState<Partner[]>([]);
+  const [achaPaySubmissions, setAchaPaySubmissions] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transactionStats, setTransactionStats] = useState<any>(null);
@@ -108,6 +109,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
   const [womenInitiativesFilter, setWomenInitiativesFilter] = useState<{ status?: string }>({});
   const [premiumFilter, setPremiumFilter] = useState<{ status?: string; category?: string }>({});
   const [professionalsFilter, setProfessionalsFilter] = useState<{ status?: string; category?: string }>({});
+  const [achaPayFilter, setAchaPayFilter] = useState<{ status?: string }>({});
   const [pdfViewer, setPdfViewer] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
     url: '',
@@ -146,9 +148,11 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       loadPremiumCommunity();
     } else if (activeTab === 'professionals-community') {
       loadProfessionalsCommunity();
+    } else if (activeTab === 'acha-pay') {
+      loadAchaPaySubmissions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transactionFilters, tripFilters, partnerWithUsFilter, womenInitiativesFilter, premiumFilter, professionalsFilter]);
+  }, [transactionFilters, tripFilters, partnerWithUsFilter, womenInitiativesFilter, premiumFilter, professionalsFilter, achaPayFilter]);
 
   const loadDashboardData = async () => {
     try {
@@ -174,6 +178,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
         await loadPremiumCommunity();
       } else if (activeTab === 'professionals-community') {
         await loadProfessionalsCommunity();
+      } else if (activeTab === 'acha-pay') {
+        await loadAchaPaySubmissions();
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -626,6 +632,37 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     }
   };
 
+  const loadAchaPaySubmissions = async () => {
+    try {
+      setLoading(true);
+      const response = await api.achaPay.getAll(achaPayFilter) as { status?: string; data?: any[] };
+      if (response.status === 'success') {
+        if (Array.isArray(response.data)) {
+          setAchaPaySubmissions(response.data);
+        } else {
+          setAchaPaySubmissions([]);
+        }
+      } else {
+        setAchaPaySubmissions([]);
+      }
+    } catch (error) {
+      console.error('Error loading Acha Pay submissions:', error);
+      setAchaPaySubmissions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateAchaPayStatus = async (id: string, newStatus: string) => {
+    try {
+      await api.achaPay.update(id, { status: newStatus });
+      await loadAchaPaySubmissions();
+    } catch (error) {
+      console.error('Error updating Acha Pay status:', error);
+      alert('Failed to update status');
+    }
+  };
+
   const loadTrips = async () => {
     try {
       setLoading(true);
@@ -678,51 +715,73 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     partner.status === 'pending' || activeTab === 'partners'
   );
 
+  const sidebarTabs = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'users', label: 'User Management', icon: '👥' },
+    { id: 'trips', label: 'Posted Trips', icon: '✈️' },
+    { id: 'partner-with-us', label: 'Partner With Us', icon: '🤝' },
+    { id: 'women-initiatives', label: 'Women Initiatives', icon: '👩' },
+    { id: 'premium-community', label: 'Premium Community', icon: '⭐' },
+  ];
+
+  const topNavTabs = [
+    { id: 'professionals-community', label: 'Professionals Community', icon: '🏥' },
+    { id: 'acha-pay', label: 'Acha Pay', icon: '💳' },
+    { id: 'partners', label: 'Partners', icon: '🚚' },
+    { id: 'transactions', label: 'Transactions', icon: '💰' },
+    { id: 'audit', label: 'Audit Logs', icon: '📋' },
+    { id: 'settings', label: 'System Settings', icon: '⚙️' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="shadow-sm border-b" style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 100%)' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Super Admin Dashboard</h1>
-              <p className="text-sm text-white opacity-90 mt-1">Welcome, {user?.name || 'Super Admin'}! 👑</p>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex-shrink-0 flex flex-col h-screen sticky top-0">
+        <div className="p-6 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-900">Super Admin</h1>
+          <p className="text-sm text-gray-600 mt-1">Welcome, {user?.name || 'Admin'}! 👑</p>
+        </div>
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+          {sidebarTabs.map((tab) => (
             <button
-              onClick={handleLogout}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-white text-[#1E88E5] border border-white hover:bg-opacity-90 transition-colors"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                activeTab === tab.id
+                  ? 'bg-[#1E88E5] text-white shadow-md'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
             >
-              Logout
+              <span className="text-lg">{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
-          </div>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              {[
-                { id: 'overview', label: 'Overview', icon: '📊' },
-                { id: 'users', label: 'User Management', icon: '👥' },
-                { id: 'trips', label: 'Posted Trips', icon: '✈️' },
-                { id: 'partner-with-us', label: 'Partner With Us', icon: '🤝' },
-                { id: 'women-initiatives', label: 'Women Initiatives', icon: '👩' },
-                { id: 'premium-community', label: 'Premium Community', icon: '⭐' },
-                { id: 'professionals-community', label: 'Professionals Community', icon: '🏥' },
-                { id: 'partners', label: 'Partners', icon: '🚚' },
-                { id: 'transactions', label: 'Transactions', icon: '💰' },
-                { id: 'audit', label: 'Audit Logs', icon: '📋' },
-                { id: 'settings', label: 'System Settings', icon: '⚙️' },
-              ].map((tab) => (
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Navigation Bar */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="px-6 py-4">
+            <nav className="flex gap-2 overflow-x-auto">
+              {topNavTabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all duration-200 whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'text-[#1E88E5]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'bg-[#1E88E5] text-white border-[#1E88E5] shadow-md'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                   }`}
-                  style={activeTab === tab.id ? { borderBottomColor: '#1E88E5', borderBottomWidth: '2px' } : {}}
                 >
                   <span className="mr-2">{tab.icon}</span>
                   {tab.label}
@@ -732,7 +791,10 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
           </div>
         </div>
 
-        <div className="space-y-6">
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="space-y-6">
           {activeTab === 'overview' && (
             <>
               {loading ? (
@@ -2389,6 +2451,157 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
             </div>
           )}
 
+          {activeTab === 'acha-pay' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Acha Pay Submissions</h3>
+                <button
+                  onClick={loadAchaPaySubmissions}
+                  className="px-4 py-2 text-white rounded-lg transition-colors text-sm hover:opacity-90"
+                  style={{ backgroundColor: '#1E88E5' }}
+                >
+                  Refresh
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="mb-6 flex gap-4">
+                <select
+                  value={achaPayFilter.status || ''}
+                  onChange={(e) => {
+                    setAchaPayFilter({ ...achaPayFilter, status: e.target.value || undefined });
+                    loadAchaPaySubmissions();
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="processing">Processing</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={{ borderColor: '#1E88E5' }}></div>
+                  <p className="mt-4 text-gray-600">Loading submissions...</p>
+                </div>
+              ) : achaPaySubmissions.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No Acha Pay submissions found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {achaPaySubmissions.map((submission) => (
+                    <div key={submission._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              {submission.bankAccountHolderName || 'N/A'}
+                            </h4>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              submission.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              submission.status === 'approved' || submission.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                              submission.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              submission.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {submission.status}
+                            </span>
+                            {submission.uniqueId && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
+                                ID: {submission.uniqueId}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
+                            <div>
+                              <span className="font-medium">Amount:</span> {submission.amount?.toFixed(2) || '0.00'} USD
+                            </div>
+                            <div>
+                              <span className="font-medium">Processing Fee:</span> {submission.processingFee?.toFixed(2) || '0.00'} USD
+                            </div>
+                            <div>
+                              <span className="font-medium">Total Deposit:</span> {submission.totalDeposit?.toFixed(2) || '0.00'} USD
+                            </div>
+                            <div>
+                              <span className="font-medium">Payment:</span> {submission.payment?.toFixed(2) || '0.00'} Birr
+                            </div>
+                            <div>
+                              <span className="font-medium">Conversion Rate:</span> {submission.conversionRate || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Bank Name:</span> {submission.bankName || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Account Number:</span> {submission.bankAccountNumber || 'N/A'}
+                            </div>
+                            <div>
+                              <span className="font-medium">Submitted:</span> {submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : 'N/A'}
+                            </div>
+                          </div>
+                          
+                          {/* Photo */}
+                          {submission.photo && (
+                            <div className="mt-4">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-2">Attached Photo:</h5>
+                              <a
+                                href={submission.photo.startsWith('http') ? submission.photo : `${import.meta.env.VITE_API_BASE_URL || ''}${submission.photo}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs px-2 py-1 rounded text-white hover:opacity-80 inline-block"
+                                style={{ backgroundColor: '#1E88E5' }}
+                              >
+                                View Photo
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 ml-4">
+                          {submission.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateAchaPayStatus(submission._id, 'approved')}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleUpdateAchaPayStatus(submission._id, 'rejected')}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {submission.status === 'approved' && (
+                            <button
+                              onClick={() => handleUpdateAchaPayStatus(submission._id, 'processing')}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
+                            >
+                              Mark Processing
+                            </button>
+                          )}
+                          {submission.status === 'processing' && (
+                            <button
+                              onClick={() => handleUpdateAchaPayStatus(submission._id, 'completed')}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
+                            >
+                              Mark Completed
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'partners' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">Partner Applications</h3>
@@ -2988,11 +3201,14 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* User Details Modal */}
-      {userDetailsModal.isOpen && (
+      <>
+        {/* User Details Modal */}
+        {userDetailsModal.isOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => setUserDetailsModal({ isOpen: false, userId: null, userDetails: null })}
@@ -3265,6 +3481,7 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
           </div>
         </div>
       )}
+      </>
     </div>
   );
 }

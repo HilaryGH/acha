@@ -429,14 +429,30 @@ export const api = {
     },
   },
 
-  // AchaPay endpoints (if exists, otherwise using premium or creating placeholder)
+  // AchaPay endpoints
   achaPay: {
+    getAll: async (params?: { status?: string }) => {
+      const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
+      return request(`/achapay${queryParams}`);
+    },
+    getById: async (id: string) => {
+      return request(`/achapay/${id}`);
+    },
     create: async (data: any) => {
-      // Note: This endpoint might need to be created on the backend
-      // For now, using premium endpoint as placeholder
-      return request('/premium', {
+      return request('/achapay', {
         method: 'POST',
         body: JSON.stringify(data),
+      });
+    },
+    update: async (id: string, data: any) => {
+      return request(`/achapay/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+    delete: async (id: string) => {
+      return request(`/achapay/${id}`, {
+        method: 'DELETE',
       });
     },
   },

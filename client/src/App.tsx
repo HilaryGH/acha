@@ -32,6 +32,7 @@ import ViewDeliveryRequest from './pages/ViewDeliveryRequest'
 import GoogleAuthCallback from './pages/GoogleAuthCallback'
 import BrowseTrips from './pages/BrowseTrips'
 import BrowseOrders from './pages/BrowseOrders'
+import AchaPay from './pages/AchaPay'
 
 function AppContent() {
   const location = useLocation();
@@ -57,6 +58,7 @@ function AppContent() {
         <Route path="/partner-with-us" element={<PartnerWithUs />} />
         <Route path="/women-initiatives" element={<WomenInitiatives />} />
         <Route path="/premium" element={<Premium />} />
+        <Route path="/achapay" element={<AchaPay />} />
         <Route path="/professionals-community" element={<ProfessionalsCommunity />} />
         <Route path="/fresh-graduates" element={<FreshGraduates />} />
         <Route path="/join-community" element={<JoinCommunity />} />
