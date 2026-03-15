@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileUpload from '../FileUpload';
 import { api } from '../../services/api';
+import { getCurrentUser } from '../../utils/auth';
 
 function AchaPayForm() {
   const [formData, setFormData] = useState({
     amount: '',
-    conversionRate: '',
+    conversionRate: '185', // Default baseline value
     bankAccountHolderName: '',
     bankAccountNumber: '',
     bankName: '',
@@ -14,6 +15,40 @@ function AchaPayForm() {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [fetchingRate, setFetchingRate] = useState(true);
+  const [canEditRate, setCanEditRate] = useState(false);
+
+  // Check user role and fetch conversion rate on component mount
+  useEffect(() => {
+    const user = getCurrentUser();
+    const isAdmin = user && (user.role === 'admin' || user.role === 'super_admin');
+    setCanEditRate(isAdmin || false);
+
+    const fetchConversionRate = async () => {
+      try {
+        // Only fetch rate if user can edit it (admin/super_admin)
+        // For regular users, always use 185
+        if (isAdmin) {
+          const response = await api.settings.getConversionRate() as { status?: string; data?: { setting?: { value: number } } };
+          if (response.status === 'success' && response.data?.setting?.value) {
+            const rateValue = response.data.setting.value;
+            setFormData(prev => ({ ...prev, conversionRate: rateValue.toString() }));
+          }
+        } else {
+          // For non-admin users, always use 185
+          setFormData(prev => ({ ...prev, conversionRate: '185' }));
+        }
+      } catch (error) {
+        // If fetch fails, use default value of 185
+        console.error('Failed to fetch conversion rate, using default:', error);
+        setFormData(prev => ({ ...prev, conversionRate: '185' }));
+      } finally {
+        setFetchingRate(false);
+      }
+    };
+
+    fetchConversionRate();
+  }, []);
 
   // Calculate derived values
   const amount = parseFloat(formData.amount) || 0;
@@ -24,6 +59,10 @@ function AchaPayForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    // Only allow editing conversion rate if user is admin or super_admin
+    if (name === 'conversionRate' && !canEditRate) {
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -50,12 +89,18 @@ function AchaPayForm() {
     }
 
     try {
+      // Ensure non-admin users always use 185
+      const finalConversionRate = canEditRate 
+        ? parseFloat(formData.conversionRate) 
+        : 185;
+      const finalPayment = finalConversionRate * amount;
+
       const submitData = {
         amount: parseFloat(formData.amount),
         processingFee,
         totalDeposit,
-        conversionRate: parseFloat(formData.conversionRate),
-        payment,
+        conversionRate: finalConversionRate,
+        payment: finalPayment,
         bankAccountHolderName: formData.bankAccountHolderName,
         bankAccountNumber: formData.bankAccountNumber,
         bankName: formData.bankName,
@@ -71,10 +116,11 @@ function AchaPayForm() {
           text: 'Acha Pay deposit request submitted successfully! We will process your payment shortly.' 
         });
         
-        // Reset form
+        // Reset form (keep conversion rate if it was fetched, otherwise use default)
+        const resetRate = canEditRate ? '' : '185';
         setFormData({
           amount: '',
-          conversionRate: '',
+          conversionRate: resetRate,
           bankAccountHolderName: '',
           bankAccountNumber: '',
           bankName: '',
@@ -157,19 +203,38 @@ function AchaPayForm() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Conversion Rate
+              {!canEditRate && (
+                <span className="ml-2 text-xs font-normal text-gray-500">(Fixed)</span>
+              )}
             </label>
-            <input
-              type="number"
-              name="conversionRate"
-              value={formData.conversionRate}
-              onChange={handleChange}
-              min="0"
-              step="0.01"
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400"
-              placeholder="Enter conversion rate"
-            />
-            <p className="text-xs text-gray-500 mt-1">1 USD = X Birr</p>
+            {fetchingRate ? (
+              <div className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base bg-gray-50 animate-pulse">
+                Loading conversion rate...
+              </div>
+            ) : (
+              <input
+                type="number"
+                name="conversionRate"
+                value={formData.conversionRate}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                required
+                readOnly={!canEditRate}
+                disabled={!canEditRate}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg text-base ${
+                  canEditRate 
+                    ? 'focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500' 
+                    : 'bg-gray-100 cursor-not-allowed'
+                } placeholder:text-gray-400`}
+                placeholder="Enter conversion rate"
+              />
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              1 USD = {formData.conversionRate || '185'} Birr 
+              {!canEditRate && <span className="ml-1">(Fixed at 185 Birr - Only admins can modify)</span>}
+              {canEditRate && <span className="ml-1">(Baseline: 185 Birr)</span>}
+            </p>
           </div>
 
           {/* Payment - Display Only */}

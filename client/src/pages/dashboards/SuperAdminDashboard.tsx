@@ -128,6 +128,9 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     endDate: ''
   });
   const [selectedTransactionCategory, setSelectedTransactionCategory] = useState<string>('all');
+  const [conversionRate, setConversionRate] = useState<number>(185);
+  const [conversionRateInput, setConversionRateInput] = useState<string>('185');
+  const [updatingRate, setUpdatingRate] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -142,6 +145,8 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
       loadTrips();
     } else if (activeTab === 'partner-with-us') {
       loadPartnerWithUs();
+    } else if (activeTab === 'settings') {
+      loadConversionRate();
     } else if (activeTab === 'women-initiatives') {
       loadWomenInitiatives();
     } else if (activeTab === 'premium-community') {
@@ -660,6 +665,39 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
     } catch (error) {
       console.error('Error updating Acha Pay status:', error);
       alert('Failed to update status');
+    }
+  };
+
+  const loadConversionRate = async () => {
+    try {
+      const response = await api.settings.getConversionRate() as { status?: string; data?: { setting?: { value: number } } };
+      if (response.status === 'success' && response.data?.setting?.value) {
+        setConversionRate(response.data.setting.value);
+        setConversionRateInput(response.data.setting.value.toString());
+      }
+    } catch (error) {
+      console.error('Error loading conversion rate:', error);
+      // Keep default value of 185
+    }
+  };
+
+  const handleUpdateConversionRate = async () => {
+    const rateValue = parseFloat(conversionRateInput);
+    if (isNaN(rateValue) || rateValue <= 0) {
+      alert('Please enter a valid conversion rate (greater than 0)');
+      return;
+    }
+
+    try {
+      setUpdatingRate(true);
+      await api.settings.update('usd_to_birr_rate', { value: rateValue, description: 'USD to Birr conversion rate (1 USD = X Birr)' });
+      setConversionRate(rateValue);
+      alert('Conversion rate updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating conversion rate:', error);
+      alert(error.message || 'Failed to update conversion rate');
+    } finally {
+      setUpdatingRate(false);
     }
   };
 
@@ -3189,7 +3227,46 @@ function SuperAdminDashboard({ user }: SuperAdminDashboardProps) {
           {activeTab === 'settings' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">System Settings</h3>
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Conversion Rate Management */}
+                <div className="p-6 border border-gray-200 rounded-lg bg-gray-50">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <span className="mr-2">💱</span>
+                    Acha Pay Conversion Rate
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Manage the USD to Birr conversion rate used in Acha Pay transactions. This rate is used as the baseline for all payment calculations.
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Current Rate: 1 USD = <span className="font-semibold text-green-600">{conversionRate}</span> Birr
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={conversionRateInput}
+                          onChange={(e) => setConversionRateInput(e.target.value)}
+                          min="0"
+                          step="0.01"
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter new rate"
+                        />
+                        <button
+                          onClick={handleUpdateConversionRate}
+                          disabled={updatingRate || parseFloat(conversionRateInput) === conversionRate}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          {updatingRate ? 'Updating...' : 'Update Rate'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Baseline: 185 Birr. Update this rate daily to reflect current market conditions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-2">System Configuration</h4>
                   <p className="text-sm text-gray-600">Configure system-wide settings and preferences</p>

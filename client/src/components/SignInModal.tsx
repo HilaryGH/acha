@@ -14,9 +14,10 @@ type ViewMode = 'signin' | 'register';
 interface SignInModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSignInSuccess?: () => void; // Optional callback for custom handling after sign-in
 }
 
-function SignInModal({ isOpen, onClose }: SignInModalProps) {
+function SignInModal({ isOpen, onClose, onSignInSuccess }: SignInModalProps) {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('signin');
   const [registrationType, setRegistrationType] = useState<RegistrationType>(null);
@@ -46,11 +47,20 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
           localStorage.setItem('token', response.data.token);
         }
         
-        // Close modal and redirect to home
+        // Dispatch login event for other components
+        window.dispatchEvent(new Event('login'));
+        
+        // Close modal
         onClose();
-        navigate('/home');
-        // Reload page to update navbar
-        window.location.reload();
+        
+        // Use custom callback if provided, otherwise default behavior
+        if (onSignInSuccess) {
+          onSignInSuccess();
+        } else {
+          // Default: redirect to home and reload
+          navigate('/home');
+          window.location.reload();
+        }
       }
     } catch (error: any) {
       setSignInError(error.message || 'Failed to sign in. Please check your credentials.');
@@ -182,14 +192,14 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
   // Sign In view
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Sign In</h2>
+            <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
             <button
               onClick={handleClose}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -199,12 +209,12 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
           <form onSubmit={handleSignIn} className="space-y-3">
             {signInError && (
-              <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-xs">
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">
                 {signInError}
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Email
               </label>
               <input
@@ -212,12 +222,12 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                 required
                 value={signInData.email}
                 onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400 transition-all"
                 placeholder="Enter your email"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Password
               </label>
               <input
@@ -225,24 +235,27 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                 required
                 value={signInData.password}
                 onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder:text-gray-400 transition-all"
                 placeholder="Enter your password"
               />
             </div>
             <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3 h-3" />
+              <label className="flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300 text-green-600 focus:ring-green-500 w-3.5 h-3.5 cursor-pointer" 
+                />
                 <span className="ml-1.5 text-xs text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-xs text-blue-600 hover:text-blue-800">
+              <a href="#" className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors">
                 Forgot password?
               </a>
             </div>
             <button
               type="submit"
               disabled={signInLoading}
-              className="w-full py-2 px-4 rounded-lg text-sm text-white font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg, #1E88E5 0%, #26C6DA 50%, #43A047 100%)' }}
+              className="w-full py-2.5 px-4 rounded-lg text-sm text-white font-semibold transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #14b8a6 100%)' }}
             >
               {signInLoading ? 'Signing In...' : 'Sign In'}
             </button>
@@ -254,7 +267,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="px-2 bg-white text-gray-500">Or</span>
+                <span className="px-2 bg-white text-gray-500 font-medium">Or</span>
               </div>
             </div>
             
@@ -267,7 +280,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
                   e.stopPropagation();
                   handleGoogleSignIn();
                 }}
-                className="w-full py-2 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -280,7 +293,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
               
               <button
                 onClick={handleFacebookSignIn}
-                className="w-full py-2 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="#1877F2" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -292,7 +305,7 @@ function SignInModal({ isOpen, onClose }: SignInModalProps) {
             <div className="mt-4 text-center">
               <button
                 onClick={() => setViewMode('register')}
-                className="w-full py-2 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50"
+                className="w-full py-2.5 px-4 rounded-lg border-2 border-gray-300 text-xs text-gray-700 font-semibold transition-all duration-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm"
               >
                 Create an account
               </button>

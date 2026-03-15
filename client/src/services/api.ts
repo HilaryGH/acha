@@ -457,6 +457,25 @@ export const api = {
     },
   },
 
+  // Settings endpoints
+  settings: {
+    getConversionRate: async () => {
+      return request('/settings/usd_to_birr_rate');
+    },
+    getAll: async () => {
+      return request('/settings');
+    },
+    getByKey: async (key: string) => {
+      return request(`/settings/${key}`);
+    },
+    update: async (key: string, data: { value: any; description?: string }) => {
+      return request(`/settings/${key}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
   // Audit endpoints
   audit: {
     getAll: async () => {
